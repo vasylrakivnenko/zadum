@@ -1,0 +1,820 @@
+{
+  "id": "marketplace",
+  "version": "2026.08.23-1",
+  "archetype": "marketplace",
+  "description": "Two-sided platforms where independent sellers/providers offer goods or services to buyers (B2C and C2C). Priors skew toward small, single-region platforms that take a commission.",
+  "nodes": [
+    {
+      "id": "mp_supply_type",
+      "topic": "what is sold",
+      "question": "What do sellers offer on the platform?",
+      "options": [
+        {
+          "id": "services",
+          "label": "Services performed by people (tutors, cleaners, photographers)"
+        },
+        {
+          "id": "physical_goods",
+          "label": "Physical goods that get shipped or handed over"
+        },
+        {
+          "id": "digital_goods",
+          "label": "Digital goods delivered online (files, courses, licenses)"
+        },
+        {
+          "id": "rentals",
+          "label": "Things rented for a period (spaces, vehicles, equipment)"
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "overview",
+        "data_model",
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "services": 0.283,
+        "physical_goods": 0.455,
+        "digital_goods": 0.133,
+        "rentals": 0.128
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_seller_onboarding",
+      "topic": "supply side",
+      "question": "How does someone become a seller?",
+      "options": [
+        {
+          "id": "open_signup",
+          "label": "Anyone signs up and can start listing right away",
+          "implies": [
+            {
+              "node": "invite_flow",
+              "option": "self_signup"
+            }
+          ]
+        },
+        {
+          "id": "apply_and_approve",
+          "label": "They apply and the platform approves them first",
+          "implies": [
+            {
+              "node": "invite_flow",
+              "option": "self_signup"
+            },
+            {
+              "node": "approval_workflow",
+              "option": "single_approver"
+            }
+          ]
+        },
+        {
+          "id": "invite_only",
+          "label": "Invite-only; the platform recruits and adds sellers"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "actors_permissions",
+        "journeys",
+        "state_machines"
+      ],
+      "prior": {
+        "open_signup": 0.521,
+        "apply_and_approve": 0.366,
+        "invite_only": 0.114
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "mp_listing_approval",
+      "topic": "listings",
+      "question": "Do listings go live immediately?",
+      "options": [
+        {
+          "id": "instant",
+          "label": "Yes — live as soon as the seller publishes"
+        },
+        {
+          "id": "reviewed_first",
+          "label": "No — the platform reviews each listing before it's visible"
+        },
+        {
+          "id": "live_then_moderated",
+          "label": "Live immediately, but the platform can flag, hide, or remove them"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "state_machines",
+        "actors_permissions"
+      ],
+      "prior": {
+        "instant": 0.609,
+        "reviewed_first": 0.196,
+        "live_then_moderated": 0.196
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_listing_visibility",
+      "topic": "public pages",
+      "question": "Can anyone browse listings without signing up?",
+      "options": [
+        {
+          "id": "public_browse",
+          "label": "Yes — listings are public; sign-up is needed only to buy or contact",
+          "implies": [
+            {
+              "node": "public_facing",
+              "option": "public_content"
+            }
+          ]
+        },
+        {
+          "id": "members_only",
+          "label": "No — you must sign in to see anything"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "actors_permissions",
+        "journeys"
+      ],
+      "prior": {
+        "public_browse": 0.865,
+        "members_only": 0.136
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "mp_buyer_accounts",
+      "topic": "buyers",
+      "question": "Do buyers need an account to buy or book?",
+      "options": [
+        {
+          "id": "account_required",
+          "label": "Yes — every buyer has an account",
+          "implies": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            },
+            {
+              "node": "invite_flow",
+              "option": "self_signup"
+            }
+          ]
+        },
+        {
+          "id": "guest_allowed",
+          "label": "No — they can check out as a guest with an email"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "actors_permissions",
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "account_required": 0.725,
+        "guest_allowed": 0.275
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "mp_pricing_control",
+      "topic": "pricing",
+      "question": "Who sets the price?",
+      "options": [
+        {
+          "id": "seller_sets",
+          "label": "Each seller sets their own prices"
+        },
+        {
+          "id": "platform_sets",
+          "label": "The platform sets prices; sellers just accept jobs/orders"
+        },
+        {
+          "id": "seller_within_bounds",
+          "label": "Sellers choose within rules the platform sets (min/max, tiers)"
+        },
+        {
+          "id": "quote_per_request",
+          "label": "Price is quoted per request after the buyer describes what they need"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "rules_invariants",
+        "data_model",
+        "actors_permissions"
+      ],
+      "prior": {
+        "seller_sets": 0.618,
+        "platform_sets": 0.169,
+        "seller_within_bounds": 0.081,
+        "quote_per_request": 0.131
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_transaction_mode",
+      "topic": "buying",
+      "question": "Can a buyer purchase/book instantly, or must the seller accept first?",
+      "options": [
+        {
+          "id": "instant",
+          "label": "Instant — paying or booking confirms it"
+        },
+        {
+          "id": "seller_accepts",
+          "label": "Request — the seller accepts or declines within a time limit"
+        },
+        {
+          "id": "inquiry_only",
+          "label": "Inquiry — the platform connects them and the deal is struck between them"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "state_machines",
+        "journeys",
+        "rules_invariants"
+      ],
+      "prior": {
+        "instant": 0.648,
+        "seller_accepts": 0.213,
+        "inquiry_only": 0.139
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_payment_flow",
+      "topic": "money",
+      "question": "How does money move between buyer and seller?",
+      "options": [
+        {
+          "id": "off_platform",
+          "label": "It doesn't — they pay each other directly; the platform only connects them",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "none"
+            }
+          ]
+        },
+        {
+          "id": "held_then_released",
+          "label": "The platform collects payment, holds it, and releases it to the seller after delivery/completion",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "payouts_too"
+            }
+          ]
+        },
+        {
+          "id": "split_at_checkout",
+          "label": "The platform collects and immediately splits it between seller and platform",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "payouts_too"
+            }
+          ]
+        },
+        {
+          "id": "platform_is_merchant",
+          "label": "The platform collects as the merchant and settles with sellers outside the app (bank transfers, invoices)",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "off_platform": 0.136,
+        "held_then_released": 0.379,
+        "split_at_checkout": 0.304,
+        "platform_is_merchant": 0.182
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "mp_fee_model",
+      "topic": "money",
+      "question": "How does the platform make money?",
+      "options": [
+        {
+          "id": "commission",
+          "label": "A percentage of each transaction, taken from the seller"
+        },
+        {
+          "id": "commission_plus_buyer_fee",
+          "label": "A seller commission plus a service fee charged to the buyer"
+        },
+        {
+          "id": "seller_subscription",
+          "label": "Sellers pay a monthly/annual subscription; transactions are free",
+          "implies": [
+            {
+              "node": "recurring_scheduled",
+              "option": "recurring_records"
+            }
+          ]
+        },
+        {
+          "id": "listing_or_lead_fees",
+          "label": "Sellers pay per listing or per lead; no cut of the transaction"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "rules_invariants",
+        "data_model",
+        "overview"
+      ],
+      "prior": {
+        "commission": 0.5,
+        "commission_plus_buyer_fee": 0.136,
+        "seller_subscription": 0.254,
+        "listing_or_lead_fees": 0.111
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "mp_payout_timing",
+      "topic": "money",
+      "question": "When do sellers get paid out?",
+      "options": [
+        {
+          "id": "on_completion",
+          "label": "Automatically as soon as each order/job is completed"
+        },
+        {
+          "id": "scheduled_batches",
+          "label": "In scheduled batches (e.g., weekly) for everything completed since the last payout"
+        },
+        {
+          "id": "manual_by_admin",
+          "label": "When an admin triggers it by hand"
+        },
+        {
+          "id": "not_applicable",
+          "label": "Never through the app — no payouts"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "state_machines",
+        "rules_invariants",
+        "journeys"
+      ],
+      "prior": {
+        "on_completion": 0.3,
+        "scheduled_batches": 0.35,
+        "manual_by_admin": 0.15,
+        "not_applicable": 0.2
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "mp_disputes",
+      "topic": "disputes & refunds",
+      "question": "What happens when a buyer and seller disagree about an order?",
+      "options": [
+        {
+          "id": "between_parties",
+          "label": "They sort it out themselves; the platform stays out"
+        },
+        {
+          "id": "platform_mediates",
+          "label": "Either side opens a dispute; platform staff decide and can refund fully or partly"
+        },
+        {
+          "id": "auto_rules",
+          "label": "Automatic rules (e.g., refund if not delivered in X days) with staff handling the rest"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "state_machines",
+        "actors_permissions",
+        "rules_invariants"
+      ],
+      "prior": {
+        "between_parties": 0.25,
+        "platform_mediates": 0.55,
+        "auto_rules": 0.2
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_reviews",
+      "topic": "trust",
+      "question": "How do reviews work?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No reviews"
+        },
+        {
+          "id": "buyers_rate_sellers",
+          "label": "Buyers rate and review sellers"
+        },
+        {
+          "id": "two_way",
+          "label": "Both sides review each other after a transaction"
+        },
+        {
+          "id": "verified_only",
+          "label": "Only buyers with a completed transaction can review, and sellers can respond"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "journeys"
+      ],
+      "prior": {
+        "none": 0.175,
+        "buyers_rate_sellers": 0.467,
+        "two_way": 0.167,
+        "verified_only": 0.192
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_messaging",
+      "topic": "contact",
+      "question": "How do buyers and sellers talk to each other?",
+      "options": [
+        {
+          "id": "none_contact_shown",
+          "label": "They don't in the app — contact details are shown and they talk outside"
+        },
+        {
+          "id": "in_app_anytime",
+          "label": "In-app messaging before and after buying"
+        },
+        {
+          "id": "in_app_after_order",
+          "label": "In-app messaging only once there is an order/booking between them"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "actors_permissions",
+        "journeys"
+      ],
+      "prior": {
+        "none_contact_shown": 0.2,
+        "in_app_anytime": 0.45,
+        "in_app_after_order": 0.35
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_discovery",
+      "topic": "finding things",
+      "question": "How do buyers find what they want?",
+      "options": [
+        {
+          "id": "browse_categories",
+          "label": "Browse categories and a simple keyword search"
+        },
+        {
+          "id": "search_with_filters",
+          "label": "Search with filters (price, rating, availability, attributes)"
+        },
+        {
+          "id": "map_location",
+          "label": "Map and distance-based search around the buyer",
+          "implies": [
+            {
+              "node": "mp_geography",
+              "option": "local_with_distance"
+            }
+          ]
+        },
+        {
+          "id": "matching",
+          "label": "The buyer posts a need and matching sellers respond or are suggested"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "browse_categories": 0.232,
+        "search_with_filters": 0.522,
+        "map_location": 0.136,
+        "matching": 0.111
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_geography",
+      "topic": "where",
+      "question": "Does location matter for the transaction?",
+      "options": [
+        {
+          "id": "not_location_bound",
+          "label": "No — anyone anywhere can buy from anyone (online delivery)"
+        },
+        {
+          "id": "local_with_distance",
+          "label": "Yes — buyers and sellers must be near each other; distance/service area matters"
+        },
+        {
+          "id": "national_shipping",
+          "label": "Within one country; goods are shipped"
+        },
+        {
+          "id": "international",
+          "label": "Across countries — currencies, taxes, and shipping differ",
+          "implies": [
+            {
+              "node": "localization",
+              "option": "multi_region"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "overview"
+      ],
+      "prior": {
+        "not_location_bound": 0.2,
+        "local_with_distance": 0.45,
+        "national_shipping": 0.25,
+        "international": 0.1
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_identity_verification",
+      "topic": "trust",
+      "question": "How much are people verified?",
+      "options": [
+        {
+          "id": "email_only",
+          "label": "Just a working email"
+        },
+        {
+          "id": "sellers_verified",
+          "label": "Sellers verify phone/ID/business details; buyers just email"
+        },
+        {
+          "id": "both_verified",
+          "label": "Both sides verify identity (ID check, phone)"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "actors_permissions",
+        "state_machines",
+        "data_model"
+      ],
+      "prior": {
+        "email_only": 0.3,
+        "sellers_verified": 0.5,
+        "both_verified": 0.2
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "mp_cancellation",
+      "topic": "cancellations",
+      "question": "Who can cancel an order/booking, and with what consequence?",
+      "options": [
+        {
+          "id": "either_free",
+          "label": "Either side can cancel any time without penalty"
+        },
+        {
+          "id": "buyer_window_seller_penalty",
+          "label": "Buyers cancel free within a window; seller cancellations count against them"
+        },
+        {
+          "id": "seller_policy",
+          "label": "Each seller sets their own cancellation policy, enforced by the platform"
+        },
+        {
+          "id": "no_cancellation",
+          "label": "No cancellations once confirmed; only disputes/refunds"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "rules_invariants",
+        "state_machines",
+        "actors_permissions"
+      ],
+      "prior": {
+        "either_free": 0.2,
+        "buyer_window_seller_penalty": 0.35,
+        "seller_policy": 0.35,
+        "no_cancellation": 0.1
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_fulfilment",
+      "topic": "delivery",
+      "question": "How does the buyer receive what they bought?",
+      "options": [
+        {
+          "id": "in_person",
+          "label": "In person — at the seller's place, the buyer's address, or a meeting point"
+        },
+        {
+          "id": "seller_ships",
+          "label": "The seller ships it and enters tracking"
+        },
+        {
+          "id": "platform_arranges",
+          "label": "The platform arranges pickup/delivery through a courier",
+          "implies": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        },
+        {
+          "id": "online_delivery",
+          "label": "Online — download, video call, or access granted in the app"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "state_machines",
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "in_person": 0.35,
+        "seller_ships": 0.334,
+        "platform_arranges": 0.091,
+        "online_delivery": 0.225
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_seller_tax_docs",
+      "topic": "tax & receipts",
+      "question": "Who issues receipts/invoices and handles seller tax paperwork?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nobody — it's between buyer and seller"
+        },
+        {
+          "id": "platform_receipts",
+          "label": "The platform issues receipts to buyers and earnings statements to sellers"
+        },
+        {
+          "id": "platform_invoices_and_tax_forms",
+          "label": "The platform issues invoices on behalf of sellers and collects seller tax details/forms"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "journeys"
+      ],
+      "prior": {
+        "none": 0.35,
+        "platform_receipts": 0.45,
+        "platform_invoices_and_tax_forms": 0.2
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_seller_dashboard",
+      "topic": "seller tools",
+      "question": "What do sellers see about their business?",
+      "options": [
+        {
+          "id": "orders_list",
+          "label": "A list of their orders/bookings and their listings"
+        },
+        {
+          "id": "earnings_dashboard",
+          "label": "A dashboard with earnings, payouts, and ratings"
+        },
+        {
+          "id": "full_store_management",
+          "label": "A full back office — inventory, calendar, promotions, analytics"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "journeys",
+        "actors_permissions"
+      ],
+      "prior": {
+        "orders_list": 0.342,
+        "earnings_dashboard": 0.442,
+        "full_store_management": 0.215
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_promotions",
+      "topic": "promotions",
+      "question": "Are there discounts or featured placements?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "seller_discounts",
+          "label": "Sellers can run their own discounts/coupons"
+        },
+        {
+          "id": "platform_promos_featured",
+          "label": "Platform-wide promotions and paid featured/boosted listings"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules_invariants"
+      ],
+      "prior": {
+        "none": 0.45,
+        "seller_discounts": 0.3,
+        "platform_promos_featured": 0.25
+      },
+      "tags": []
+    },
+    {
+      "id": "mp_taxonomy_control",
+      "topic": "categories",
+      "question": "Who controls categories and attributes?",
+      "options": [
+        {
+          "id": "platform_fixed",
+          "label": "The platform defines a fixed set of categories and fields"
+        },
+        {
+          "id": "platform_plus_seller_tags",
+          "label": "Platform categories, plus free tags sellers add"
+        },
+        {
+          "id": "sellers_propose",
+          "label": "Sellers can propose new categories that the platform approves"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "actors_permissions"
+      ],
+      "prior": {
+        "platform_fixed": 0.621,
+        "platform_plus_seller_tags": 0.266,
+        "sellers_propose": 0.113
+      },
+      "tags": []
+    }
+  ]
+}

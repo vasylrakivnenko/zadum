@@ -1,0 +1,147 @@
+{
+  "archetype": "content-site",
+  "version": "2026.08.23-1",
+  "source_docs": 9,
+  "patterns": [
+    {
+      "id": "content_site_1",
+      "pattern": "Users have access to content and actions based on their assigned roles or permissions.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Permissions are determined by a user's role (admin, editor, viewer, etc.)"
+    },
+    {
+      "id": "content_site_2",
+      "pattern": "Content (e.g., pages, posts, datasets) can be set as public or restricted; access may be limited to specific user types, groups, or those with passwords.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Pages can be restricted to logged-in users, groups, or password-protected."
+    },
+    {
+      "id": "content_site_3",
+      "pattern": "Content, objects, or files can be assigned to multiple collections and collections can contain other collections or items.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Items can be members of multiple collections, and collections may nest or aggregate items/other collections."
+    },
+    {
+      "id": "content_site_4",
+      "pattern": "Major data actions (creation, updates, deletions, imports, exports) must be tracked for audit purposes.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Track all events and changes on collections, objects, and files."
+    },
+    {
+      "id": "content_site_5",
+      "pattern": "There are configurable privacy or visibility settings per content/page type or per dataset, adjustable by authorized users.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Visibility of datasets and pages can be set to public or hidden at any time."
+    },
+    {
+      "id": "content_site_6",
+      "pattern": "Authentication is required for certain sensitive actions or areas, supporting multiple methods (e.g., LDAP, local accounts).",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Users authenticate using LDAP or local credentials to access restricted features."
+    },
+    {
+      "id": "content_site_7",
+      "pattern": "Custom metadata fields can be attached to content items by authorized roles (e.g., staff, administrators, curators).",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "Staff can add custom metadata fields to items as needed."
+    },
+    {
+      "id": "content_site_8",
+      "pattern": "Bulk operations (upload, import, export) are supported, subject to role-based permission checks.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Bulk upload and import/export actions can be performed by certain roles with proper permissions."
+    },
+    {
+      "id": "content_site_9",
+      "pattern": "Content lifecycles and access can be governed by publication status, embargo periods, or versioning controls.",
+      "kind": "state",
+      "frequency_estimate": 4,
+      "example_phrasing": "Only published content is public; embargoed items remain hidden until release."
+    },
+    {
+      "id": "content_site_10",
+      "pattern": "Administrators (or designated superusers) can manage all system content, settings, and user permissions.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Administrators may view and manage all content and user accounts."
+    },
+    {
+      "id": "content_site_11",
+      "pattern": "Each piece of content (e.g., blog post, page) belongs to at least one organizational container (section, collection, repository, etc.), and organizational containers are configurable per site/app.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "A blog post is assigned to a section or collection; containers can be independently configured."
+    },
+    {
+      "id": "content_site_12",
+      "pattern": "Site templates and user interface elements support customization for look, feel, forms, and accessibility requirements.",
+      "kind": "scope",
+      "frequency_estimate": 3,
+      "example_phrasing": "Templates and forms are configurable for branding and accessibility (e.g., login, password-required pages)."
+    },
+    {
+      "id": "content_site_13",
+      "pattern": "Editors must ensure accessibility compliance (e.g., provide alt text for images, avoid empty headings).",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Editors supply alt text or flag images as decorative, and should not leave headings blank."
+    },
+    {
+      "id": "content_site_14",
+      "pattern": "Legal and rights information (licenses, rights statements) can be assigned at various levels (collection, object, file).",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Assign rights or licenses at collection or individual item level."
+    },
+    {
+      "id": "content_site_15",
+      "pattern": "Taxonomies/tags for organizing content are flat (not nested) and can be used for content aggregation and filtering.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Tags assigned to content are flat, enabling filtering and aggregation."
+    },
+    {
+      "id": "content_site_16",
+      "pattern": "URLs are human-friendly/prettified by default, and site structure determines URL and template selection.",
+      "kind": "scope",
+      "frequency_estimate": 3,
+      "example_phrasing": "Section names form URL paths; pretty URLs are used."
+    },
+    {
+      "id": "content_site_17",
+      "pattern": "Embargoes and access locks can prevent content from being visible/available until specified conditions/dates are met.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Access may be embargoed until a certain date or condition is satisfied."
+    },
+    {
+      "id": "content_site_18",
+      "pattern": "Published/deleted status of content is reflected immediately to visitors/users as appropriate.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Deleted posts are removed instantly; only published items are shown."
+    },
+    {
+      "id": "content_site_19",
+      "pattern": "All data validations (field length, allowed values, uniqueness, etc.) follow schema or external rules.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Field values must conform to schema or integration-specific requirements."
+    },
+    {
+      "id": "content_site_20",
+      "pattern": "Platform supports multiple language/translations for content, establishing links between translated pages.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Pages with matching translation keys are linked as alternate-language versions."
+    }
+  ]
+}

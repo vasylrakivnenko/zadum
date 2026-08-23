@@ -1,0 +1,147 @@
+{
+  "archetype": "marketplace",
+  "version": "2026.08.23-1",
+  "source_docs": 8,
+  "patterns": [
+    {
+      "id": "marketplace_1",
+      "pattern": "Only authorized users can access or manage their own data and resources; vendors cannot access or alter data belonging to other vendors.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Vendors can only manage their own products, orders, and payouts; access to other vendors' data is prohibited."
+    },
+    {
+      "id": "marketplace_2",
+      "pattern": "Administrators/superusers have elevated privileges to manage marketplace-wide settings, vendors, categories, commissions, user roles, registration, payments, and rules.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Admin manages vendor registration, publishing, payment disbursement, commissions, and has override on reviews."
+    },
+    {
+      "id": "marketplace_3",
+      "pattern": "Buyers must have a registered and authenticated account to make purchases or bookings.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Only buyers with accounts are allowed to purchase."
+    },
+    {
+      "id": "marketplace_4",
+      "pattern": "Listings, bookings, or inventory cannot be purchased or booked for more units/seats than are available in current stock; stock is atomically reduced on successful purchase, increased on restock or cancellation.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Cannot purchase more units than available stock; stock decreases on purchase and increases on restock/cancel."
+    },
+    {
+      "id": "marketplace_5",
+      "pattern": "Vendors/providers can manually adjust their own inventory, stock or seat availability, but only for their own listings.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Providers can manually adjust stock and seat availability for their own products."
+    },
+    {
+      "id": "marketplace_6",
+      "pattern": "Booking and order workflows have configurable states (pending, active, expired, canceled, completed); transitions are automated by rules and parameters (e.g., expiration, acceptance delays).",
+      "kind": "state",
+      "frequency_estimate": 4,
+      "example_phrasing": "Bookings expire or are automatically validated after configurable delays; cancellations handled per policy."
+    },
+    {
+      "id": "marketplace_7",
+      "pattern": "Commission, fee, and VAT rules are flexible: rates can be set globally or per vendor/user and calculated automatically as part of transactions.",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "Commission and fee rates are automatically calculated per vendor or globally for every transaction."
+    },
+    {
+      "id": "marketplace_8",
+      "pattern": "Notifications (email, in-app) are sent based on lifecycle triggers (e.g., messages, bookings), subject to user/email verification; custom notifications require integration.",
+      "kind": "state",
+      "frequency_estimate": 4,
+      "example_phrasing": "Email notifications only sent to verified addresses, triggered by events like new messages; extra integrations optional."
+    },
+    {
+      "id": "marketplace_9",
+      "pattern": "Vendor onboarding and verification is required before listing or managing offers.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Sellers must be verified by the marketplace before they can offer products."
+    },
+    {
+      "id": "marketplace_10",
+      "pattern": "Admin can assign user roles with scoped access to channels or domains within the app.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Administrators can grant custom roles limited to specific channels."
+    },
+    {
+      "id": "marketplace_11",
+      "pattern": "Listings/prices can be synchronized across channels out-of-the-box or per setting, but remain consistent for the same product variant.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Prices can be synced for identical products across vendor channels if enabled."
+    },
+    {
+      "id": "marketplace_12",
+      "pattern": "Vendor and admin roles each have dedicated interfaces (frontend dashboard for vendors, backend for admin).",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "Vendors access their dashboard, while only admins can use the backend."
+    },
+    {
+      "id": "marketplace_13",
+      "pattern": "Marketplace supports a broad scope of offerings: physical goods, digital content, services, bookings, rentals, and datasets.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Vendors can offer physical, digital, rentals, services, bookings, and data packages."
+    },
+    {
+      "id": "marketplace_14",
+      "pattern": "Marketplaces allow flexible shipping and fulfillment rules per vendor, zone, or product type.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Shipping policies are managed per vendor or zone."
+    },
+    {
+      "id": "marketplace_15",
+      "pattern": "Coupons, bookings, and cancellation/refund policies can be configured at the seller or marketplace-wide level by the appropriate party (vendor or admin).",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Vendors can create their own coupons; admins set global ones; refunds/cancellations handled by settings."
+    },
+    {
+      "id": "marketplace_16",
+      "pattern": "Sensitive price and monetary data are stored using standardized formats (e.g., cents, default currency) to ensure accuracy across financial computations.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "All prices stored in cents and in the default currency for consistency."
+    },
+    {
+      "id": "marketplace_17",
+      "pattern": "Data packages/datasets and their metadata may be versioned, tagged, and validated for integrity on publishing; deletion may be reversible (restore support).",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Data packages can be versioned, tagged, and restored after deletion; validated on publish."
+    },
+    {
+      "id": "marketplace_18",
+      "pattern": "Publishing and discoverability scope is configurable: resources (like datasets, listings) can be made public or limited to select users/groups.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Publishing a dataset can make it public or limited to specific people."
+    },
+    {
+      "id": "marketplace_19",
+      "pattern": "All core integrations (e.g., payments, notification, search) are modular and pluggable; default operation is possible without external services.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Integrations like payment and email are optional and can be swapped out."
+    },
+    {
+      "id": "marketplace_20",
+      "pattern": "Public browsing, search, and filtering of products, datasets, vendors, and activity metrics are allowed; private/entity-restricted resources have controlled access.",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "Buyers and consumers can browse, search, and filter publicly available resources."
+    }
+  ]
+}

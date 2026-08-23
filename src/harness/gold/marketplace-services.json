@@ -1,0 +1,101 @@
+{
+  "id": "marketplace-services",
+  "one_liner": "a marketplace for booking local home-repair pros",
+  "one_liner_variants": [
+    "an app to connect homeowners with people who fix stuff around the house",
+    "a two-sided marketplace where homeowners request home repairs (plumbing, electrical, handyman) and independent local pros accept jobs, get paid through the app, and get reviewed",
+    "kind of like Thumbtack but just for home repairs in my city"
+  ],
+  "archetypes": [
+    "marketplace"
+  ],
+  "persona": "Founder bootstrapping a local home-repair marketplace in one city. Practical, not technical, cares most about trust and safety since strangers come into people's homes. Wants a lean first version but won't compromise on background checks and holding payment until the job is done.",
+  "persona_variants": [
+    "Founder bootstrapping a local home-repair marketplace in one city. Practical, not technical, cares most about trust and safety since strangers come into people's homes. Wants a lean first version but won't compromise on background checks and holding payment until the job is done.",
+    "Operations person for the marketplace who is risk-averse, wants everything spelled out precisely, and worries about liability and disputes before anything else.",
+    "Fast-moving founder who is impatient, wants to launch in weeks, and is happy to let the tool default anything that doesn't touch money, safety, or trust."
+  ],
+  "truth": "This is a two-sided marketplace connecting homeowners who need home repairs (plumbing, electrical, handyman work) with independent local service providers (mp_supply_type: services) — the platform itself is a single business (tenancy: single_org), not something resold to other companies. Homeowners and providers both create their own accounts (user_accounts: multi_user), with the founder and a couple of support staff having elevated admin powers (roles: owner_staff). Both sides sign themselves up (invite_flow: self_signup) using email and password (identity_provider: email_password). Anyone can browse listed providers and their services without an account, but you must sign up to book or contact someone (external_access: portal; mp_listing_visibility: public_browse, so listings are public content). Homeowners must have an account before they can book (mp_buyer_accounts: account_required); once in, they can create requests, message, and manage their own bookings end to end (client_portal_scope: self_service). Providers don't just sign up and start listing — they apply and the platform reviews and approves them before they can take jobs (mp_seller_onboarding: apply_and_approve), including a background/ID check (mp_identity_verification: sellers_verified) since they are entering people's homes; homeowners themselves just need a working email. Once approved, a provider's listings go live right away, but the platform can flag, hide, or pull them down if there's a problem (mp_listing_approval: live_then_moderated). Buyers mostly find providers by searching near them on a map (mp_discovery: map_location), since this only works when the provider is genuinely close to the job (mp_geography: local_with_distance); everything is confined to one metro area for now (localization: single_locale). Pricing isn't a fixed list — a homeowner describes the job and gets a quote back (mp_pricing_control: quote_per_request), and nothing is confirmed until the provider actually accepts the request within a time limit (mp_transaction_mode: seller_accepts). Money is central: the platform collects the homeowner's payment up front, holds it in escrow, and releases it to the provider only after the job is marked complete (mp_payment_flow: held_then_released), which means payments flow through the app in both directions, in and back out (payments_in_app: payouts_too). The platform makes money by taking a straight percentage commission out of each job (mp_fee_model: commission), and pays providers out automatically as soon as each job is completed rather than in weekly batches (mp_payout_timing: on_completion). If a homeowner and provider disagree — a job wasn't done right, or wasn't done at all — either side can open a dispute and platform staff review it and can issue a full or partial refund (mp_disputes: platform_mediates). Both sides rate each other after the job (mp_reviews: two_way): homeowners want to know a provider is reliable and safe, and providers want to flag difficult customers too. To keep people from taking the relationship off-platform and dodging the commission, in-app messaging only opens up once there's an actual booking between them (mp_messaging: in_app_after_order) — no messaging before that. Cancellations follow a simple rule: homeowners can cancel free within a short window before the job, but a provider who cancels on short notice gets penalized against their standing (mp_cancellation: buyer_window_seller_penalty). Repairs happen in person at the homeowner's address (mp_fulfilment: in_person) — nothing ships and nothing is delivered online. The platform sends the homeowner a receipt and gives each provider a simple earnings statement (mp_seller_tax_docs: platform_receipts) rather than handling full tax-form paperwork for them. Providers get a dashboard showing their upcoming jobs, earnings, payouts, and rating (mp_seller_dashboard: earnings_dashboard). There are no discounts, coupons, or paid placements in this first version (mp_promotions: none), and categories — plumbing, electrical, handyman, and so on — are a fixed list the platform controls rather than something providers can add to (mp_taxonomy_control: platform_fixed). On the more generic side: notifications go out by both email and text (notifications: email_sms) since a job might need same-day scheduling; the app is used mostly from a phone, in a browser rather than an installed app (platform: web_mobile_first); it only needs to work online (offline: online_only); providers and homeowners can attach photos to a job — a photo of the leak, say — but nothing fancier (attachments: basic). The platform launches with a fresh, empty database (data_import: fresh_start) and stays small for a while, a few hundred providers and their jobs (data_scale: small), with a basic CSV export if someone needs their data out (data_export: csv_export) and nothing hard-deleted, just archived (deletion: soft_delete). A simple created/updated-by audit trail is enough (audit_trail: basic), edits happen one at a time so last-write-wins is fine (concurrency: last_write_wins), and data is kept indefinitely (retention: forever) since it's ordinary business data, not health or financial records needing special handling (compliance_sensitivity: ordinary). The founder wants a basic dashboard of totals — jobs done, money moved, active providers (reporting: basic_dashboard) — and lets providers customize their own profile with a photo, bio, and some branding, but nothing deeper like custom fields (customization: branding_templates). The platform connects to a small number of key outside tools — a payments processor and maps/geocoding (integrations: a_few_key) — and sends automatic reminders, e.g. a job is coming up tomorrow, without any other recurring automation (recurring_scheduled: reminders_only). Because listings are public content, the marketplace is also public-facing (public_facing: public_content). Providers need the platform's sign-off before they can take jobs, which is why there's a single-approver step baked into onboarding (approval_workflow: single_approver).",
+  "decisions": {
+    "user_accounts": "multi_user",
+    "roles": "owner_staff",
+    "external_access": "portal",
+    "tenancy": "single_org",
+    "invite_flow": "self_signup",
+    "identity_provider": "email_password",
+    "concurrency": "last_write_wins",
+    "audit_trail": "basic",
+    "notifications": "email_sms",
+    "offline": "online_only",
+    "platform": "web_mobile_first",
+    "data_import": "fresh_start",
+    "data_export": "csv_export",
+    "deletion": "soft_delete",
+    "data_scale": "small",
+    "integrations": "a_few_key",
+    "payments_in_app": "payouts_too",
+    "localization": "single_locale",
+    "attachments": "basic",
+    "approval_workflow": "single_approver",
+    "recurring_scheduled": "reminders_only",
+    "public_facing": "public_content",
+    "compliance_sensitivity": "ordinary",
+    "retention": "forever",
+    "customization": "branding_templates",
+    "reporting": "basic_dashboard",
+    "client_portal_scope": "self_service",
+    "mp_supply_type": "services",
+    "mp_seller_onboarding": "apply_and_approve",
+    "mp_listing_approval": "live_then_moderated",
+    "mp_listing_visibility": "public_browse",
+    "mp_buyer_accounts": "account_required",
+    "mp_pricing_control": "quote_per_request",
+    "mp_transaction_mode": "seller_accepts",
+    "mp_payment_flow": "held_then_released",
+    "mp_fee_model": "commission",
+    "mp_payout_timing": "on_completion",
+    "mp_disputes": "platform_mediates",
+    "mp_reviews": "two_way",
+    "mp_messaging": "in_app_after_order",
+    "mp_discovery": "map_location",
+    "mp_geography": "local_with_distance",
+    "mp_identity_verification": "sellers_verified",
+    "mp_cancellation": "buyer_window_seller_penalty",
+    "mp_fulfilment": "in_person",
+    "mp_seller_tax_docs": "platform_receipts",
+    "mp_seller_dashboard": "earnings_dashboard",
+    "mp_promotions": "none",
+    "mp_taxonomy_control": "platform_fixed"
+  },
+  "sheet": {
+    "actors": [
+      "Homeowner",
+      "Service provider",
+      "Platform admin"
+    ],
+    "nouns": [
+      "Provider profile",
+      "Listing",
+      "Booking request",
+      "Job",
+      "Payment",
+      "Payout",
+      "Review",
+      "Dispute"
+    ],
+    "rules": [
+      "A provider cannot accept jobs until the platform has approved their application",
+      "A homeowner's payment is held until the job is marked complete, then released to the provider",
+      "In-app messaging between a homeowner and provider only opens once a booking exists between them",
+      "A provider who cancels a confirmed job after the cancellation window counts against their standing",
+      "A review can only be left by a party with a completed job with the other side",
+      "Platform staff can hide or remove a live listing at any time"
+    ],
+    "non_goals": [
+      "Physical goods or shipping",
+      "Multi-city or multi-country operation at launch",
+      "Discounts, coupons, or paid featured placements",
+      "Full tax-form / 1099 filing handling for providers"
+    ]
+  }
+}

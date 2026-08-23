@@ -1,0 +1,1042 @@
+{
+  "sheet_version": 16,
+  "critic": {
+    "violations": [],
+    "omissions": [],
+    "score": 10,
+    "verdict": "pass"
+  },
+  "critic_rounds": 1,
+  "roundtrip": {
+    "recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 0.7777777777777778,
+      "rules": 0.8,
+      "non_goals": 0.5,
+      "overall": 0.8076923076923077
+    },
+    "missing": [
+      {
+        "kind": "action",
+        "item": "Bookkeeper|marks paid|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Client|pays|Invoice"
+      },
+      {
+        "kind": "rule",
+        "item": "Clients can only view and download their own invoices."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not handle online payment processing or receive money directly."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not provide tax filing or advanced accounting functions."
+      }
+    ],
+    "extra": [
+      {
+        "kind": "action",
+        "item": "Administrator|view|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|edit|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|edit|Client Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|edit|Payment Record"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|delete/archive|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|delete/archive|Client Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|delete/archive|Bookkeeper Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|delete/archive|Payment Record"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|restore|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|restore|Client Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|restore|Bookkeeper Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Administrator|restore|Payment Record"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|mark paid|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|add comment|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|add comment|Client Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|view|Payment Record"
+      },
+      {
+        "kind": "action",
+        "item": "Client|pay (manual/mark paid)|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Client|view|Client Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Client|add comment|Invoice"
+      },
+      {
+        "kind": "rule",
+        "item": "A client may only view or download invoices that are assigned to their own client profile; they cannot access or view any other client’s invoices or contact info."
+      },
+      {
+        "kind": "rule",
+        "item": "Bookkeeper loses access to client/invoices immediately when unassigned."
+      },
+      {
+        "kind": "rule",
+        "item": "Archived invoices and client profiles are invisible to clients; only admins can access/restore."
+      },
+      {
+        "kind": "rule",
+        "item": "Invoices may only be edited while status is not 'Paid'."
+      },
+      {
+        "kind": "rule",
+        "item": "Clients may only view, not edit, their own profile or contact information."
+      },
+      {
+        "kind": "rule",
+        "item": "Each invoice must have exactly one assigned bookkeeper."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No integrated online payment processing or receiving money directly. Payment is handled outside, with manual marking in-app."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No tax filing or advanced accounting beyond basic invoicing."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No recurring invoice automation."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No client self-service beyond viewing/downloading/paying invoices in the portal."
+      }
+    ]
+  },
+  "traces": {
+    "overview": [
+      {
+        "anchor": "Primary users and platform",
+        "sources": [
+          "d:user_accounts",
+          "d:roles",
+          "d:external_access",
+          "d:invite_flow",
+          "d:platform"
+        ]
+      },
+      {
+        "anchor": "Core Value Loop",
+        "sources": [
+          "a5",
+          "a6",
+          "d:invite_flow",
+          "a1",
+          "a2",
+          "a3",
+          "a4",
+          "n1",
+          "n2",
+          "n4",
+          "r1",
+          "r2",
+          "d:manual",
+          "d:partial_payments",
+          "a7",
+          "a8",
+          "a9",
+          "d:external_access",
+          "x2",
+          "d:payment_recording",
+          "g1",
+          "d:notifications",
+          "d:overdue_reminders",
+          "d:recurring_scheduled",
+          "d:audit_trail",
+          "d:record_activity_feed"
+        ]
+      },
+      {
+        "anchor": "Technical and Operational Scope",
+        "sources": [
+          "d:platform",
+          "d:tenancy",
+          "d:workspace_structure",
+          "d:data_scale",
+          "d:identity_provider",
+          "d:invite_flow",
+          "d:data_import",
+          "d:data_export",
+          "x2",
+          "d:compliance_sensitivity",
+          "d:retention"
+        ]
+      },
+      {
+        "anchor": "Out-of-Scope (v1 Non-Goals)",
+        "sources": [
+          "g1",
+          "g2",
+          "g3",
+          "g4",
+          "d:integrations",
+          "d:recurring_invoices",
+          "d:client_portal_scope"
+        ]
+      }
+    ],
+    "data_model": [
+      {
+        "anchor": "Invoice entity",
+        "sources": [
+          "n1",
+          "r5",
+          "r2",
+          "r3",
+          "a1",
+          "a2",
+          "a3",
+          "a7",
+          "a8",
+          "a9",
+          "d:invoice_numbering",
+          "d:invoice_statuses",
+          "d:invoice_edit_after_send",
+          "d:partial_payments",
+          "d:late_fees",
+          "d:deletion",
+          "d:audit_trail",
+          "d:record_assignment",
+          "d:record_activity_feed",
+          "d:record_relationships",
+          "d:record_duplicates",
+          "d:record_custom_fields",
+          "d:record_bulk_edit"
+        ]
+      },
+      {
+        "anchor": "Invoice number unique and system generated",
+        "sources": [
+          "n1",
+          "r5",
+          "d:invoice_numbering",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "Invoice ↔ Client Profile relationship",
+        "sources": [
+          "n1",
+          "d:record_relationships"
+        ]
+      },
+      {
+        "anchor": "Invoice ↔ Payment Record relationship",
+        "sources": [
+          "n4",
+          "d:record_relationships",
+          "r3"
+        ]
+      },
+      {
+        "anchor": "Invoice ↔ Bookkeeper Profile relationship",
+        "sources": [
+          "d:record_assignment"
+        ]
+      },
+      {
+        "anchor": "Invoice soft delete",
+        "sources": [
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Invoice audit fields",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Client Profile entity",
+        "sources": [
+          "n2",
+          "r1",
+          "r4",
+          "d:record_relationships",
+          "d:record_duplicates",
+          "d:x3",
+          "d:deletion",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Client Profile uniqueness",
+        "sources": [
+          "d:record_duplicates"
+        ]
+      },
+      {
+        "anchor": "Client Profile ↔ Bookkeeper Profile relationship",
+        "sources": [
+          "n3",
+          "d:record_relationships"
+        ]
+      },
+      {
+        "anchor": "Client Profile ↔ Invoice relationship",
+        "sources": [
+          "n1",
+          "d:record_relationships"
+        ]
+      },
+      {
+        "anchor": "Client Profile deletion",
+        "sources": [
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Client Profile audit fields",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper Profile entity",
+        "sources": [
+          "n3",
+          "p1",
+          "a5",
+          "d:record_relationships",
+          "d:invite_flow",
+          "d:record_duplicates",
+          "d:deletion",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper Profile uniqueness",
+        "sources": [
+          "d:record_duplicates"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper Profile ↔ Client Profile relationship",
+        "sources": [
+          "n3",
+          "d:record_relationships"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper Profile deletion",
+        "sources": [
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper Profile audit fields",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Payment Record entity",
+        "sources": [
+          "n4",
+          "r3",
+          "r2",
+          "a3",
+          "a9",
+          "d:record_relationships",
+          "d:partial_payments",
+          "d:payment_recording",
+          "d:deletion",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Payment Record ↔ Invoice relationship",
+        "sources": [
+          "n4",
+          "d:record_relationships"
+        ]
+      },
+      {
+        "anchor": "Payment Record deletion",
+        "sources": [
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Payment Record audit fields",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Firm Settings",
+        "sources": [
+          "n5",
+          "p3",
+          "a6",
+          "d:x1",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Firm Settings uniqueness",
+        "sources": [
+          "d:tenancy",
+          "n5"
+        ]
+      },
+      {
+        "anchor": "Firm Settings audit fields",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Default Decisions (soft delete, basic audit)",
+        "sources": [
+          "d:deletion",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Notes (visibility, keys, compliance)",
+        "sources": [
+          "d:record_ownership",
+          "r1",
+          "r4",
+          "d:record_relationships",
+          "d:compliance_sensitivity"
+        ]
+      }
+    ],
+    "actors_permissions": [
+      {
+        "anchor": "Permissions Matrix",
+        "sources": [
+          "r1",
+          "r2",
+          "r4",
+          "invoice_edit_after_send",
+          "invite_flow",
+          "roles",
+          "deletion",
+          "record_activity_feed",
+          "record_relationships",
+          "client_portal_scope",
+          "x2",
+          "x3",
+          "a6"
+        ]
+      },
+      {
+        "anchor": "Data Visibility Boundaries",
+        "sources": [
+          "r1",
+          "roles",
+          "r4",
+          "x3",
+          "record_relationships",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Additional Notes",
+        "sources": [
+          "r1",
+          "invite_flow",
+          "x3",
+          "audit_trail"
+        ]
+      }
+    ],
+    "glossary": [
+      {
+        "anchor": "Actors",
+        "sources": [
+          "n:Bookkeeper Profile",
+          "p:p1",
+          "n:Client Profile",
+          "p:p2",
+          "n:Firm Settings",
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "Nouns",
+        "sources": [
+          "n:Invoice",
+          "n:Client Profile",
+          "n:Bookkeeper Profile",
+          "n:Payment Record",
+          "n:Firm Settings"
+        ]
+      }
+    ],
+    "state_machines": [
+      {
+        "anchor": "Invoice State Machine",
+        "sources": [
+          "n1",
+          "r2",
+          "d:invoice_statuses",
+          "d:invoice_edit_after_send",
+          "a1",
+          "a2",
+          "a3",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "Payment Record State",
+        "sources": [
+          "n4",
+          "r2",
+          "r3",
+          "a3",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "Client Profile, Bookkeeper Profile, Firm Settings State",
+        "sources": [
+          "n2",
+          "n3",
+          "n5",
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Summary Table",
+        "sources": [
+          "n1",
+          "n4",
+          "n2",
+          "n3",
+          "n5",
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Guards & Validation",
+        "sources": [
+          "r2",
+          "r3",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Triggers",
+        "sources": [
+          "d:notifications",
+          "d:overdue_reminders",
+          "d:recurring_scheduled"
+        ]
+      }
+    ],
+    "rules_invariants": [
+      {
+        "anchor": "R-1: Bookkeeper Assignment Access",
+        "sources": [
+          "r1"
+        ]
+      },
+      {
+        "anchor": "R-2: Invoice State Precondition for Payment",
+        "sources": [
+          "r2"
+        ]
+      },
+      {
+        "anchor": "R-3: Payment Amount Limit",
+        "sources": [
+          "r3"
+        ]
+      },
+      {
+        "anchor": "R-4: Client Data Access Isolation",
+        "sources": [
+          "r4"
+        ]
+      },
+      {
+        "anchor": "R-5: Unique Invoice Numbers",
+        "sources": [
+          "r5",
+          "d:invoice_numbering",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "D-1: Bookkeeper Cannot Act After Reassignment",
+        "sources": [
+          "r1"
+        ]
+      },
+      {
+        "anchor": "D-2: Archived Records Hidden from Clients",
+        "sources": [
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "D-3: Invoice Editability Until Paid",
+        "sources": [
+          "d:invoice_edit_after_send"
+        ]
+      },
+      {
+        "anchor": "D-4: Client May Not Edit Own Profile",
+        "sources": [
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "D-5: Only One Assignee per Invoice",
+        "sources": [
+          "d:record_assignment"
+        ]
+      }
+    ],
+    "journeys": [
+      {
+        "anchor": "1. Administrator Onboards a New Bookkeeper",
+        "sources": [
+          "a5",
+          "n3",
+          "d:identity_provider",
+          "d:invite_flow",
+          "d:user_accounts",
+          "d:notifications",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "2. Bookkeeper Issues and Sends Invoice to Client",
+        "sources": [
+          "a1",
+          "n1",
+          "a2",
+          "d:invoice_numbering",
+          "r5",
+          "d:x4",
+          "d:invoice_statuses",
+          "d:invoice_edit_after_send",
+          "d:notifications",
+          "d:invoice_delivery",
+          "x2",
+          "d:external_access",
+          "d:client_portal_scope"
+        ]
+      },
+      {
+        "anchor": "3. Client Views and Pays Invoice",
+        "sources": [
+          "d:identity_provider",
+          "d:external_access",
+          "r4",
+          "d:client_portal_scope",
+          "d:invoice_statuses",
+          "a7",
+          "d:record_activity_feed",
+          "a8",
+          "x2",
+          "g1",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "4. Bookkeeper Records Payment",
+        "sources": [
+          "d:notifications",
+          "r2",
+          "r3",
+          "d:partial_payments",
+          "d:invoice_statuses",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "5. Automatic Overdue Reminder Sends",
+        "sources": [
+          "d:recurring_scheduled",
+          "d:overdue_reminders",
+          "d:invoice_statuses",
+          "d:notifications",
+          "n5",
+          "d:x1",
+          "d:reporting",
+          "d:record_views"
+        ]
+      },
+      {
+        "anchor": "6. Bookkeeper and Client Discuss Invoice or Payment",
+        "sources": [
+          "d:record_activity_feed",
+          "a3",
+          "a7",
+          "d:record_watchers",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "7. Administrator Changes Firm Settings",
+        "sources": [
+          "d:identity_provider",
+          "n5",
+          "a6",
+          "d:x1"
+        ]
+      },
+      {
+        "anchor": "8. Bookkeeper Adds a Late Fee to Overdue Invoice (Manual Handling)",
+        "sources": [
+          "d:late_fees",
+          "d:invoice_edit_after_send",
+          "r4",
+          "d:notifications",
+          "d:invoice_delivery"
+        ]
+      }
+    ],
+    "acceptance_scenarios": [
+      {
+        "anchor": "Bookkeeper creates an Invoice for an assigned Client",
+        "sources": [
+          "n3",
+          "r1",
+          "a1",
+          "n2",
+          "n1",
+          "r5",
+          "d:invoice_numbering",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper cannot create an Invoice for an unassigned Client",
+        "sources": [
+          "n3",
+          "r1",
+          "a1",
+          "n2",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper edits Invoice details (before paid)",
+        "sources": [
+          "a1",
+          "d:invoice_statuses",
+          "a2",
+          "d:invoice_edit_after_send"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper edits Invoice after sending (still unpaid)",
+        "sources": [
+          "d:invoice_statuses",
+          "a2",
+          "d:invoice_edit_after_send"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper cannot edit Invoice after it is marked Paid",
+        "sources": [
+          "d:invoice_statuses",
+          "a2",
+          "d:invoice_edit_after_send"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper marks Invoice as paid (Invoice must be Sent)",
+        "sources": [
+          "d:invoice_statuses",
+          "a3",
+          "r2",
+          "r2"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper records partial payment for Invoice",
+        "sources": [
+          "d:invoice_statuses",
+          "d:partial_payments",
+          "a3",
+          "n4",
+          "d:partial_payments",
+          "d:invoice_statuses"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper records payment that would exceed Invoice amount (invalid)",
+        "sources": [
+          "n4",
+          "d:partial_payments",
+          "a3",
+          "r3"
+        ]
+      },
+      {
+        "anchor": "Unique Invoice number is enforced",
+        "sources": [
+          "a1",
+          "a1",
+          "d:x4",
+          "r5",
+          "d:invoice_numbering",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "Client views and downloads own Invoice only",
+        "sources": [
+          "d:external_access",
+          "d:client_portal_scope",
+          "a7",
+          "a8",
+          "r4",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Client cannot view or download others' Invoices",
+        "sources": [
+          "a7",
+          "a8",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "Client pays Invoice (system marks as paid manually)",
+        "sources": [
+          "d:client_portal_scope",
+          "a9",
+          "d:notifications",
+          "a3"
+        ]
+      },
+      {
+        "anchor": "Administrator adds a new Bookkeeper Profile",
+        "sources": [
+          "d:identity_provider",
+          "p3",
+          "a5",
+          "n3",
+          "d:invite_flow",
+          "d:notifications"
+        ]
+      },
+      {
+        "anchor": "Soft-deleted (archived) Invoice is hidden from clients",
+        "sources": [
+          "d:deletion",
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Soft-deleted Invoice is still visible to Administrator",
+        "sources": [
+          "d:deletion",
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper loses access after client unassignment",
+        "sources": [
+          "n3",
+          "r1",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Client may only view, not edit, own Client Profile",
+        "sources": [
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "Only assigned Bookkeeper and Admin may view or add Payment Record on Invoice",
+        "sources": [
+          "a3",
+          "n4",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Comments thread visible per assignment",
+        "sources": [
+          "d:record_activity_feed",
+          "r1",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "Invoice can have only one assigned Bookkeeper",
+        "sources": [
+          "d:record_assignment"
+        ]
+      },
+      {
+        "anchor": "Administrator can always view and edit all records",
+        "sources": [
+          "d:roles"
+        ]
+      },
+      {
+        "anchor": "Client sees only their active (not archived) Invoices in portal",
+        "sources": [
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Email notification on invoice sent, payment received, or new comment",
+        "sources": [
+          "d:notifications",
+          "d:record_activity_feed",
+          "d:notifications",
+          "d:record_watchers"
+        ]
+      },
+      {
+        "anchor": "Automatic overdue reminder is sent if invoice is past due",
+        "sources": [
+          "d:overdue_reminders",
+          "d:recurring_scheduled",
+          "d:overdue_reminders",
+          "d:notifications"
+        ]
+      }
+    ],
+    "non_goals_defaults": [
+      {
+        "anchor": "Explicit Non-Goals (Out of Scope)",
+        "sources": [
+          "g1",
+          "g2",
+          "g3",
+          "g4",
+          "d:integrations",
+          "d:recurring_invoices",
+          "d:client_portal_scope"
+        ]
+      },
+      {
+        "anchor": "Defaulted Decisions Table",
+        "sources": [
+          "d:user_accounts",
+          "d:roles",
+          "d:external_access",
+          "d:tenancy",
+          "d:invite_flow",
+          "d:identity_provider",
+          "d:concurrency",
+          "d:audit_trail",
+          "d:notifications",
+          "d:offline",
+          "d:platform",
+          "d:data_import",
+          "d:data_export",
+          "d:deletion",
+          "d:data_scale",
+          "d:integrations",
+          "d:localization",
+          "d:attachments",
+          "d:approval_workflow",
+          "d:recurring_scheduled",
+          "d:public_facing",
+          "d:compliance_sensitivity",
+          "d:retention",
+          "d:customization",
+          "d:reporting",
+          "d:client_portal_scope",
+          "d:invoicing_model",
+          "d:invoice_numbering",
+          "d:invoice_edit_after_send",
+          "d:payment_recording",
+          "d:partial_payments",
+          "d:taxes",
+          "d:currencies",
+          "d:recurring_invoices",
+          "d:overdue_reminders",
+          "d:late_fees",
+          "d:estimates",
+          "d:credit_notes",
+          "d:invoice_delivery",
+          "d:invoice_statuses",
+          "d:branding",
+          "d:deposits",
+          "d:workspace_structure",
+          "d:record_ownership",
+          "d:record_edit_rights",
+          "d:record_custom_fields",
+          "d:record_pipeline",
+          "d:record_assignment",
+          "d:record_activity_feed",
+          "d:record_relationships",
+          "d:record_views",
+          "d:record_automation",
+          "d:record_templates",
+          "d:record_duplicates",
+          "d:record_search",
+          "d:record_watchers",
+          "d:record_bulk_edit",
+          "d:record_recurring",
+          "d:x1",
+          "x2",
+          "d:x3",
+          "d:x4"
+        ]
+      }
+    ]
+  },
+  "generated_at": "2026-08-23T05:41:27.139Z"
+}

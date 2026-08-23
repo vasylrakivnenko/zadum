@@ -1,0 +1,74 @@
+- (O)  The product must work with most database management systems (DBMS) on the market  whether the DBMS is colocated with the product on the same machine or is located on a different machine on the computer network.
+- (O) The product will function alongside server software on any operating system where the Java runtime can be installed.
+- (O) The product will require collaboration with a database management system (DBMS).  The DBMS may be located on the same machine as the product or on a separate machine residing on the same computer network.
+- (O)  The product must make use of web/application server technology.  Open source examples include Apache web server  Tomcat  and the JBoss application server.
+- (O)  A database management system such as Oracle  DB2  MySql or HSQL will need to be integrated with the product.
+- (LF)  The product�s Look and Feel shall be able to incorporate aspects of the customer�s organization such as logo  branding  and identity
+- (LF) The product shall have a conservative and professional appearance.
+- (US) The product shall make the users want to use it. 80% of the users surveyed report they are regularly using the product after the first 2 weeks post-launch.
+- (US) The product shall be easy to use. 90% of users will be able to successfully reserve a conference room within 5 minutes of product use.
+- (US) The product shall give users feedback when necessary. 80% of the users surveyed report that the product accurately confirms their actions.
+- (US) The product shall allow the user to select a chosen language from one of the target market countries.
+- (US) The product shall allow for customization of start page and views preferences.
+- (US)  An employee will be able to successfully use the product within a few minutes.  After informally navigating the product for less than 15 minutes  users shall be able to successfully setup meetings and reserve conference rooms.
+- (US) The product shall use a standard navigation menu familiar to most web users.
+- (US) The product shall allow for intuitive searching of available conference rooms.
+- (US) The product shall conform to the Americans with Disabilities Act.
+- (PE) The response shall be fast enough to avoid interrupting the user�s flow of thought.  90% of tasks shall complete within 5 seconds.  98% of tasks shall complete within 8 seconds.
+- (A)  Aside from server failure  the software product shall achieve 99.99% up time.
+- (FT) The product shall create an exception log of problems encountered within the product for transmission to our company for analysis and resolution.
+- (SC)  The product shall be capable of handling up to 1 000 concurrent requests.  This number will increase to 2 000 by Release 2.  The concurrency capacity must be able to handle peak scheduling times such as early morning and late afternoon hours.
+- (SC)  The product shall be able to process 10 000 transactions per hour within two years of its launch.  This number will increase to 20 000 by Release 2.
+- (SC) The product shall be expected to operate for at least 5 years for each customer installation.
+- (O) The product shall be used in office environments.
+- (O) The product must be able to interface with any HTML browser.  The product shall transmit data between the user and the product without problems. The product shall display HTML properly in 80% of all HTML browsers tested (minimum is to test 8 browsers).
+- (O) The product must be able to interface with various database management systems. The product shall communicate successfully with the database management system on 100% of all transactions.
+- (O) The product must be able to interface with various email servers. The product shall be able to send email.
+- (O) The product shall be available for distribution via the Internet as a binary or ZIP file.
+- (O) The product shall be available for distribution as a packaged CD.
+- (O)  The product will be available for licensing as a one-server  two-five servers  or five-or-more servers license.
+- (US) A new user must be able to be added to the system within 10 minutes.  90% of new users are able to log into the system within 10 minutes.
+- (MN) The product must be designed using Design Patterns and coding best practices.  90% of maintenance software developers are able to integrate new functionality into the product with 2 working days.
+- (MN) The product must be highly configurable for use with various database management systems for the end users.  80% of end users are able to integrate new database management systems with the product without changing the product�s software code.
+- (MN) Maintenance releases will be offered to customers once a year.  The releases shall take no longer than 5 minutes for 80% of the customer base to install.
+- (US) Every registered user will have access to the product�s support site via the Internet.  70% of registered users shall find a solution to their problem within 5 minutes of using the support site.
+- (MN) The customer shall be able to easily integrate new building maps with the product throughout the product�s lifecycle.  Integration of new maps with the product shall be possible with little to no support from product support staff.
+- (US)  The product shall be translated into foreign languages other than the target market countries� languages in future releases.  For each emerging target market  it shall take no more than 5 days to configure the product for that market�s language.
+- (O)  The product is expected to integrate with multiple database management systems.  The product will operate with Oracle  SQL Server  DB2  MySQL  HSQL  and MS Access.
+- (O) The product shall be able to be installed in any operating environment within 2 days.
+- (SE) The product shall ensure that only company employees or external users with company-approved user IDs may have product access.  100% of all logons shall be by either company employees or external users with company-approved user IDs.
+- (SE) Only managers are able to perform search queries for reservations by user.  100% of all search queries for reservations by user shall be from logons of only management logons.
+- (SE) The product shall ensure that the database�s data corresponds to the data entered by the user.  Each conference room reservation in the system will contain the same information as was entered by the user.
+- (SE) The product shall prevent the input of malicious data.  The product and/or adjacent hardware/software systems� data shall remain 100% uncorrupted each time malicious data is input into the product.
+- (FT) The product and/or dependent databases/filesystems shall remain operational as a result of the input of malicious data.  The product and/or dependent databases/filesystems shall not crash 100% of the time that malicious data is input into the product.
+- (SE) The product shall have the ability to receive automatic software updates as new threats emerge.  100% of customers will be able to receive automatic software updates transmitted to the installed product.
+- (SC) The language of the product shall accommodate all of the target market countries. 90% of survey respondents from each target market country will find that the language of the product is acceptable.
+- (US) The product shall be able to display calendar dates and times according to the user�s locale.  90% of survey respondents from each target market country will find that the date and time formatting of the product is correct.
+- (O) The product must be developed with the J2SE/J2EE programming language libraries
+- (F) The product shall record meeting entries.
+- (F) The product will notify employees of meeting invitations.
+- (F) The product shall have the ability to send meeting reminders to employees.
+- (F) The product shall assign the organizers contact information to each meeting they create.
+- (F) The product will record meeting acknowledgements.
+- (F) The product shall store new conference rooms.
+- (F) The product shall update existing conference rooms.
+- (F) The product will be able to delete conference rooms.
+- (F) The product shall be able to store new room equipment.
+- (F) The product will update existing room equipment.
+- (F) The product shall be able to delete room equipment.
+- (F) The product shall allow an organizer to invite other employees to meetings.
+- (F)  Each time a conference room is reserved  the conference room schedule shall be updated to reflect the time and date of the reservation.
+- (F) The product shall record the transportation status of equipment reserved.
+- (F) The product shall display a map of the company building showing conference room locations.
+- (F) The product shall record updated meeting agendas.
+- (F) The product shall send a meeting confirmation to the meeting organizer.
+- (F) The product shall display room equipment according to search parameters.
+- (F) The product shall display conference rooms according to search parameters.
+- (F) The product shall record different meeting types.
+- (F) The product shall record all the equipment that has been reserved.
+- (F) The product shall notify building personnel of equipment transport requests.
+- (F) The product will allow priviledged users to view meeting schedules in multiple reporting views.
+- (F) The product shall be able to send meeting notifications via different kinds of end-user specified methods.
+- (F) The product shall have a customizable Look and Feel.
+- (F) The product shall have an intuitive user interface.
+- (F) The product will display an available status for unreserved conference rooms.

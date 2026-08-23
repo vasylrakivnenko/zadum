@@ -1,0 +1,147 @@
+{
+  "archetype": "b2b-invoicing",
+  "version": "2026.08.23-1",
+  "source_docs": 8,
+  "patterns": [
+    {
+      "id": "b2b_invoicing_1",
+      "pattern": "Every invoice is linked to a single client/customer entity.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Each invoice must be associated with exactly one client or customer account."
+    },
+    {
+      "id": "b2b_invoicing_2",
+      "pattern": "Invoices and customers belong to companies/organizations, and data is siloed between organizations.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Data belonging to one company is never visible to another."
+    },
+    {
+      "id": "b2b_invoicing_3",
+      "pattern": "Invoice numbering must be unique and follow a defined, sequential pattern.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Invoice numbers must be unique and sequential according to pre-defined rules."
+    },
+    {
+      "id": "b2b_invoicing_4",
+      "pattern": "Invoice has a lifecycle state (e.g., draft, sent, paid) reflecting its current status.",
+      "kind": "state",
+      "frequency_estimate": 5,
+      "example_phrasing": "Each invoice has a status such as draft, sent, or paid that changes as workflows proceed."
+    },
+    {
+      "id": "b2b_invoicing_5",
+      "pattern": "Invoice status progression is irreversible beyond certain points (e.g., once sent, cannot revert to draft).",
+      "kind": "state",
+      "frequency_estimate": 4,
+      "example_phrasing": "Invoices cannot be moved back to draft after being sent or paid."
+    },
+    {
+      "id": "b2b_invoicing_6",
+      "pattern": "Payment events update invoice status, supporting partial, pending, paid, and overdue states.",
+      "kind": "state",
+      "frequency_estimate": 5,
+      "example_phrasing": "Partial or full payments change the invoice to partial or paid status, respectively."
+    },
+    {
+      "id": "b2b_invoicing_7",
+      "pattern": "Automated reminders are only sent for unpaid or overdue invoices, not for paid or draft.",
+      "kind": "other",
+      "frequency_estimate": 4,
+      "example_phrasing": "Only invoices with pending or overdue status trigger automated reminders."
+    },
+    {
+      "id": "b2b_invoicing_8",
+      "pattern": "No deletion or archiving operation can result in data loss; data must be recoverable or referencing preserved.",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "No data is lost when archiving or restoring invoices; charge deletions never affect finalized invoices."
+    },
+    {
+      "id": "b2b_invoicing_9",
+      "pattern": "Credit notes are always linked to invoices and create appropriate reversing/accounting entries.",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "Credit notes must reference specific invoices and their effect must be reflected in accounts."
+    },
+    {
+      "id": "b2b_invoicing_10",
+      "pattern": "Multiple contacts may be selectable per client for invoice notifications.",
+      "kind": "scope",
+      "frequency_estimate": 3,
+      "example_phrasing": "Each client may have multiple contacts, any of whom can be chosen for invoice communication."
+    },
+    {
+      "id": "b2b_invoicing_11",
+      "pattern": "Invoices can support both product-based and milestone/service-based partial billing scenarios.",
+      "kind": "scope",
+      "frequency_estimate": 3,
+      "example_phrasing": "Partial or milestone-based invoicing is supported for products or services."
+    },
+    {
+      "id": "b2b_invoicing_12",
+      "pattern": "Invoice and payment transactions must be registered and traceable (unique keys, external system tracing supported).",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "All payment and invoice transactions are registered and can be referenced via unique keys."
+    },
+    {
+      "id": "b2b_invoicing_13",
+      "pattern": "Currency handling: invoices may be in customer currency, but accounting entries must be in company base currency.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Invoices can use customer currencies, postings are always in company base currency."
+    },
+    {
+      "id": "b2b_invoicing_14",
+      "pattern": "Advance and down payments are tracked and can be linked/applied to invoices.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Down and advance payments are tracked and referenced on invoices."
+    },
+    {
+      "id": "b2b_invoicing_15",
+      "pattern": "Certain regulatory fields (e.g., VAT, fiscal code) are mandatory for some customers based on configuration or locale.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "VAT number or local identifiers are required for relevant customers if configuration demands."
+    },
+    {
+      "id": "b2b_invoicing_16",
+      "pattern": "Plugin/integration data must be isolated, opaque, and referenced by plugin name; payment methods are plugin-scoped.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Plugin-specific payment data is opaque and plugin-scoped in the system."
+    },
+    {
+      "id": "b2b_invoicing_17",
+      "pattern": "Invoices can be created stand-alone or derived from orders, deliveries, or subscription events.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Invoices may be independently created or generated from related documents/events."
+    },
+    {
+      "id": "b2b_invoicing_18",
+      "pattern": "Discounts can be applied at both the item and global invoice level.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Discounts support both per-item and global application on invoices."
+    },
+    {
+      "id": "b2b_invoicing_19",
+      "pattern": "Deleting a charge or payment affects only drafts/future invoices, never those finalized.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Deleted charges are removed from draft but not finalized invoices."
+    },
+    {
+      "id": "b2b_invoicing_20",
+      "pattern": "Pro-forma invoices are informational and must not trigger payment or accounting events.",
+      "kind": "scope",
+      "frequency_estimate": 1,
+      "example_phrasing": "Pro-forma invoices serve communication only and do not request payment or affect books."
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "archetype": "booking",
+  "version": "2026.08.23-1",
+  "source_docs": 11,
+  "patterns": [
+    {
+      "id": "booking_1",
+      "pattern": "Access to features and data is controlled by user roles and permissions, with administrators or staff having elevated or unrestricted access.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "User actions and visibility are limited by assigned roles; admin/staff override most restrictions."
+    },
+    {
+      "id": "booking_2",
+      "pattern": "Each entity's data is isolated to its own account, preventing cross-account data access without explicit permissions.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Data belonging to one account is not accessible from another unless permitted."
+    },
+    {
+      "id": "booking_3",
+      "pattern": "Booking, cancellation, and related actions may only occur within defined windows, often governed by configuration (‘scheduling window’, ‘cancellation cut-off’).",
+      "kind": "state",
+      "frequency_estimate": 5,
+      "example_phrasing": "Bookings and cancellations are limited to preset lead times and windows."
+    },
+    {
+      "id": "booking_4",
+      "pattern": "Parent-child entity relationships enforce cascading behaviors such as cascade delete or maintaining referential integrity.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Deleting a parent entity automatically deletes or affects related child entities."
+    },
+    {
+      "id": "booking_5",
+      "pattern": "Resource or session capacity is limited, and attempts to overbook or exceed allowed numbers are prevented.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Each resource or event cannot be booked beyond its capacity limit."
+    },
+    {
+      "id": "booking_6",
+      "pattern": "Some features, data, or extended limits are restricted to Pro or subscribed users.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Advanced options or higher quotas are only available for Pro accounts."
+    },
+    {
+      "id": "booking_7",
+      "pattern": "Cancellation policies and requirements (such as mandatory reason input) depend on configuration or event type and are enforced by UI/API.",
+      "kind": "state",
+      "frequency_estimate": 4,
+      "example_phrasing": "Cancel actions may require user input (e.g. reason) based on event or system settings."
+    },
+    {
+      "id": "booking_8",
+      "pattern": "Authentication and authorization are required for all API access to enforce user security.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "APIs require users to have valid tokens and permissions."
+    },
+    {
+      "id": "booking_9",
+      "pattern": "Certain actions or content are in scope only if directly related to booking/scheduling; unrelated or policy-violating content is blocked.",
+      "kind": "scope",
+      "frequency_estimate": 3,
+      "example_phrasing": "Actions outside the scheduling domain or violating policy are rejected."
+    },
+    {
+      "id": "booking_10",
+      "pattern": "Resource availability is governed by schedules; bookings are only possible within specified windows.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Resources can be booked only in the periods defined by their schedule."
+    },
+    {
+      "id": "booking_11",
+      "pattern": "Bookings requiring confirmation or approval remain tentative until acted upon by an authorized user.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Some bookings need explicit approval before being confirmed."
+    },
+    {
+      "id": "booking_12",
+      "pattern": "Immutable or auditable records (e.g., invoices, orders, attendance) cannot be altered except via voiding, replacement, or special test modes.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Issued records are permanent unless formally voided; test data is managed separately."
+    },
+    {
+      "id": "booking_13",
+      "pattern": "Attendance and participation for events or sessions must be explicitly logged or tracked by assigned staff.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Relevant users must record or confirm participant attendance at events."
+    },
+    {
+      "id": "booking_14",
+      "pattern": "Personal or sensitive data (especially minors, health, or clinical details) is accessible only to authorized users, often with greater restrictions.",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "Sensitive details are only visible or editable by specifically permitted users."
+    },
+    {
+      "id": "booking_15",
+      "pattern": "Recurring and one-off bookings/appointments are both supported, with recurrence defined by user or external system (e.g., calendar syncs).",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Events may recur based on system or external calendar definitions."
+    },
+    {
+      "id": "booking_16",
+      "pattern": "Parent guardians must be able to manage bookings, consents, and information for minors under their account.",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "Parents can enroll, submit consent, and view/manage info for their children."
+    },
+    {
+      "id": "booking_17",
+      "pattern": "User setup or onboarding flows are required to initialize or activate accounts.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "System guides first user through initial setup or account creation."
+    },
+    {
+      "id": "booking_18",
+      "pattern": "Linked accounts or providers may only be connected once per entity; duplicates are not allowed.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Each provider (e.g., calendar) can only be linked to one account at a time."
+    },
+    {
+      "id": "booking_19",
+      "pattern": "Overlapping bookings or schedule conflicts are prohibited within a cohort, class, or resource.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Sessions in the same group must not overlap in time."
+    },
+    {
+      "id": "booking_20",
+      "pattern": "Automatic cleanup or expiry (e.g., of polls or test data) happens after inactivity or based on user type.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Data is auto-deleted after a grace period, unless the user has special status."
+    }
+  ]
+}

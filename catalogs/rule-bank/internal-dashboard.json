@@ -1,0 +1,147 @@
+{
+  "archetype": "internal-dashboard",
+  "version": "2026.08.23-1",
+  "source_docs": 15,
+  "patterns": [
+    {
+      "id": "internal_dashboard_1",
+      "pattern": "Users' access to dashboards, records, or cases is controlled by roles, group membership, or explicit permissions.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Access to dashboards and cases is determined by user roles and group assignments."
+    },
+    {
+      "id": "internal_dashboard_2",
+      "pattern": "Admins, administrators, or superusers have elevated or unrestricted access to management, user, and configuration features.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Only admins and superusers can manage users, records, and advanced settings."
+    },
+    {
+      "id": "internal_dashboard_3",
+      "pattern": "Items, records, users, or entities must have unique identifiers within their defined scope.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Each user, case, or item must have a unique ID within the system."
+    },
+    {
+      "id": "internal_dashboard_4",
+      "pattern": "Access to sensitive or embargoed items/files/fields is restricted; only authorized users can access full content.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Only authorized users may view files in embargoed items; others see metadata only."
+    },
+    {
+      "id": "internal_dashboard_5",
+      "pattern": "Audit trails/logs must be recorded for all modifications and access, be unalterable, and retained for a required period.",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "All actions and access attempts are logged; audit logs cannot be changed or deleted."
+    },
+    {
+      "id": "internal_dashboard_6",
+      "pattern": "Only users with certain roles or permissions can create, modify, or delete records or content.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Only authorized users can add, update, or delete records."
+    },
+    {
+      "id": "internal_dashboard_7",
+      "pattern": "Records with dependencies/child records cannot be deleted until all dependencies are resolved.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Records cannot be deleted if there are linked child records."
+    },
+    {
+      "id": "internal_dashboard_8",
+      "pattern": "Permissions are inherited or can be cascaded through collections, groups, or organization structure, with the most permissive/granular applying.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Permissions cascade from parent to child collections; the most permissive among group memberships applies."
+    },
+    {
+      "id": "internal_dashboard_9",
+      "pattern": "Files/data items can be shared publicly only if the item is explicitly released, made public, or the link is issued to external users.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Public sharing of dashboards or records requires explicit release or a secret shareable link."
+    },
+    {
+      "id": "internal_dashboard_10",
+      "pattern": "Mandatory fields must be completed for certain transactions or entity creation.",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "All required fields must be completed when creating a user or transaction."
+    },
+    {
+      "id": "internal_dashboard_11",
+      "pattern": "All changes or important events must be communicated to relevant users, e.g. release notes, plan review outcomes, or audit actions.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Users are notified of outcomes or changes, such as release notes and plan reviews."
+    },
+    {
+      "id": "internal_dashboard_12",
+      "pattern": "Application, case, or process stages/lifecycles must be followed in a defined sequence and preconditions must be met before advancing.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Applicants must complete required steps before proceeding to the next case stage."
+    },
+    {
+      "id": "internal_dashboard_13",
+      "pattern": "Direct data/file/database access by end users is not allowed; interactions happen via GUI or defined interfaces.",
+      "kind": "scope",
+      "frequency_estimate": 3,
+      "example_phrasing": "Users cannot access data or files except via the app interface."
+    },
+    {
+      "id": "internal_dashboard_14",
+      "pattern": "Certain actions or features (upload, raw HTML, configuration) are restricted or require explicit enabling by an admin.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Some features require admin enabling before users can access them."
+    },
+    {
+      "id": "internal_dashboard_15",
+      "pattern": "Version history or changes of items, dashboards, or cases are recorded for rollback or audit.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Dashboards and object versions are recorded and can be restored by managers."
+    },
+    {
+      "id": "internal_dashboard_16",
+      "pattern": "Role, group, or division attributes must be assigned when creating a user or entity.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Each user must have at least one role, group, and division assigned at creation."
+    },
+    {
+      "id": "internal_dashboard_17",
+      "pattern": "Configurable security responses or access controls for unauthorized actions or case access.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "System can be configured to control how unauthorized case access is handled."
+    },
+    {
+      "id": "internal_dashboard_18",
+      "pattern": "Compliance with relevant external or organizational standards is required (accessibility, regulatory, etc.).",
+      "kind": "other",
+      "frequency_estimate": 3,
+      "example_phrasing": "System must comply with WCAG and regulatory standards like HIPAA and FDA."
+    },
+    {
+      "id": "internal_dashboard_19",
+      "pattern": "Linked entities (e.g., specimens, samples) must maintain referential integrity (all links valid, nothing orphaned).",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Each sample must be linked to a subject and valid test request."
+    },
+    {
+      "id": "internal_dashboard_20",
+      "pattern": "Duplicate data entries (e.g., dispute requests, IDs) are automatically prevented or rejected.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Duplicate dispute requests or IDs are not allowed in the system."
+    }
+  ]
+}

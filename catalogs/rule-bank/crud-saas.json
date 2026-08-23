@@ -1,0 +1,147 @@
+{
+  "archetype": "crud-saas",
+  "version": "2026.08.23-1",
+  "source_docs": 9,
+  "patterns": [
+    {
+      "id": "crud_saas_1",
+      "pattern": "Data access is restricted based on user role, with administrators and owners having elevated permissions.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Only users with appropriate roles (e.g., admins, document owners) can access or modify sensitive data."
+    },
+    {
+      "id": "crud_saas_2",
+      "pattern": "Entities (e.g., tickets, invoices, projects, surveys) belong to exactly one parent or are uniquely associated with an owning entity.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Each ticket or survey belongs to exactly one customer, project, or workspace."
+    },
+    {
+      "id": "crud_saas_3",
+      "pattern": "User roles and permissions can be customized at the feature, project, or entity level, affecting what actions users can perform.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Permissions can be assigned per user or group for each project or list."
+    },
+    {
+      "id": "crud_saas_4",
+      "pattern": "Certain actions or information are limited to project members or participants, with non-members denied access.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "You must be a project member to view or work in the project."
+    },
+    {
+      "id": "crud_saas_5",
+      "pattern": "Deletion of key entities or user accounts results in cascading deletion or erasure of their associated data.",
+      "kind": "state",
+      "frequency_estimate": 4,
+      "example_phrasing": "When a user or object is deleted, their related entities (e.g. games, data) are also deleted."
+    },
+    {
+      "id": "crud_saas_6",
+      "pattern": "Visibility and access can be configured as public, private, or restricted to groups/teams, often at project, document, or view level.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Items can be set to public, team, or admins-only visibility."
+    },
+    {
+      "id": "crud_saas_7",
+      "pattern": "Entities have immutable unique identifiers once created.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Each entity gets a unique, non-editable ID at creation."
+    },
+    {
+      "id": "crud_saas_8",
+      "pattern": "Certain changes or sensitive operations require administrator or owner privileges.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Only admins can change permissions or visibility for some items."
+    },
+    {
+      "id": "crud_saas_9",
+      "pattern": "Audit information or metadata (e.g., roles, obligations, data sensitivity) must be recorded for accountability and compliance.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Changes and responsibilities must be logged for compliance."
+    },
+    {
+      "id": "crud_saas_10",
+      "pattern": "Field assignment, visibility, or participation constraints determined by user or recipient role.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Field assignments or participation (e.g., signing) depend on the recipient's role."
+    },
+    {
+      "id": "crud_saas_11",
+      "pattern": "Lifecycles or state transitions are enforced (e.g., draft before publish; status required for certain actions).",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Certain actions (like AI detection or publishing) can only be done in specific states (e.g., Draft)."
+    },
+    {
+      "id": "crud_saas_12",
+      "pattern": "User actions and participation are tracked for feature enablement or workflow progression.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Participation or completion is tracked (e.g., survey partials, estimate submissions)."
+    },
+    {
+      "id": "crud_saas_13",
+      "pattern": "Data ownership and sensitivity must be tracked for compliance, privacy, or auditing.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Ownership and sensitivity of all data must be known and recorded."
+    },
+    {
+      "id": "crud_saas_14",
+      "pattern": "Quota or response/action limits can be configured, enforcing business constraints or workflow automation (e.g., auto-closing on limit reached).",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Surveys/campaigns/tickets can be set to auto-close/stop when a configured limit is reached."
+    },
+    {
+      "id": "crud_saas_15",
+      "pattern": "Public entities (e.g., projects, lists) are accessible to all users within a context unless otherwise restricted.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Public projects are viewable by all users in the instance."
+    },
+    {
+      "id": "crud_saas_16",
+      "pattern": "Data must be stored securely, only when needed, and under the user's control (privacy by design).",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "App listens/stores only when user requests; data is under user control."
+    },
+    {
+      "id": "crud_saas_17",
+      "pattern": "Compliance requirements (e.g., accessibility, security, retention, logging, device standards) must be documented and met.",
+      "kind": "other",
+      "frequency_estimate": 2,
+      "example_phrasing": "App must meet accessibility and security standards and document compliance."
+    },
+    {
+      "id": "crud_saas_18",
+      "pattern": "Default settings (e.g., recipients, visibility) are inherited from team/organization context unless overridden.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Defaults are set by team/org but can be overridden at item level."
+    },
+    {
+      "id": "crud_saas_19",
+      "pattern": "Bulk or batch operations must conform to the same access and integrity constraints as single operations.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Bulk actions (like macros) follow usual permission rules."
+    },
+    {
+      "id": "crud_saas_20",
+      "pattern": "Exporting or sharing data or transcripts is required for user transparency or compliance.",
+      "kind": "scope",
+      "frequency_estimate": 1,
+      "example_phrasing": "Users can export records/transcripts to common formats (e.g. CSV, HTML)."
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "archetype": "e-commerce",
+  "version": "2026.08.23-1",
+  "source_docs": 10,
+  "patterns": [
+    {
+      "id": "e_commerce_1",
+      "pattern": "Entities are scoped to contexts such as channel, region, or customer for segregation and configuration.",
+      "kind": "scope",
+      "frequency_estimate": 5,
+      "example_phrasing": "A cart (or order) is specific to a sales channel, region, and customer."
+    },
+    {
+      "id": "e_commerce_2",
+      "pattern": "Access to sensitive or administrative features is limited to authorized personnel or user roles.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Only authorized users (like admins) can access sensitive customer or sales data."
+    },
+    {
+      "id": "e_commerce_3",
+      "pattern": "A customer may only have one active cart or order session at a time.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "Only one active shopping cart per customer session is allowed."
+    },
+    {
+      "id": "e_commerce_4",
+      "pattern": "All sensitive data, especially payment and personal information, must be encrypted at rest and in transit.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "All credit card and customer data is encrypted (HTTPS, database)."
+    },
+    {
+      "id": "e_commerce_5",
+      "pattern": "Checkout requires complete required information before proceeding to payment or completion.",
+      "kind": "state",
+      "frequency_estimate": 5,
+      "example_phrasing": "Checkout requires addresses, shipping, and payment to be provided first."
+    },
+    {
+      "id": "e_commerce_6",
+      "pattern": "Product and content visibility is configurable per channel, region, or group.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "A product can be shown or hidden from particular channels or customer groups."
+    },
+    {
+      "id": "e_commerce_7",
+      "pattern": "Order information (such as line item price) is fixed at creation and unaffected by later product changes.",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "Price of an order does not change if the product's price is updated afterward."
+    },
+    {
+      "id": "e_commerce_8",
+      "pattern": "Inventory reservation is atomic and prevents overselling at time of order confirmation.",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "Inventory is reserved when the order is confirmed, to prevent double selling."
+    },
+    {
+      "id": "e_commerce_9",
+      "pattern": "Customers must agree to terms and conditions before purchasing, if this is enabled.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Customers must accept terms before completing checkout."
+    },
+    {
+      "id": "e_commerce_10",
+      "pattern": "Guest checkout is available (checkout without registering an account).",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Guest checkout is possible; registration is optional."
+    },
+    {
+      "id": "e_commerce_11",
+      "pattern": "Product categorization is hierarchical; every product belongs to at least one category in the tree.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Products are organized in nested categories and must belong to at least one."
+    },
+    {
+      "id": "e_commerce_12",
+      "pattern": "Store credits, gift cards, or vouchers are tied to specific customers and are non-transferable unless otherwise specified.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Store credit belongs to a customer and can't be transferred."
+    },
+    {
+      "id": "e_commerce_13",
+      "pattern": "Operations affecting financial balance or discounting (gift cards, store credit) must be atomic and consistent.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Gift card adjustments are atomic and cannot lose balance if updated concurrently."
+    },
+    {
+      "id": "e_commerce_14",
+      "pattern": "Access to preview or special content (e.g., streaming movies) is limited to users who own or are eligible for it.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Customers can only access streaming if they purchased it and are within viewing window."
+    },
+    {
+      "id": "e_commerce_15",
+      "pattern": "Updates to user or product profile information do not retroactively affect existing or past orders.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Changing an address in the customer profile does not change the shipping address for existing orders."
+    },
+    {
+      "id": "e_commerce_16",
+      "pattern": "System must support high availability and disaster recovery.",
+      "kind": "other",
+      "frequency_estimate": 2,
+      "example_phrasing": "System supports backup, failover, and >99.99% uptime."
+    },
+    {
+      "id": "e_commerce_17",
+      "pattern": "Only specified frontend environments are supported for proper operation.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Only validated browsers and OS environments are supported."
+    },
+    {
+      "id": "e_commerce_18",
+      "pattern": "All business-critical actions (such as order confirmation) must occur before subsequent dependent steps (such as shipping).",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Order confirmation is required before shipping."
+    },
+    {
+      "id": "e_commerce_19",
+      "pattern": "Only registered customers may use certain advanced features (e.g. reordering, storing payment methods, streaming).",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "Only registered customers may purchase digital goods or access account-based features."
+    },
+    {
+      "id": "e_commerce_20",
+      "pattern": "Core data (e.g. customers, orders) should be retained/maintained even after account cancellation, unless explicitly deleted.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "Customer data is stored after the account is canceled, unless deleted by admin."
+    }
+  ]
+}

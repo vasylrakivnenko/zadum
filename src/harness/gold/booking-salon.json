@@ -1,0 +1,98 @@
+{
+  "id": "booking-salon",
+  "one_liner": "a booking app for my hair salon",
+  "one_liner_variants": [
+    "a booking app for my hair salon",
+    "something so my clients can book appointments themselves instead of calling",
+    "an app where customers pick a time with a stylist and pay a deposit online to hold it"
+  ],
+  "archetypes": [
+    "booking"
+  ],
+  "persona": "Owner of a small hair salon with a handful of stylists. Practical, not technical. Wants clients to book themselves online so the front desk spends less time on the phone, but keeps everything else about running the shop simple.",
+  "persona_variants": [
+    "Owner of a small hair salon with a handful of stylists. Practical, not technical. Wants clients to book themselves online so the front desk spends less time on the phone, but keeps everything else about running the shop simple.",
+    "Front-desk manager at the salon. Cautious and detail-oriented, worried about double-bookings and no-shows eating into the day, wants firm rules rather than loose defaults.",
+    "Salon owner who is impatient with setup and would rather the tool just decide sensible defaults, except anything touching money or client contact info, which she wants to approve herself."
+  ],
+  "truth": "This is a single hair salon (single business, single_org), not a chain, with one physical location (single_location). Several people log in — the owner and the stylists (multi_user) — with an owner/staff split in powers (owner_staff); the owner adds each stylist's account herself (invite_by_admin), and everyone signs in with email and password (email_password). Customers do not get their own accounts; they book through a link sent to them by email/text with no login required (customers_no_account), which means the outside-facing part of the app is a secure link, not a portal (secure_link). Through that same link a customer can view their upcoming booking and act on it — reschedule or cancel (view_act). The service menu and the salon's hours/location are visible on a public page before anyone books (public_pages). What's actually being reserved is a stylist's time (staff_time), chosen from a menu of services each with its own length and price — haircut, color, blowout, etc. (menu_fixed_durations). Each stylist keeps her own weekly schedule and days off rather than one shop-wide calendar (per_resource_schedule), with a fixed cleanup gap built in after every appointment (fixed_buffer). Everything is one-on-one — no group classes (one_per_slot). Clients don't set up repeating series; each visit is booked separately (booking_recurring = no), though the system does still send automatic reminders on a schedule (reminders_only). If a client wants a fully-booked time, the front desk keeps a manual waitlist and calls if something frees up (manual_waitlist) — nothing automatic. Cancellations and reschedules are free up to a 24-hour cutoff, after which they count as late (cutoff_window / self_within_window). A no-show gets the card on file charged a fee automatically (charge_fee), so the app does collect real payments through a provider (collect_online); booking itself requires a deposit paid online to hold the slot, with the balance due at the salon after the service (deposit_online). Once the slot is free, a booking is confirmed instantly — no one has to approve it (instant), and there's no other approval workflow in the shop (none). Reminders go out by both email and text, and a client can confirm or cancel straight from the reminder (email_sms_confirm), so notifications generally go by email and SMS (email_sms). Bookings are pushed one-way into each stylist's personal Google calendar so she can see her day outside the app, but the app itself remains the source of truth for availability, not a synced external calendar (push_only) — which is why the shop does rely on a couple of key integrations (a_few_key). Everyone is in the same time zone, so no zone conversion is needed (single_zone). When booking, a client answers a short fixed set of questions — allergies, hair type, preferences (fixed_questions). Front-desk staff can also add walk-ins, phone bookings, and block off personal time by hand (staff_manual). Prices vary by which stylist does the work — a senior stylist costs more than a junior one (varies_by_staff_or_time). The salon keeps a real customer profile with full visit history plus private notes stylists jot down about color formulas and preferences (profile_with_notes). Each stylist edits her own hours and time off, with the owner able to see and override everyone's (staff_own). Basic history of who changed what is kept (basic audit trail); deleted things are archived, not gone for good (soft_delete). The owner imported her existing client list from a spreadsheet when she set up (import_spreadsheet), and can always export it back out as CSV (csv_export). This is a small business — hundreds of clients, not tens of thousands (small data scale). It's used mostly from phones, in a browser, both by clients booking on the go and stylists checking their day (web_mobile_first). It only needs to work online (online_only). There's no multi-step sign-off process anywhere (approval_workflow none, separate from booking confirmation). The owner wants a simple dashboard with totals — bookings today, revenue this week — not a custom report builder (basic_dashboard). The salon can add its own logo and colors to the booking page and emails, but can't restructure the app (branding_templates). Data is kept indefinitely unless someone deletes it (retention forever). It's ordinary business and contact data, nothing medically or legally sensitive (ordinary). Everything is in one language and one region (single_locale). Clients can attach a reference photo (a haircut they liked) when booking (basic attachments). Two people rarely edit the exact same booking at once, and if they do, the last save just wins — nothing fancier is needed (last_write_wins).",
+  "decisions": {
+    "user_accounts": "multi_user",
+    "roles": "owner_staff",
+    "external_access": "secure_link",
+    "tenancy": "single_org",
+    "invite_flow": "invite_by_admin",
+    "identity_provider": "email_password",
+    "concurrency": "last_write_wins",
+    "audit_trail": "basic",
+    "notifications": "email_sms",
+    "offline": "online_only",
+    "platform": "web_mobile_first",
+    "data_import": "import_spreadsheet",
+    "data_export": "csv_export",
+    "deletion": "soft_delete",
+    "data_scale": "small",
+    "integrations": "a_few_key",
+    "payments_in_app": "collect_online",
+    "localization": "single_locale",
+    "attachments": "basic",
+    "approval_workflow": "none",
+    "recurring_scheduled": "reminders_only",
+    "public_facing": "public_pages",
+    "compliance_sensitivity": "ordinary",
+    "retention": "forever",
+    "customization": "branding_templates",
+    "reporting": "basic_dashboard",
+    "client_portal_scope": "view_act",
+    "booking_who_books": "customers_no_account",
+    "booking_resource_model": "staff_time",
+    "booking_service_catalog": "menu_fixed_durations",
+    "booking_availability_rules": "per_resource_schedule",
+    "booking_buffers": "fixed_buffer",
+    "booking_slot_capacity": "one_per_slot",
+    "booking_recurring": "no",
+    "booking_waitlist": "manual_waitlist",
+    "booking_cancellation_policy": "cutoff_window",
+    "booking_reschedule": "self_within_window",
+    "booking_no_show": "charge_fee",
+    "booking_prepayment": "deposit_online",
+    "booking_confirmation": "instant",
+    "booking_reminders": "email_sms_confirm",
+    "booking_calendar_sync": "push_only",
+    "booking_time_zones": "single_zone",
+    "booking_intake_form": "fixed_questions",
+    "booking_locations": "single_location",
+    "booking_walk_ins": "staff_manual",
+    "booking_pricing_variation": "varies_by_staff_or_time",
+    "booking_customer_records": "profile_with_notes",
+    "booking_staff_schedule_control": "staff_own"
+  },
+  "sheet": {
+    "actors": [
+      "Owner",
+      "Stylist",
+      "Customer"
+    ],
+    "nouns": [
+      "Appointment",
+      "Service",
+      "Stylist",
+      "Customer",
+      "Deposit",
+      "Waitlist entry"
+    ],
+    "rules": [
+      "A stylist can never be double-booked for overlapping appointments",
+      "An appointment is not confirmed until its deposit is paid",
+      "A no-show automatically charges the card on file",
+      "Customers can reschedule or cancel only up until the 24-hour cutoff",
+      "A customer never sees another customer's appointment history",
+      "Each stylist manages her own working hours; the owner can see and override everyone's"
+    ],
+    "non_goals": [
+      "Multiple salon locations",
+      "Group classes or multi-person sessions",
+      "Payroll or stylist commission tracking"
+    ]
+  }
+}

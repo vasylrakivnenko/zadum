@@ -1,0 +1,95 @@
+{
+  "id": "invoicing-bookkeeping",
+  "one_liner": "an invoicing app for small bookkeeping firms",
+  "one_liner_variants": [
+    "an invoicing app for small bookkeeping firms",
+    "something to help my bookkeeping firm bill clients",
+    "an app to send invoices and get paid"
+  ],
+  "archetypes": [
+    "b2b-invoicing"
+  ],
+  "persona": "Owner of a 3-person bookkeeping firm. Practical, not technical. Wants clients to self-serve where it saves staff time, but keeps things simple otherwise.",
+  "persona_variants": [
+    "Owner of a 3-person bookkeeping firm. Practical, not technical. Wants clients to self-serve where it saves staff time, but keeps things simple otherwise.",
+    "Office manager at a small accounting practice. Cautious, cares about getting the paperwork legally right, dislikes anything that adds steps.",
+    "Bookkeeping firm owner who is impatient and wants automation everywhere; happy to let the tool decide details that do not affect clients."
+  ],
+  "truth": "The firm bills its own clients (firm bills own clients); it does NOT send invoices on behalf of clients to their customers. It is a single org tool for this one firm. Several people log in (multi user): the owner and staff, with an owner staff split in powers. Clients have their own accounts and log into a portal (portal) where they view act: see their invoices and pay them online. Payment recording is both: clients pay online and staff can also mark invoices paid by hand; money is collected online (collect online) via a card/bank provider. Partial payments are allowed. Tax is a single rate per invoice. One currency (single). Recurring invoices yes: monthly retainers are created and sent automatically, so recurring records are created on a schedule. Overdue invoices get auto reminders. No late fees (none). Estimates yes convert to invoices. Credit notes are used for corrections. No expenses tracking (no). No time tracking (no). Invoices are delivered both as PDF email and a hosted link. Accounting sync with QuickBooks (sync). Detailed invoice statuses. Branding is logo colors. No deposits. Invoice numbering is sequential. A sent invoice is locked; corrections go through a credit note. Notifications by email. Sign in with email password. Basic audit trail. Soft delete (archive). Data import from a spreadsheet once (import spreadsheet). CSV export. Data scale small. Integrations: a few key ones (a few key). Online only. Platform: web. No approval workflow (none). Reporting: a basic dashboard. Customization: branding templates. Retention forever. Ordinary business data. Invite flow: invite by admin. Concurrency: last write wins. Attachments basic. Localization single locale. Any bookkeeper may send an invoice (any bookkeeper).",
+  "decisions": {
+    "invoicing_model": "firm_bills_own_clients",
+    "tenancy": "single_org",
+    "user_accounts": "multi_user",
+    "roles": "owner_staff",
+    "external_access": "portal",
+    "client_portal_scope": "view_act",
+    "payment_recording": "both",
+    "payments_in_app": "collect_online",
+    "partial_payments": "allowed",
+    "taxes": "single_rate",
+    "currencies": "single",
+    "recurring_invoices": "yes",
+    "recurring_scheduled": "recurring_records",
+    "overdue_reminders": "auto_reminders",
+    "late_fees": "none",
+    "estimates": "yes_convert",
+    "credit_notes": "credit_notes",
+    "expenses": "no",
+    "time_tracking": "no",
+    "invoice_delivery": "both",
+    "accounting_sync": "sync",
+    "invoice_statuses": "detailed",
+    "branding": "logo_colors",
+    "deposits": "no",
+    "invoice_numbering": "sequential",
+    "invoice_edit_after_send": "locked",
+    "notifications": "email",
+    "identity_provider": "email_password",
+    "audit_trail": "basic",
+    "deletion": "soft_delete",
+    "data_import": "import_spreadsheet",
+    "data_export": "csv_export",
+    "data_scale": "small",
+    "integrations": "a_few_key",
+    "offline": "online_only",
+    "platform": "web",
+    "approval_workflow": "none",
+    "reporting": "basic_dashboard",
+    "customization": "branding_templates",
+    "retention": "forever",
+    "compliance_sensitivity": "ordinary",
+    "invite_flow": "invite_by_admin",
+    "concurrency": "last_write_wins",
+    "attachments": "basic",
+    "localization": "single_locale",
+    "x1": "any_bookkeeper"
+  },
+  "sheet": {
+    "actors": [
+      "Bookkeeper",
+      "Firm owner",
+      "Client"
+    ],
+    "nouns": [
+      "Client",
+      "Invoice",
+      "Line item",
+      "Payment",
+      "Service",
+      "Credit note",
+      "Estimate"
+    ],
+    "rules": [
+      "A client never sees another client's invoice",
+      "An invoice cannot be sent twice",
+      "A sent invoice's amounts never change; corrections use a credit note",
+      "Invoice numbers are sequential with no gaps",
+      "Only the firm owner can delete a client"
+    ],
+    "non_goals": [
+      "Payroll",
+      "Full double-entry accounting",
+      "Multi-currency invoices"
+    ]
+  }
+}

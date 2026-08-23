@@ -1,0 +1,147 @@
+{
+  "archetype": "other",
+  "version": "2026.08.23-1",
+  "source_docs": 27,
+  "patterns": [
+    {
+      "id": "other_1",
+      "pattern": "Access to data is restricted based on user role or relationship to the data (e.g., only admins, owners, specified users, or related parties may view, modify, or manage certain resources).",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Only users with appropriate roles or permissions can view or modify sensitive data or resources."
+    },
+    {
+      "id": "other_2",
+      "pattern": "Sensitive user or system data must be encrypted and securely stored to ensure confidentiality and integrity.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "All user data is encrypted and securely stored to prevent unauthorized access."
+    },
+    {
+      "id": "other_3",
+      "pattern": "User authentication is required before granting access to the system or sensitive actions, typically via unique credentials (username/password or similar).",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "User must authenticate with a unique username and password before accessing the system."
+    },
+    {
+      "id": "other_4",
+      "pattern": "A resource (e.g., username, identifier) must be unique within its context; duplicates are disallowed.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "No two users may have the same username; identifiers must be unique."
+    },
+    {
+      "id": "other_5",
+      "pattern": "Monetary/account balances and numeric fields must always remain within specified non-negative or valid ranges.",
+      "kind": "integrity",
+      "frequency_estimate": 5,
+      "example_phrasing": "User balance must not fall below zero and amounts must be positive."
+    },
+    {
+      "id": "other_6",
+      "pattern": "State transitions follow strict business lifecycles (e.g., 'delivered' only after certain steps; statuses reflect order in process).",
+      "kind": "state",
+      "frequency_estimate": 5,
+      "example_phrasing": "A package can only move to 'delivered' status after being signed by the recipient."
+    },
+    {
+      "id": "other_7",
+      "pattern": "System errors or invalid operations return clear error messages and do not proceed (e.g., invalid input, unavailable resources).",
+      "kind": "other",
+      "frequency_estimate": 4,
+      "example_phrasing": "If an incorrect command or invalid data is given, show an error message."
+    },
+    {
+      "id": "other_8",
+      "pattern": "Access to files, data, or actions can be restricted or granted based on combinations of user, role, IP address, time/date, group, or other policy rules.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Files may be restricted to certain users or groups, or automatically unlocked after a set date."
+    },
+    {
+      "id": "other_9",
+      "pattern": "Minimum or required metadata/information is enforced for submitted entities (datasets, licenses, reservations, etc.).",
+      "kind": "integrity",
+      "frequency_estimate": 4,
+      "example_phrasing": "A minimum set of metadata is required when submitting a new dataset."
+    },
+    {
+      "id": "other_10",
+      "pattern": "Operational or regulated compliance standards must be met (e.g., industry regulations, accessibility, uptime, data protection laws).",
+      "kind": "scope",
+      "frequency_estimate": 4,
+      "example_phrasing": "The product must comply with required industry and accessibility regulations."
+    },
+    {
+      "id": "other_11",
+      "pattern": "Uniqueness or limits for active instances or sessions (e.g., only one user per machine, one product instance at a time).",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Only one instance of the product may run per system at a time."
+    },
+    {
+      "id": "other_12",
+      "pattern": "Actions or results must complete within defined performance constraints (e.g., queries must finish within n seconds, application responses under m seconds).",
+      "kind": "other",
+      "frequency_estimate": 3,
+      "example_phrasing": "Searches must return results within a specified number of seconds."
+    },
+    {
+      "id": "other_13",
+      "pattern": "Original or source data cannot be modified or deleted without special permission or audit trail.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Original data is protected from modification or deletion."
+    },
+    {
+      "id": "other_14",
+      "pattern": "Deleted or modified resources are either restorable or must be tracked for provenance or auditability.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Deleted files can be recovered, and all changes are tracked for auditing."
+    },
+    {
+      "id": "other_15",
+      "pattern": "Data and processes must conform to defined schemas, formats, or standards, with normalization as required for consistency.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "All data must be validated against the declared schema and normalized for consistency."
+    },
+    {
+      "id": "other_16",
+      "pattern": "Certain roles or users are the only ones permitted to perform administrative or sensitive actions (e.g., block users, update ratings, onboard information, etc.).",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Only administrators or specified privileged users may update sensitive system settings."
+    },
+    {
+      "id": "other_17",
+      "pattern": "Security features must include protections against common threats (e.g., virus, denial of service, credential recovery restrictions, clipboard clearing).",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Passwords copied to clipboard are cleared after a short interval for security."
+    },
+    {
+      "id": "other_18",
+      "pattern": "System functions must run in common environments and with only permitted dependencies; external or non-specified libraries are disallowed.",
+      "kind": "scope",
+      "frequency_estimate": 2,
+      "example_phrasing": "Only specified standard libraries are allowed; custom dependencies are not permitted."
+    },
+    {
+      "id": "other_19",
+      "pattern": "Lifecycle actions are atomic when required (e.g., reconfiguration or upgrades must happen all-or-nothing).",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Reconfiguration applies to all settings at once or not at all."
+    },
+    {
+      "id": "other_20",
+      "pattern": "Data and processes may be placed under temporary restriction or embargo and become public or accessible after certain conditions/times.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Datasets can be embargoed until a specified date before being made public."
+    }
+  ]
+}

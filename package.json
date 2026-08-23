@@ -1,0 +1,36 @@
+{
+  "name": "zadum",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Design Sheet \u2014 TurboTax for AI coding. The AI drafts a one-page Design Sheet, you correct it, decision cards resolve what matters, a rigorous spec compiles.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "zadum": "tsx src/cli/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "tsx src/store/pg_migrate.ts",
+    "harness": "tsx src/harness/run.ts",
+    "mine": "tsx src/mining/mine.ts",
+    "mine:concepts": "tsx src/mining/concepts.ts",
+    "learn": "tsx src/learning/report.ts",
+    "baselines": "tsx src/baselines/run.ts",
+    "mine:rules": "tsx src/mining/rule_bank.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
+    "commander": "^15.0.0",
+    "postgres": "^3.4.9",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.11"
+  }
+}

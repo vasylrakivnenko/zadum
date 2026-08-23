@@ -1,0 +1,706 @@
+{
+  "id": "e-commerce",
+  "version": "2026.08.23-1",
+  "archetype": "e-commerce",
+  "description": "Single-seller online stores (one business selling its own products). Priors skew toward small shops selling physical goods with card payments and a public catalog.",
+  "nodes": [
+    {
+      "id": "shop_goods_type",
+      "topic": "what is sold",
+      "question": "What kind of things does the store sell?",
+      "options": [
+        {
+          "id": "physical",
+          "label": "Physical products that get shipped or picked up"
+        },
+        {
+          "id": "digital",
+          "label": "Digital products delivered online (downloads, licenses, courses)"
+        },
+        {
+          "id": "physical_and_digital",
+          "label": "Both physical and digital"
+        },
+        {
+          "id": "services",
+          "label": "Services or tickets (no stock, may need a date)"
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "overview",
+        "data_model",
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "physical": 0.425,
+        "digital": 0.15,
+        "physical_and_digital": 0.35,
+        "services": 0.075
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_product_variants",
+      "topic": "products",
+      "question": "Do products come in variants?",
+      "options": [
+        {
+          "id": "simple_only",
+          "label": "No — each product is one thing with one price"
+        },
+        {
+          "id": "variants",
+          "label": "Yes — size/colour/etc., each variant with its own stock and price"
+        },
+        {
+          "id": "configurable",
+          "label": "Yes — plus customer-chosen options (engraving, bundles, made-to-order)"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants"
+      ],
+      "prior": {
+        "simple_only": 0.234,
+        "variants": 0.601,
+        "configurable": 0.165
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_inventory",
+      "topic": "stock",
+      "question": "Is stock tracked?",
+      "options": [
+        {
+          "id": "not_tracked",
+          "label": "No — everything is always available"
+        },
+        {
+          "id": "tracked_stop_at_zero",
+          "label": "Yes — sold out items can't be bought"
+        },
+        {
+          "id": "tracked_with_backorders",
+          "label": "Yes — with backorders/pre-orders when out of stock"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "state_machines"
+      ],
+      "prior": {
+        "not_tracked": 0.172,
+        "tracked_stop_at_zero": 0.61,
+        "tracked_with_backorders": 0.219
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_storefront_access",
+      "topic": "public pages",
+      "question": "Can anyone see the store?",
+      "options": [
+        {
+          "id": "public",
+          "label": "Yes — the catalog is public",
+          "implies": [
+            {
+              "node": "public_facing",
+              "option": "public_content"
+            }
+          ]
+        },
+        {
+          "id": "private_invite",
+          "label": "No — password or invite only (members, trade customers)"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "actors_permissions",
+        "journeys"
+      ],
+      "prior": {
+        "public": 0.922,
+        "private_invite": 0.078
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "shop_checkout_accounts",
+      "topic": "checkout",
+      "question": "Do customers need an account to buy?",
+      "options": [
+        {
+          "id": "guest_only",
+          "label": "No accounts — guest checkout; order status via emailed link",
+          "implies": [
+            {
+              "node": "external_access",
+              "option": "secure_link"
+            }
+          ]
+        },
+        {
+          "id": "guest_or_account",
+          "label": "Guest checkout, with an optional account for history and saved details",
+          "implies": [
+            {
+              "node": "external_access",
+              "option": "portal"
+            }
+          ]
+        },
+        {
+          "id": "account_required",
+          "label": "An account is required to buy",
+          "implies": [
+            {
+              "node": "external_access",
+              "option": "portal"
+            },
+            {
+              "node": "invite_flow",
+              "option": "self_signup"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "actors_permissions",
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "guest_only": 0.127,
+        "guest_or_account": 0.695,
+        "account_required": 0.179
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "shop_shipping",
+      "topic": "shipping",
+      "question": "How is shipping priced?",
+      "options": [
+        {
+          "id": "flat_or_free",
+          "label": "Flat rate or free (maybe above a threshold)"
+        },
+        {
+          "id": "calculated",
+          "label": "Calculated by weight/zone/carrier rates at checkout",
+          "implies": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        },
+        {
+          "id": "pickup_or_local",
+          "label": "Pickup or local delivery only — no shipping"
+        },
+        {
+          "id": "not_applicable",
+          "label": "Nothing is shipped (digital/services)"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "rules_invariants",
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "flat_or_free": 0.261,
+        "calculated": 0.472,
+        "pickup_or_local": 0.086,
+        "not_applicable": 0.182
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_tax",
+      "topic": "tax",
+      "question": "How is sales tax/VAT handled?",
+      "options": [
+        {
+          "id": "included_or_none",
+          "label": "Prices include tax, or no tax is shown"
+        },
+        {
+          "id": "single_rate",
+          "label": "One tax rate added at checkout"
+        },
+        {
+          "id": "by_destination",
+          "label": "Calculated by the customer's location (rates vary)"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "rules_invariants",
+        "data_model"
+      ],
+      "prior": {
+        "included_or_none": 0.316,
+        "single_rate": 0.266,
+        "by_destination": 0.419
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_discounts",
+      "topic": "promotions",
+      "question": "Discounts and promotions?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "coupon_codes",
+          "label": "Coupon codes customers type at checkout"
+        },
+        {
+          "id": "automatic_promotions",
+          "label": "Coupons plus automatic rules (sales, buy-X-get-Y, tiered pricing)"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "rules_invariants",
+        "data_model"
+      ],
+      "prior": {
+        "none": 0.209,
+        "coupon_codes": 0.402,
+        "automatic_promotions": 0.389
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_payment_methods",
+      "topic": "money",
+      "question": "How do customers pay?",
+      "options": [
+        {
+          "id": "cards_online",
+          "label": "Cards online through a payment provider",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        {
+          "id": "cards_wallets_bnpl",
+          "label": "Cards plus wallets (Apple/Google Pay, PayPal) and buy-now-pay-later",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        {
+          "id": "online_and_offline",
+          "label": "Online payment or pay on pickup/delivery/bank transfer",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        {
+          "id": "offline_only",
+          "label": "Only on pickup/delivery or by bank transfer — the app just records it",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "record_only"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "journeys",
+        "state_machines",
+        "data_model"
+      ],
+      "prior": {
+        "cards_online": 0.536,
+        "cards_wallets_bnpl": 0.258,
+        "online_and_offline": 0.128,
+        "offline_only": 0.078
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "shop_order_lifecycle",
+      "topic": "lifecycle",
+      "question": "How detailed is the order lifecycle?",
+      "options": [
+        {
+          "id": "simple",
+          "label": "Placed → Shipped → Delivered"
+        },
+        {
+          "id": "detailed",
+          "label": "Placed → Paid → Packing → Shipped (possibly in parts) → Delivered / On hold / Cancelled / Refunded"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "state_machines"
+      ],
+      "prior": {
+        "simple": 0.307,
+        "detailed": 0.693
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_cancellations",
+      "topic": "cancellations",
+      "question": "Can an order be cancelled after it's placed?",
+      "options": [
+        {
+          "id": "customer_until_shipped",
+          "label": "Customers can cancel themselves until it ships"
+        },
+        {
+          "id": "staff_only",
+          "label": "Only staff can cancel (customers ask)"
+        },
+        {
+          "id": "no_cancellation",
+          "label": "No cancellations once paid — returns only"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "state_machines",
+        "rules_invariants",
+        "actors_permissions"
+      ],
+      "prior": {
+        "customer_until_shipped": 0.4,
+        "staff_only": 0.45,
+        "no_cancellation": 0.15
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_returns",
+      "topic": "returns & refunds",
+      "question": "How are returns handled?",
+      "options": [
+        {
+          "id": "none",
+          "label": "All sales final"
+        },
+        {
+          "id": "manual",
+          "label": "Customers email; staff approve and refund or issue credit by hand"
+        },
+        {
+          "id": "self_service_rma",
+          "label": "Customers request a return in the app, get a label, and are refunded when it arrives"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "state_machines",
+        "journeys",
+        "rules_invariants"
+      ],
+      "prior": {
+        "none": 0.191,
+        "manual": 0.544,
+        "self_service_rma": 0.266
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "shop_subscriptions",
+      "topic": "automation",
+      "question": "Subscriptions / repeat orders?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No — one-off orders only"
+        },
+        {
+          "id": "subscribe_and_save",
+          "label": "Yes — recurring orders billed and created automatically",
+          "implies": [
+            {
+              "node": "recurring_scheduled",
+              "option": "recurring_records"
+            },
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "no": 0.75,
+        "subscribe_and_save": 0.25
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "shop_currency",
+      "topic": "money",
+      "question": "One currency or several?",
+      "options": [
+        {
+          "id": "single",
+          "label": "One currency"
+        },
+        {
+          "id": "display_conversion",
+          "label": "Prices shown in the visitor's currency, but charged in ours"
+        },
+        {
+          "id": "multi_currency_checkout",
+          "label": "Priced and charged in several currencies",
+          "implies": [
+            {
+              "node": "localization",
+              "option": "multi_region"
+            }
+          ]
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules_invariants"
+      ],
+      "prior": {
+        "single": 0.639,
+        "display_conversion": 0.101,
+        "multi_currency_checkout": 0.259
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_reviews",
+      "topic": "reviews",
+      "question": "Product reviews?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "moderated",
+          "label": "Yes — staff approve before they show"
+        },
+        {
+          "id": "verified_buyers",
+          "label": "Yes — only verified buyers, shown automatically"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "data_model",
+        "actors_permissions"
+      ],
+      "prior": {
+        "none": 0.567,
+        "moderated": 0.275,
+        "verified_buyers": 0.159
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_abandoned_cart",
+      "topic": "recovery",
+      "question": "Follow up on abandoned carts?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "email_reminders",
+          "label": "Yes — automatic reminder emails (optionally with a discount)"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "none": 0.668,
+        "email_reminders": 0.332
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_gift_cards",
+      "topic": "money",
+      "question": "Gift cards or store credit?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "gift_cards_credit",
+          "label": "Yes — gift cards and store credit usable at checkout"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "state_machines"
+      ],
+      "prior": {
+        "none": 0.432,
+        "gift_cards_credit": 0.568
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "shop_wholesale",
+      "topic": "pricing",
+      "question": "Trade/wholesale customers with different prices?",
+      "options": [
+        {
+          "id": "retail_only",
+          "label": "No — everyone pays the same price"
+        },
+        {
+          "id": "wholesale_tier",
+          "label": "Yes — approved trade customers see wholesale prices and minimums",
+          "implies": [
+            {
+              "node": "external_access",
+              "option": "portal"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "actors_permissions",
+        "rules_invariants",
+        "data_model"
+      ],
+      "prior": {
+        "retail_only": 0.793,
+        "wholesale_tier": 0.207
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_fulfilment",
+      "topic": "fulfilment",
+      "question": "Who packs and ships orders?",
+      "options": [
+        {
+          "id": "in_house",
+          "label": "We do, from our own stock"
+        },
+        {
+          "id": "third_party_or_dropship",
+          "label": "A warehouse/3PL or the supplier ships (orders are sent to them)",
+          "implies": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        },
+        {
+          "id": "automatic_digital",
+          "label": "Nothing to ship — delivered automatically"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "journeys",
+        "state_machines",
+        "overview"
+      ],
+      "prior": {
+        "in_house": 0.666,
+        "third_party_or_dropship": 0.159,
+        "automatic_digital": 0.175
+      },
+      "tags": []
+    },
+    {
+      "id": "shop_category_structure",
+      "topic": "product organization",
+      "question": "How are products organized into categories?",
+      "options": [
+        {
+          "id": "flat_tags",
+          "label": "Flat list or tags only — no category hierarchy",
+          "implies": []
+        },
+        {
+          "id": "single_level",
+          "label": "One level of categories per product",
+          "implies": []
+        },
+        {
+          "id": "tree_multi_assign",
+          "label": "A multi-level category tree; products can belong to more than one category",
+          "implies": []
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "flat_tags": 0.2,
+        "single_level": 0.2,
+        "tree_multi_assign": 0.6
+      },
+      "applies_to": [],
+      "tags": []
+    }
+  ]
+}

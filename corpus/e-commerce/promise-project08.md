@@ -1,0 +1,93 @@
+- (PE) Administrator shall be able to activate a pre-paid card via the Administration section in under 5 seconds.
+- (PE)  Customer shall be able to check the status of their prepaid card  by entering in the PIN number  in under 5 seconds.
+- (PE) System shall let customers register on the website as a �pay as you go� user in under 5 minutes.
+- (PE) System shall let customers register on the website as a �unlimited movie subscriber� user in under 10 minutes.
+- (PE) System shall let existing customers log into the website with their email address and password in under 5 seconds.
+- (PE)  System shall let customers cancel their account  process shall take no longer than 2 minutes.  Database will mark the account as inactive  and user will not be able to log into the website.
+- (PE) System shall let administrator de-activate a customer account in under 1 minute. Customer will no longer be able to access the website.
+- (PE) System shall let administrator add/remove movies on the website in under 5 minutes.  Entered movie information will be stored in the database and will now be available on the website.
+- (PE) System shall let the administrator add/remove categories on the website in under 5 minutes.
+- (PE) System shall let Izogn Manager access sales and usage statistics in under 2 minutes.
+- (PE) System shall let administrators generate unique pre-paid pins in under 2 minutes and generate an Excel file with the generated PINs.
+- (LF) The website shall be attractive to all audiences.  The website shall appear to be fun and the colors should be bright and vibrant.
+- (LF)  The website should have an African feel  but should not alienate non-Africans.  The website should use animation on pages which are describing the services  to grab the users attention and encourage them to sign up.
+- (LF)  The website design should be modern  clean  and concise.
+- (US) The product should be able to be used by 90% of novice users on the Internet.
+- (US)  Users should only have to navigate through a maximum of 4 pages  to create an account with the website.
+- (US) Users should be able to access their streaming movies in under 2 clicks after logging into the website.
+- (US) An anonymous survey will show that 70% of customers are comfortable purchasing streaming movies after 2 weeks using the website.
+- (US) An anonymous survey will show that 95% of customers are comfortable using and purchasing pre-paid cards after a month of using the system.
+- (US) The product shall retain the customer�s buying preferences and information.
+- (US) The product shall be easy for customers with novice skills on the  Internet to purchase and watch streaming movies.  Customers should be able to purchase and watch a pre-determined movie in under 3 minutes.
+- (US) The product shall use symbols and words that are naturally understandable by users familiar with websites
+- (US) The website will use standard Internet conventions when interacting with the user.
+- (PE)  Any interface between a user and the automated system shall have a maximum response time of 5 seconds  unless noted by an exception below.
+- (PE)  When purchasing a streaming movie or pre-paid card via credit card  the processing time should have a maximum response time of 15 seconds.
+- (PE)  When streaming a movie  the buffering time should take no longer than 10 seconds (plus any latency on the user�s connection.)
+- (PE)  While streaming a movie  buffering should only occur if there is latency in the user�s connection.
+- (SE)  All credit card information will be secured on the server  and only accessible by authorized Izogn administrators.  Information will be encrypted in the database.
+- (A)  The website shall be available for use 24 hours per day  365 days per year.
+- (A) The website shall achieve 99.5% up time.
+- (A)  All movies shall be streamed on demand  at any time of the day.
+- (FT) The website shall continue to operate if the streaming server goes down.
+- (FT) The website shall continue to operate if the payment gateway goes down.
+- (SC) The streaming server will support 50 simultaneous streaming connections.
+- (SC) The streaming server will support a maximum of 700 movies; new servers can be added to support more movies.
+- (SC)  The server will support a maximum of 1 000 simultaneous users.
+- (SC)  The website shall be capable of supporting 100 000 customers.
+- (MN) The product shall be expected to operate within the maximum maintenance budget for a minimum of 2 years.
+- (O) All aspects of the website shall be accessed by a web browser over the Internet.
+- (O) The same hardware supporting the current website will be used to support the new system.
+- (O)  We must be able to interface with the following browsers: IE 5.X  6.0  Netscape 6.x  7.x  8.x and Firefox 1.0.
+- (O) Website must interface with the CyberSource API to process credit card transactions.
+- (O) Website must be fully operational with MSN TV2.
+- (O) Movies shall be encoded and streamed via Windows Media Player 9.0.
+- (O) Movies shall be encoded for 56k and 256k streams.
+- (MN) Promotional updates to the website should take a day to update.
+- (PE) Izogn Administrator must be able to update the category listings on the website within 2 minutes.
+- (PE) Izogn Administrator must be able to add new products to the website within 2 minutes.
+- (A) The system will provide a 24 hour 800 toll free number for support to its customers.
+- (US) The website will provide a help section with answers and solutions to common problems.
+- (A)  Velkat staff will be available for phone support between 7am-7pm  M-F to provide technical support to the Izogn administrators.
+- (O) The product shall be able to be installed in the specified environment within 1 working day.
+- (SE) Only registered customers can purchase streaming movies.
+- (SE)  A customer can only stream a movie if they purchased it  and are within the 2 day viewing period.
+- (SE) Only authorized personnel can access customer records in the database.
+- (SE) Only administrators can activate a pre-paid card.
+- (SE) Only authorized personnel can access sales information.
+- (SE) The website shall prevent its data from being corrupted when incorrect data is entered in.
+- (SE)  The website shall protect itself from intentional abuse  and notify the administrator at all occurrences.
+- (SE) Data integrity scripts will be run on a weekly basis to verify the integrity of the database.
+- (SE)  The website shall make its user aware of its information practices before collection data from them via a Privacy Policy  accessible on all pages of the website.
+- (SE) The system shall notify customers of changes to its information policy.
+- (SE) The system shall reveal private information only in compliance with the organization�s information policy.
+- (SE)  All customer information will be stored on a secure database  accessible only to authorized personnel.
+- (SE) All credit card information will be encrypted in the database.
+- (SE) The streaming server will have anti-virus software to prevent infection of malicious viruses.
+- (LF) The website should cater to all tribes in Nigeria.
+- (LF) The website shall not be offensive to religious or ethnic groups.
+- (LF)  The website should appeal to all Africans  not only Nigerians.
+- (O) The website should use Flash to provide animation on the home page.
+- (L) IzognMovies shall meet the licensing requirements set forth by the appropriate organizations in order to stream African movies.
+- (L) The website will comply with W3C standards.
+- (L) The PHP code will comply with PEAR standards.
+- (F)  The website will allow customers to search for movies by title  actor  or director.
+- (F)  viewing a movie details  the website will display the movies description  actor  and director entered in by the administrator.
+- (F)  Website shall request  and authorize credit card payment before allowing a user to stream a movie.
+- (F)  shall be able to stream purchased movie via Windows Media Player  for up to 2 days aftere purchase date.
+- (F) Website shall allow customers to browse movies by categories entered in by izogn administrator.
+- (F) Website shall allow customers to view reviews of selected movies by other customers.
+- (F) Website shall allow customers to add their own movie review for a selected movie.
+- (F) Website shall allow the Izogn administrator to approve a review posted by a customer.
+- (F) System will allow customers to pay for a streaming movie with a pre-paid card.
+- (F)  Website shall allow customers to purchase pre-paid cards of $5  $10  or $20 value either by credit card or mail-in payment option.
+- (F)  System shall automatically update the main page of the website every Friday  and show the 4 latest movies that have been added to the website.
+- (F) System shall allow users to update their billing and contact information via the �My Account� section of the website.
+- (F)  Pre-paid cards shall be distributed via email  or via a printed paper card.
+- (F) Only registered customers can purchase streaming movies.
+- (F)  Movies can only be streamed if the customer has purchased a movie  and is within the 2-day time period to stream the movie.
+- (F) Website must be able to support free trial periods with various parameters set by the Izogn Manager.
+- (F)  All streaming movie sales will be logged in the database  and accessible by the administrator.
+- (F)  All registered customer information shall be stored and maintained in the database  even after the customer cancels their account.
+- (F)  Daily usage statistics should be logged  and accessible by the administrator.
+- (F) The owner shall have free access to all of the streaming movies.

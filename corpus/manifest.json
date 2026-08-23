@@ -1,0 +1,956 @@
+[
+  {
+    "file": "b2b-invoicing/invoicing-a-user-guide.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-a-user-guide",
+    "source_url": "https://github.com/invoiceninja/invoiceninja.github.io (docs/user-guide)",
+    "license": "Elastic License 2.0 (docs repo points to main-repo licence; ELv2 permits copying/redistribution with limits) \u2014 flagged, not OSI",
+    "retrieved": "2026-08-22",
+    "notes": "Invoice Ninja v5 user guide; invoices, quotes, recurring, payments, credits, purchase orders, clients, products, expenses, portal"
+  },
+  {
+    "file": "b2b-invoicing/invoicing-b-solid.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-b-solid",
+    "source_url": "https://github.com/solidinvoice/solidinvoice/tree/3.1.x/docs/docs",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "SolidInvoice docs: invoices, statuses, overdue, reminders, clients, credit, currency, recurring schedules, taxes, companies"
+  },
+  {
+    "file": "b2b-invoicing/invoicing-c-erp-accounts.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-c-erp-accounts",
+    "source_url": "https://github.com/frappe/erpnext_documentation (v13 user manual, accounts/selling)",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "ERPNext v13 manual: sales invoice, payment entry, credit/debit notes, payment terms, dunning, subscription, quotation, sales order, customer"
+  },
+  {
+    "file": "b2b-invoicing/invoicing-d-odoo-customer-invoices.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-d-odoo-customer-invoices",
+    "source_url": "https://github.com/odoo/documentation/tree/19.0/content/applications/finance/accounting",
+    "license": "CC-BY-SA-4.0",
+    "retrieved": "2026-08-22",
+    "notes": "Odoo 19 accounting docs: customer invoices, payment terms, credit notes, cash discounts/rounding, sequences, e-invoicing, payments, follow-ups"
+  },
+  {
+    "file": "b2b-invoicing/invoicing-e-odoo-sales-invoicing.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-e-odoo-sales-invoicing",
+    "source_url": "https://github.com/odoo/documentation/tree/19.0/content/applications/sales",
+    "license": "CC-BY-SA-4.0",
+    "retrieved": "2026-08-22",
+    "notes": "Odoo 19 sales docs: invoicing policies, down payments, milestones, pro-forma, time & materials, subscriptions (renewals, closing, upsell, automatic payments). Same product as invoicing-d but a distinct subsystem."
+  },
+  {
+    "file": "b2b-invoicing/invoicing-f-usage-billing.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-f-usage-billing",
+    "source_url": "https://github.com/getlago/lago-docs/tree/main/docs/guide",
+    "license": "unknown \u2014 no LICENSE file in docs repo (Lago itself is AGPL-3.0); text copied provisionally, flagged for review",
+    "retrieved": "2026-08-22",
+    "notes": "Lago usage-based billing guide: billable metrics, plans, charges, subscriptions, customers, coupons, add-ons, invoicing, grace period, payments, credit notes, prepaid credits"
+  },
+  {
+    "file": "b2b-invoicing/invoicing-g-subscription-billing.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-g-subscription-billing",
+    "source_url": "https://github.com/killbill/killbill-docs/tree/v3/userguide",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "Kill Bill subscription & payment user guides: accounts, catalog, plans, subscriptions, invoices, payments, overdue"
+  },
+  {
+    "file": "b2b-invoicing/invoicing-h-event-tickets-invoicing.md",
+    "archetype": "b2b-invoicing",
+    "id": "invoicing-h-event-tickets-invoicing",
+    "source_url": "https://github.com/alfio-event/alf.io/tree/main/website/content/en/docs/Configuration",
+    "license": "GPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Alf.io invoice/payment configuration: invoice numbering, VAT, reverse charge, bank transfer, offline payments"
+  },
+  {
+    "file": "booking/booking-a-scheduling-spec.md",
+    "archetype": "booking",
+    "id": "booking-a-scheduling-spec",
+    "source_url": "https://github.com/calcom/cal.com/tree/main/specs/cancellation-reason-requirement",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Cal.com in-repo feature spec (design/decisions/implementation) for booking cancellation-reason requirement"
+  },
+  {
+    "file": "booking/booking-b-scheduling-readme.md",
+    "archetype": "booking",
+    "id": "booking-b-scheduling-readme",
+    "source_url": "https://github.com/calcom/cal.com/blob/main/README.md",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Cal.com README feature description"
+  },
+  {
+    "file": "booking/booking-c-appointments.md",
+    "archetype": "booking",
+    "id": "booking-c-appointments",
+    "source_url": "https://github.com/alextselegidis/easyappointments",
+    "license": "GPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Easy!Appointments README + FAQ + calendar sync docs"
+  },
+  {
+    "file": "booking/booking-d-event-ticketing-features.md",
+    "archetype": "booking",
+    "id": "booking-d-event-ticketing-features",
+    "source_url": "https://github.com/HiEventsDev/hi.events/blob/develop/FEATURES.md",
+    "license": "AGPL-3.0 (with attribution clause)",
+    "retrieved": "2026-08-22",
+    "notes": "Hi.Events README feature list + backend domain/database-schema docs: events, tickets, orders, attendees, check-in, promo codes"
+  },
+  {
+    "file": "booking/booking-e-ticket-shop-domain.md",
+    "archetype": "booking",
+    "id": "booking-e-ticket-shop-domain",
+    "source_url": "https://github.com/pretix/pretix/tree/master/doc",
+    "license": "AGPL-3.0 (with exceptions)",
+    "retrieved": "2026-08-22",
+    "notes": "pretix order lifecycle + domain model + permission docs: events, items, quotas, orders, positions, vouchers, check-ins"
+  },
+  {
+    "file": "booking/booking-f-event-management.md",
+    "archetype": "booking",
+    "id": "booking-f-event-management",
+    "source_url": "https://github.com/alfio-event/alf.io/tree/main/website/content/en/docs",
+    "license": "GPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Alf.io concepts, event setup, reservations, groups, attendee data, check-in"
+  },
+  {
+    "file": "booking/booking-g-resource-reservation.md",
+    "archetype": "booking",
+    "id": "booking-g-resource-reservation",
+    "source_url": "https://github.com/LibreBooking/app/tree/develop/docs/source",
+    "license": "GPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "LibreBooking (Booked fork) resource scheduling: resources, schedules, reservations, quotas, approval, admin"
+  },
+  {
+    "file": "booking/booking-h-meeting-polls.md",
+    "archetype": "booking",
+    "id": "booking-h-meeting-polls",
+    "source_url": "https://github.com/lukevella/rallly/tree/main/apps/docs",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Rallly meeting-poll scheduling docs: create/invite/schedule, participants, spaces, seats, billing"
+  },
+  {
+    "file": "booking/booking-i-odoo-appointments.md",
+    "archetype": "booking",
+    "id": "booking-i-odoo-appointments",
+    "source_url": "https://github.com/odoo/documentation/tree/19.0/content/applications/productivity",
+    "license": "CC-BY-SA-4.0",
+    "retrieved": "2026-08-22",
+    "notes": "Odoo 19 appointments & calendar docs: appointment types, availability, resources, reminders"
+  },
+  {
+    "file": "booking/booking-j-camp-userstories.md",
+    "archetype": "booking",
+    "id": "booking-j-camp-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g12-camperplus), mirror github.com/daffahilmyf/requirement-generator",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz user-story set g12: camp registration/management system"
+  },
+  {
+    "file": "marketplace/marketplace-a-listings-search.md",
+    "archetype": "marketplace",
+    "id": "marketplace-a-listings-search",
+    "source_url": "https://github.com/sharetribe/flex-docs/tree/master/src/docs",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "Sharetribe concepts: listings, search, approval, availability/inventory, seats, users, extended data"
+  },
+  {
+    "file": "marketplace/marketplace-b-transactions-payments.md",
+    "archetype": "marketplace",
+    "id": "marketplace-b-transactions-payments",
+    "source_url": "https://github.com/sharetribe/flex-docs/tree/master/src/docs",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "Sharetribe concepts: transaction process, payments, payouts, commissions, messages, reviews. Same product as marketplace-a, distinct subsystem."
+  },
+  {
+    "file": "marketplace/marketplace-c-recipe.md",
+    "archetype": "marketplace",
+    "id": "marketplace-c-recipe",
+    "source_url": "https://github.com/medusajs/medusa/tree/develop/www/apps/resources/app/recipes",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Medusa marketplace/B2B/digital-product recipes: vendors, orders split per vendor, payouts"
+  },
+  {
+    "file": "marketplace/marketplace-d-multivendor-howto.md",
+    "archetype": "marketplace",
+    "id": "marketplace-d-multivendor-howto",
+    "source_url": "https://github.com/vendure-ecommerce/vendure/tree/master/docs/docs/guides",
+    "license": "GPL-3.0 (Vendure Community Edition)",
+    "retrieved": "2026-08-22",
+    "notes": "Vendure multi-vendor marketplace guide + channels + roles"
+  },
+  {
+    "file": "marketplace/marketplace-e-wp-multivendor.md",
+    "archetype": "marketplace",
+    "id": "marketplace-e-wp-multivendor",
+    "source_url": "https://github.com/getdokan/dokan/blob/develop/readme.txt",
+    "license": "GPL-2.0-or-later (WordPress plugin readme header)",
+    "retrieved": "2026-08-22",
+    "notes": "Dokan multivendor marketplace plugin readme: vendor dashboards, commissions, withdrawals, shipping, reviews, store support"
+  },
+  {
+    "file": "marketplace/marketplace-f-services-marketplace.md",
+    "archetype": "marketplace",
+    "id": "marketplace-f-services-marketplace",
+    "source_url": "https://github.com/Cocolabs-SAS/cocorico",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Cocorico service/rental marketplace: listings, bookings, prices & fees, time units, emails, cron jobs"
+  },
+  {
+    "file": "marketplace/marketplace-g-medusa-marketplace-oss.md",
+    "archetype": "marketplace",
+    "id": "marketplace-g-medusa-marketplace-oss",
+    "source_url": "https://github.com/mercurjs/mercur",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Mercur open-source marketplace (Medusa-based) README/docs"
+  },
+  {
+    "file": "marketplace/marketplace-i-datahub-userstories.md",
+    "archetype": "marketplace",
+    "id": "marketplace-i-datahub-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g14-datahub)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g14: data hub/publishing platform user stories (data marketplace-like: publishers, consumers, datasets)"
+  },
+  {
+    "file": "e-commerce/ecommerce-a-commerce-modules.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-a-commerce-modules",
+    "source_url": "https://github.com/medusajs/medusa/tree/develop/www/apps/resources/app/commerce-modules",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Medusa commerce module overviews: cart, order, product, customer, payment, pricing, promotion, inventory, fulfillment, region, sales channel, tax"
+  },
+  {
+    "file": "e-commerce/ecommerce-b-core-concepts.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-b-core-concepts",
+    "source_url": "https://github.com/vendure-ecommerce/vendure/tree/master/docs/docs/guides/core-concepts",
+    "license": "GPL-3.0 (Vendure Community Edition)",
+    "retrieved": "2026-08-22",
+    "notes": "Vendure core concepts: products, collections, facets, customers, orders, cart, payment, shipping, promotions, stock, taxes, pricing, zones"
+  },
+  {
+    "file": "e-commerce/ecommerce-c-spree-concepts.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-c-spree-concepts",
+    "source_url": "https://github.com/spree/spree/tree/main/docs/developer/core-concepts",
+    "license": "BSD-3-Clause",
+    "retrieved": "2026-08-22",
+    "notes": "Spree core concepts: orders, products, inventory, payments, shipments, promotions, taxes, pricing, customers, store credits"
+  },
+  {
+    "file": "e-commerce/ecommerce-d-spree-user-guide.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-d-spree-user-guide",
+    "source_url": "https://github.com/spree/spree/tree/main/docs/user",
+    "license": "BSD-3-Clause",
+    "retrieved": "2026-08-22",
+    "notes": "Spree admin user guide: orders, customers, products, pricing how-tos. Same product as ecommerce-c, different audience (admin vs developer)."
+  },
+  {
+    "file": "e-commerce/ecommerce-e-odoo-ecommerce.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-e-odoo-ecommerce",
+    "source_url": "https://github.com/odoo/documentation/tree/19.0/content/applications/websites/ecommerce",
+    "license": "CC-BY-SA-4.0",
+    "retrieved": "2026-08-22",
+    "notes": "Odoo 19 eCommerce docs: checkout, order handling, shipping, products, design"
+  },
+  {
+    "file": "e-commerce/ecommerce-f-shopware-concepts.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-f-shopware-concepts",
+    "source_url": "https://github.com/shopware/docs/tree/main/concepts/commerce",
+    "license": "unknown \u2014 no LICENSE file found in docs repo; text copied provisionally, flagged for review",
+    "retrieved": "2026-08-22",
+    "notes": "Shopware commerce concepts: catalog, categories, products, sales channels, cart, orders, payments, documents"
+  },
+  {
+    "file": "e-commerce/ecommerce-g-saleor-developer.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-g-saleor-developer",
+    "source_url": "https://github.com/saleor/saleor-docs/tree/main/docs/developer",
+    "license": "BSD-3-Clause (per LICENSE, excluding icons)",
+    "retrieved": "2026-08-22",
+    "notes": "Saleor developer docs: checkout, orders, products, payments, discounts, channels, gift cards, stock allocation, taxes"
+  },
+  {
+    "file": "e-commerce/ecommerce-i-prestashop.md",
+    "archetype": "e-commerce",
+    "id": "ecommerce-i-prestashop",
+    "source_url": "https://github.com/PrestaShop/user-documentation-en",
+    "license": "CC-BY-SA-4.0 (README)",
+    "retrieved": "2026-08-22",
+    "notes": "PrestaShop user documentation: catalog, orders, customers"
+  },
+  {
+    "file": "crud-saas/crud-a-crm.md",
+    "archetype": "crud-saas",
+    "id": "crud-a-crm",
+    "source_url": "https://github.com/twentyhq/twenty/tree/main/packages/twenty-docs",
+    "license": "AGPL-3.0 (with commercial exceptions for some files)",
+    "retrieved": "2026-08-22",
+    "notes": "Twenty CRM docs: objects/fields, views, pipelines, workflows, permissions, calendar & email"
+  },
+  {
+    "file": "crud-saas/crud-b-surveys.md",
+    "archetype": "crud-saas",
+    "id": "crud-b-surveys",
+    "source_url": "https://github.com/formbricks/formbricks/tree/main/docs",
+    "license": "AGPL-3.0 (docs outside ee/)",
+    "retrieved": "2026-08-22",
+    "notes": "Formbricks survey platform: logic, quotas, links, targeting, orgs/teams/roles"
+  },
+  {
+    "file": "crud-saas/crud-c-esign.md",
+    "archetype": "crud-saas",
+    "id": "crud-c-esign",
+    "source_url": "https://github.com/documenso/documenso/tree/main/apps/docs/content/docs/users",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Documenso e-signature user docs: documents, recipients, fields, templates, organisations, teams, preferences"
+  },
+  {
+    "file": "crud-saas/crud-d-newsletter.md",
+    "archetype": "crud-saas",
+    "id": "crud-d-newsletter",
+    "source_url": "https://github.com/knadh/listmonk/tree/master/docs/docs/content",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "listmonk mailing list manager: lists, subscribers, campaigns, segmentation, roles, templates, bounces"
+  },
+  {
+    "file": "crud-saas/crud-e-project-mgmt.md",
+    "archetype": "crud-saas",
+    "id": "crud-e-project-mgmt",
+    "source_url": "https://github.com/opf/openproject/tree/dev/docs/user-guide",
+    "license": "GPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "OpenProject user guide: work packages, projects, members/roles, time & costs, notifications, meetings"
+  },
+  {
+    "file": "crud-saas/crud-f-helpdesk.md",
+    "archetype": "crud-saas",
+    "id": "crud-f-helpdesk",
+    "source_url": "https://github.com/zammad/zammad-user-documentation",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Zammad helpdesk user docs: tickets, ticket actions, macros, search, text modules"
+  },
+  {
+    "file": "crud-saas/crud-g-planning-poker-userstories.md",
+    "archetype": "crud-saas",
+    "id": "crud-g-planning-poker-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g13-planningpoker)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g13: planning poker estimation tool user stories"
+  },
+  {
+    "file": "crud-saas/crud-h-dmp-tool-userstories.md",
+    "archetype": "crud-saas",
+    "id": "crud-h-dmp-tool-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g22-rdadmp)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g22: research data management plan tool user stories"
+  },
+  {
+    "file": "crud-saas/crud-i-alfred-userstories.md",
+    "archetype": "crud-saas",
+    "id": "crud-i-alfred-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g19-alfred)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g19: personal assistant / marketplace-for-apps (older adults) user stories"
+  },
+  {
+    "file": "internal-dashboard/dash-a-bi-questions-dashboards.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-a-bi-questions-dashboards",
+    "source_url": "https://github.com/metabase/metabase/tree/master/docs",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Metabase docs: dashboards, filters, subscriptions, actions, collections, models, metrics"
+  },
+  {
+    "file": "internal-dashboard/dash-b-bi-permissions.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-b-bi-permissions",
+    "source_url": "https://github.com/metabase/metabase/tree/master/docs",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Metabase permissions & people/groups docs. Same product as dash-a, distinct subsystem."
+  },
+  {
+    "file": "internal-dashboard/dash-c-query-dashboards.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-c-query-dashboards",
+    "source_url": "https://github.com/getredash/website/tree/master/src/pages/kb/user-guide",
+    "license": "BSD-2-Clause",
+    "retrieved": "2026-08-22",
+    "notes": "Redash user guide: queries, parameters, schedules, dashboards, sharing, alerts, users/groups/permissions, visualizations"
+  },
+  {
+    "file": "internal-dashboard/dash-d-superset.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-d-superset",
+    "source_url": "https://github.com/apache/superset/tree/master/docs/docs/using-superset",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "Superset user docs: dashboards, charts, exploring data, exports, embedding"
+  },
+  {
+    "file": "internal-dashboard/dash-e-internal-tools-builder.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-e-internal-tools-builder",
+    "source_url": "https://github.com/appsmithorg/appsmith-docs/tree/main/website/docs",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "Appsmith internal-tool builder docs: UI, dynamic widgets, actions, access control roles"
+  },
+  {
+    "file": "internal-dashboard/dash-f-lowcode-concepts.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-f-lowcode-concepts",
+    "source_url": "https://github.com/ToolJet/ToolJet/tree/main/docs/docs",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "ToolJet low-code internal tool concepts: components, data sources, queries, events, pages, permissions, sharing"
+  },
+  {
+    "file": "internal-dashboard/dash-g-permit-system-userstories.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-g-permit-system-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g03-loudoun)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g03: county land-development permitting/inspection system user stories (internal staff + applicants)"
+  },
+  {
+    "file": "internal-dashboard/dash-h-mis-userstories.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-h-mis-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g16-mis)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g16: management information system user stories"
+  },
+  {
+    "file": "internal-dashboard/dash-i-nsf-site-userstories.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-i-nsf-site-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g11-nsf)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g11: agency website/content publishing & reporting user stories"
+  },
+  {
+    "file": "internal-dashboard/dash-j-people-management-prd.md",
+    "archetype": "internal-dashboard",
+    "id": "dash-j-people-management-prd",
+    "source_url": "https://github.com/open-compass/DevBench/blob/main/benchmark_data/cpp/people_management/docs/PRD.md",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: people/employee management system (CLI)"
+  },
+  {
+    "file": "community/community-a-forum-admin.md",
+    "archetype": "community",
+    "id": "community-a-forum-admin",
+    "source_url": "https://github.com/flarum/docs/tree/main/docs",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Flarum forum docs: admin dashboard, discussions, tags, extensions, mail"
+  },
+  {
+    "file": "community/community-b-social-user-guide.md",
+    "archetype": "community",
+    "id": "community-b-social-user-guide",
+    "source_url": "https://github.com/mastodon/documentation/tree/main/content/en/user",
+    "license": "GFDL-1.3",
+    "retrieved": "2026-08-22",
+    "notes": "Mastodon user guide: signup, posting, profiles, follows, discoverability, moderation, preferences"
+  },
+  {
+    "file": "community/community-c-link-aggregator.md",
+    "archetype": "community",
+    "id": "community-c-link-aggregator",
+    "source_url": "https://github.com/LemmyNet/lemmy-docs/tree/main/src",
+    "license": "AGPL-3.0",
+    "retrieved": "2026-08-22",
+    "notes": "Lemmy docs: communities, posts, votes, ranking, moderation, federation"
+  },
+  {
+    "file": "community/community-d-team-chat-help.md",
+    "archetype": "community",
+    "id": "community-d-team-chat-help",
+    "source_url": "https://github.com/zulip/zulip/tree/main/starlight_help/src/content/docs",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "Zulip help center: channels, topics, users, permissions, guests, moderation, invites"
+  },
+  {
+    "file": "community/community-f-scrum-membership-userstories.md",
+    "archetype": "community",
+    "id": "community-f-scrum-membership-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g10-scrumalliance)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g10: membership organisation website (profiles, certification, community, events)"
+  },
+  {
+    "file": "community/community-g-event-camp-userstories.md",
+    "archetype": "community",
+    "id": "community-g-event-camp-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g21-badcamp)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g21: community conference website (sessions, sponsors, registration)"
+  },
+  {
+    "file": "community/community-h-citizen-science-userstories.md",
+    "archetype": "community",
+    "id": "community-h-citizen-science-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g28-zooniverse)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g28: citizen-science project-builder community platform"
+  },
+  {
+    "file": "community/community-i-nodebb.md",
+    "archetype": "community",
+    "id": "community-i-nodebb",
+    "source_url": "https://github.com/NodeBB/docs",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "NodeBB forum docs"
+  },
+  {
+    "file": "content-site/content-a-headless-cms.md",
+    "archetype": "content-site",
+    "id": "content-a-headless-cms",
+    "source_url": "https://github.com/payloadcms/payload/tree/main/docs",
+    "license": "MIT",
+    "retrieved": "2026-08-22",
+    "notes": "Payload CMS docs: collections, globals, localization, access control, admin, uploads, versions/drafts, preview"
+  },
+  {
+    "file": "content-site/content-b-static-site-content.md",
+    "archetype": "content-site",
+    "id": "content-b-static-site-content",
+    "source_url": "https://github.com/gohugoio/hugoDocs/tree/master/content/en/content-management",
+    "license": "Apache-2.0 (hugoDocs LICENSE)",
+    "retrieved": "2026-08-22",
+    "notes": "Hugo content management: sections, taxonomies, menus, multilingual, related content, summaries, comments, URLs"
+  },
+  {
+    "file": "content-site/content-c-odoo-website-blog.md",
+    "archetype": "content-site",
+    "id": "content-c-odoo-website-blog",
+    "source_url": "https://github.com/odoo/documentation/tree/19.0/content/applications/websites",
+    "license": "CC-BY-SA-4.0",
+    "retrieved": "2026-08-22",
+    "notes": "Odoo 19 website & blog docs: pages, menus, SEO, multi-website, translations, blog"
+  },
+  {
+    "file": "content-site/content-d-cms-user-docs.md",
+    "archetype": "content-site",
+    "id": "content-d-cms-user-docs",
+    "source_url": "https://github.com/wagtail/wagtail/tree/main/docs",
+    "license": "BSD-3-Clause",
+    "retrieved": "2026-08-22",
+    "notes": "Wagtail CMS docs: pages tree, images, documents, snippets, permissions, privacy, workflow"
+  },
+  {
+    "file": "content-site/content-e-archives-userstories.md",
+    "archetype": "content-site",
+    "id": "content-e-archives-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g23-archivesspace)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g23: archives public-interface user stories (publishing collections to researchers)"
+  },
+  {
+    "file": "content-site/content-f-repository-userstories.md",
+    "archetype": "content-site",
+    "id": "content-f-repository-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g25-duraspace)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g25: digital repository platform user stories (submit, curate, publish content)"
+  },
+  {
+    "file": "content-site/content-g-culrepo-userstories.md",
+    "archetype": "content-site",
+    "id": "content-g-culrepo-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g27-culrepo)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g27: university library repository user stories (deposit, discovery, access)"
+  },
+  {
+    "file": "content-site/content-h-openspending-userstories.md",
+    "archetype": "content-site",
+    "id": "content-h-openspending-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g05-openspending)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g05: open-data publishing/visualisation site user stories"
+  },
+  {
+    "file": "content-site/content-i-federal-spending-userstories.md",
+    "archetype": "content-site",
+    "id": "content-i-federal-spending-userstories",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g02-federalspending)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g02: federal spending transparency site user stories (data publishing, search, API)"
+  },
+  {
+    "file": "other/other-devbench-logistic-system.md",
+    "archetype": "other",
+    "id": "other-devbench-logistic-system",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (logistic_system/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: logistics/shipping management system (CLI)"
+  },
+  {
+    "file": "other/other-devbench-login-registration.md",
+    "archetype": "other",
+    "id": "other-devbench-login-registration",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (login-registration/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: login/registration web app"
+  },
+  {
+    "file": "other/other-devbench-actor-relationship-game.md",
+    "archetype": "other",
+    "id": "other-devbench-actor-relationship-game",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (Actor_relationship_game/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: actor-relationship game"
+  },
+  {
+    "file": "other/other-devbench-hone.md",
+    "archetype": "other",
+    "id": "other-devbench-hone",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (hone/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: CSV-to-JSON conversion tool"
+  },
+  {
+    "file": "other/other-devbench-stocktrends.md",
+    "archetype": "other",
+    "id": "other-devbench-stocktrends",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (stocktrends/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: stock trend analysis library"
+  },
+  {
+    "file": "other/other-devbench-graph-cpp.md",
+    "archetype": "other",
+    "id": "other-devbench-graph-cpp",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (graph-cpp/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: graph library"
+  },
+  {
+    "file": "other/other-devbench-lice.md",
+    "archetype": "other",
+    "id": "other-devbench-lice",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (lice/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: licence generator CLI"
+  },
+  {
+    "file": "other/other-devbench-textcnn.md",
+    "archetype": "other",
+    "id": "other-devbench-textcnn",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (TextCNN/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: text classification model"
+  },
+  {
+    "file": "other/other-devbench-image-similarity.md",
+    "archetype": "other",
+    "id": "other-devbench-image-similarity",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (image-similarity/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: image similarity tool"
+  },
+  {
+    "file": "other/other-devbench-java-heap.md",
+    "archetype": "other",
+    "id": "other-devbench-java-heap",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (java_heap/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: heap data structure"
+  },
+  {
+    "file": "other/other-devbench-redis-cache.md",
+    "archetype": "other",
+    "id": "other-devbench-redis-cache",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (redis-cache/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: redis cache library"
+  },
+  {
+    "file": "other/other-devbench-xlsx2csv.md",
+    "archetype": "other",
+    "id": "other-devbench-xlsx2csv",
+    "source_url": "https://github.com/open-compass/DevBench/tree/main/benchmark_data (xlsx2csv/PRD.md)",
+    "license": "Apache-2.0",
+    "retrieved": "2026-08-22",
+    "notes": "DevBench PRD: xlsx to csv converter"
+  },
+  {
+    "file": "other/other-userstories-g04-recycling.md",
+    "archetype": "other",
+    "id": "other-userstories-g04-recycling",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g04-recycling)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g04-recycling: recycling facility locator app"
+  },
+  {
+    "file": "other/other-userstories-g08-frictionless.md",
+    "archetype": "other",
+    "id": "other-userstories-g08-frictionless",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g08-frictionless)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g08-frictionless: data package tooling"
+  },
+  {
+    "file": "other/other-userstories-g17-cask.md",
+    "archetype": "other",
+    "id": "other-userstories-g17-cask",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g17-cask)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g17-cask: data application platform"
+  },
+  {
+    "file": "other/other-userstories-g18-neurohub.md",
+    "archetype": "other",
+    "id": "other-userstories-g18-neurohub",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g18-neurohub)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g18-neurohub: neuroscience lab data hub"
+  },
+  {
+    "file": "other/other-userstories-g24-unibath.md",
+    "archetype": "other",
+    "id": "other-userstories-g24-unibath",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g24-unibath)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g24-unibath: university research data archive"
+  },
+  {
+    "file": "other/other-userstories-g26-racdam.md",
+    "archetype": "other",
+    "id": "other-userstories-g26-racdam",
+    "source_url": "https://data.mendeley.com/datasets/7zbk8zsd8y/1 (g26-racdam)",
+    "license": "CC BY 4.0 (Mendeley Data, Dalpiaz 2018)",
+    "retrieved": "2026-08-22",
+    "notes": "Dalpiaz g26-racdam: research data access/management"
+  },
+  {
+    "file": "e-commerce/pure-0000-gamma-j.md",
+    "archetype": "e-commerce",
+    "id": "pure-0000-gamma-j",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for a small-business web store (catalog, cart, checkout, accounts, admin)"
+  },
+  {
+    "file": "portfolio-landing/pure-2007-get-real-0.2.md",
+    "archetype": "portfolio-landing",
+    "id": "pure-2007-get-real-0.2",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for a promotional/outreach website (content pages, navigation, contact, updates)"
+  },
+  {
+    "file": "internal-dashboard/pure-0000-cctns.md",
+    "archetype": "internal-dashboard",
+    "id": "pure-0000-cctns",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: functional requirements for a crime & criminal tracking system (case registration, search, reports)"
+  },
+  {
+    "file": "internal-dashboard/pure-2005-microcare.md",
+    "archetype": "internal-dashboard",
+    "id": "pure-2005-microcare",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for a voucher maintenance/management system (data entry, masters, reports)"
+  },
+  {
+    "file": "internal-dashboard/pure-2005-phin.md",
+    "archetype": "internal-dashboard",
+    "id": "pure-2005-phin",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: outbreak management functional requirements (case/contact management, reporting)"
+  },
+  {
+    "file": "internal-dashboard/pure-2010-blitdraft.md",
+    "archetype": "internal-dashboard",
+    "id": "pure-2010-blitdraft",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: laboratory information system rewrite requirements"
+  },
+  {
+    "file": "other/pure-2009-peppol-approved.md",
+    "archetype": "other",
+    "id": "pure-2009-peppol-approved",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: pan-European e-procurement (virtual company dossier) requirements"
+  },
+  {
+    "file": "other/pure-2008-keepass.md",
+    "archetype": "other",
+    "id": "pure-2008-keepass",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for a password manager"
+  },
+  {
+    "file": "other/pure-2009-video-search.md",
+    "archetype": "other",
+    "id": "pure-2009-video-search",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for a video search engine"
+  },
+  {
+    "file": "other/pure-2003-qheadache.md",
+    "archetype": "other",
+    "id": "pure-2003-qheadache",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for a puzzle game"
+  },
+  {
+    "file": "other/pure-2008-peering.md",
+    "archetype": "other",
+    "id": "pure-2008-peering",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for CDN peering infrastructure"
+  },
+  {
+    "file": "other/pure-1998-themas.md",
+    "archetype": "other",
+    "id": "pure-1998-themas",
+    "source_url": "https://zenodo.org/records/1414117 (requirements-xml.zip)",
+    "license": "CC BY 4.0 (Zenodo record 1414117, PURE dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PURE: SRS for an HVAC energy management system"
+  },
+  {
+    "file": "booking/promise-project03.md",
+    "archetype": "booking",
+    "id": "promise-project03",
+    "source_url": "https://zenodo.org/records/268542 (nfr.arff, grouped by project id)",
+    "license": "CC BY 4.0 (Zenodo record 268542, PROMISE NFR dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PROMISE project 3: nursing-program class/clinical scheduling system (requirement sentences labelled FR/NFR, grouped by project)"
+  },
+  {
+    "file": "internal-dashboard/promise-project04.md",
+    "archetype": "internal-dashboard",
+    "id": "promise-project04",
+    "source_url": "https://zenodo.org/records/268542 (nfr.arff, grouped by project id)",
+    "license": "CC BY 4.0 (Zenodo record 268542, PROMISE NFR dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PROMISE project 4: disputes case-management application (requirement sentences labelled FR/NFR, grouped by project)"
+  },
+  {
+    "file": "other/promise-project05.md",
+    "archetype": "other",
+    "id": "promise-project05",
+    "source_url": "https://zenodo.org/records/268542 (nfr.arff, grouped by project id)",
+    "license": "CC BY 4.0 (Zenodo record 268542, PROMISE NFR dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PROMISE project 5: insurance estimate / recycled parts lookup (requirement sentences labelled FR/NFR, grouped by project)"
+  },
+  {
+    "file": "other/promise-project06.md",
+    "archetype": "other",
+    "id": "promise-project06",
+    "source_url": "https://zenodo.org/records/268542 (nfr.arff, grouped by project id)",
+    "license": "CC BY 4.0 (Zenodo record 268542, PROMISE NFR dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PROMISE project 6: database-backed server product (requirement sentences labelled FR/NFR, grouped by project)"
+  },
+  {
+    "file": "e-commerce/promise-project08.md",
+    "archetype": "e-commerce",
+    "id": "promise-project08",
+    "source_url": "https://zenodo.org/records/268542 (nfr.arff, grouped by project id)",
+    "license": "CC BY 4.0 (Zenodo record 268542, PROMISE NFR dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PROMISE project 8: movie streaming store with prepaid cards (requirement sentences labelled FR/NFR, grouped by project)"
+  },
+  {
+    "file": "other/promise-project10.md",
+    "archetype": "other",
+    "id": "promise-project10",
+    "source_url": "https://zenodo.org/records/268542 (nfr.arff, grouped by project id)",
+    "license": "CC BY 4.0 (Zenodo record 268542, PROMISE NFR dataset)",
+    "retrieved": "2026-08-22",
+    "notes": "PROMISE project 10: battleship game (requirement sentences labelled FR/NFR, grouped by project)"
+  }
+]

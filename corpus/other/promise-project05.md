@@ -1,0 +1,73 @@
+- (O) The product must support Internet Explorer 5.5 and above.
+- (O) The product must support Mozilla Firefox 1.0 and above.
+- (O) The product shall interface with the Choice Parts System.  This provides the feed of recycled parts data.
+- (O) The product shall run on the existing hardware for all environments.
+- (O) The product shall adhere to the corporate Architecture guidelines
+- (LF) The product shall comply with corporate User Interface Guidelines
+- (LF) The product shall comply with corporate color scheme
+- (LF) The appearance of the product shall appear professional
+- (US) The product shall be easy to use by Adjusters and Collision Estimators.  95% of Adjusters and Collision Estimators shall find the product easy to use.
+- (US) The product shall increase productivity of Collision Estimators. 80% of the Collision Estimators shall agree their productivity has increase within 1 month of using the product.
+- (US) Users shall feel satisfied using the product.  85% of all users will be satisfied with the product.
+- (US) The product shall be easy to learn by Adjusters and Collision Estimators.  The product shall be learned with two days onsite training
+- (US) The user shall easily locate instructions while using the product.  User help can be found within 90% of the system.
+- (PE) The search for recycled parts shall take no longer than 15 seconds.  The search results shall be returned in under 15 seconds.
+- (PE) The search for the preferred repair facility shall take no longer than 8 seconds.  The preferred repair facility is returned within 8 seconds
+- (PE) The recycled parts audit report shall be returned to the user within 10 seconds.  The audit report shall be returned within 10 seconds.
+- (PE) The preferred repair facility ratings shall be saved within 5 seconds. The save shall occur within 5 seconds.
+- (A) The product shall adhere to the corporate online availability schedule.  The application is brought down only within 98% of the scheduled outages per the availability schedule.
+- (A) The product shall achieve a 98% uptime. The product shall not fail more than 2% of the available online time.
+- (SC) The product shall be able to handle up to 1500 simultaneous users. The system shall perform with 1500 users as a time.
+- (SC)  The average number of recycled parts records per day shall be 50 000.
+- (SC)  The product shall be able to handle 10 000 concurrent users within 2 years of the initial launch.
+- (O)  For estimators  the product shall be able to be operated in a repair facility during dirty and noisy conditions.
+- (O) The product shall interface with the ChoiceParts system once per day at approximately 1:00 AM.
+- (O) The maintenance of the product will fall within the established corporate maintenance windows.
+- (O) The product shall be supported using the corporate support center.
+- (O) Product installations and upgrades shall be handled by the middleware technology team within established launch time frames.
+- (SE) Only adjusters can request recycled parts audit reports. No users without an adjuster role shall request recycled parts audits.
+- (SE) Only adjusters with a supervisor role can update preferred repair facility ratings. Users without the supervisor role cannot access the repair facility ratings.
+- (SE) Only collision estimators shall search for recycled parts.  Users without the collision estimator role shall not have access to the search for recycled parts.
+- (SE) Only valid data shall be entered into the system.  No invalid data shall be entered into the system.
+- (SE) One insurance company shall not be able to view another insurance companys claim data.
+- (SE) The product shall free of computer viruses.
+- (SE) The system shall prevent malicious attacks including denial of service.
+- (L) The product must comply with Sarbanes-Oxley.
+- (L) The product shall comply with the estimatics laws relating to recycled parts usage.
+- (L) The product shall comply with insurance regulations regarding claims processing.
+- (F)  The user shall search for the preferred repair facility using vehicle  vehicle location  and radius in miles
+- (F)  The vehicle data shall include vehicle year  make  and model
+- (F)  The vehicle location shall include street address  city  state  and zipcode
+- (F)  The system shall resolve the zipcode for the street address  city  and state if zipcode is unknown.
+- (F) The search radius shall be between 1 and 30 miles
+- (F) The system shall locate the preferred repair facility with the highest ratings for the input criteria
+- (F) The adjuster shall enter the preferred repair facility on the estimate assignment.
+- (F) The adjuster shall be able to override the preferred repair facitlity on the estimate assignment.
+- (F) The preferred repair facility shall be returned to the user.
+- (F) The system shall return a list of repair facilities within the radius if the preferred repair facility cannot be determined.
+- (F) The estimator shall search for available recycled parts using damaged vehicle parts information.
+- (F) The estimator shall search for available recycled parts using a list of preferred parts suppliers.
+- (F) The system shall search for available recycled parts for the supplied vehicle parts and suppliers.
+- (F) The estimator shall search by zipcode with a radius of 30 miles if no parts are found for the preferred parts suppliers
+- (F) The system shall retain the available recycled parts and suppliers returned from the search.
+- (F) The available recycled parts information and their suppliers shall be returned to the user.
+- (F) The estimator shall apply selected recycled parts to the collision estimate.
+- (F) The estimator shall not apply recycled parts to the collision estimate if no available parts are returned.
+- (F) The adjuster shall review the collision estimate.
+- (F) The adjuster shall request a recycled parts audit of the collision estimate.
+- (F) The recycled parts search results provided to the estimator shall be retrieved by the system.
+- (F) The system shall generate an audit report based on the available recycled parts and the collision estimate.
+- (F) The audit report shall include the total number of recycled parts used in the estimate.
+- (F) The audit report shall include the number of available recycled parts from the original search results.
+- (F)  The audit report shall include the percentage of available recycled parts used in the estimate
+- (F) The audit report shall include the total score of the audit which sums the indivual line items.
+- (F) The audit report shall be displayed to the user.
+- (F) The audit report shall be available to other adjusters at later points in time.
+- (F) The user shall select to view the preferred repair facility ratings.
+- (F) The current repair facility ratings shall be displayed to the user.
+- (F) The system will display a blank set of ratings if there are not ratings yet defined.
+- (F) The user shall enter new ratings based on the audit report
+- (F) The ratings shall be from a scale of 1-10
+- (F) The ratings shall include categories for attempted use of recycled parts and actual use of recycled parts
+- (F) The user shall select to save the preferred repair facility ratings.
+- (F) The preferred repair facility ratings shall be saved by the system.

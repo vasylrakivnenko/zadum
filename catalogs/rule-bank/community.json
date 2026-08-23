@@ -1,0 +1,133 @@
+{
+  "archetype": "community",
+  "version": "2026.08.23-1",
+  "source_docs": 8,
+  "patterns": [
+    {
+      "id": "community_1",
+      "pattern": "Access to administrator and moderation dashboards or tools is restricted to users with designated elevated roles.",
+      "kind": "access",
+      "frequency_estimate": 5,
+      "example_phrasing": "Only admins can view or use administrative dashboards and tools."
+    },
+    {
+      "id": "community_2",
+      "pattern": "User roles and permissions are configurable by administrators, determining feature and content access.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Admins can set user roles and permissions for different actions or content."
+    },
+    {
+      "id": "community_3",
+      "pattern": "Private or restricted channels and content must be explicitly subscribed to or permitted for user access; guests need explicit subscription.",
+      "kind": "access",
+      "frequency_estimate": 4,
+      "example_phrasing": "Guest users must subscribe to private channels to access them."
+    },
+    {
+      "id": "community_4",
+      "pattern": "Account and username deletion or changes are irreversible and usernames remain reserved.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Deleted accounts cannot be restored and their usernames stay unusable."
+    },
+    {
+      "id": "community_5",
+      "pattern": "User registration can require valid email and/or manual approval based on administrator settings.",
+      "kind": "state",
+      "frequency_estimate": 3,
+      "example_phrasing": "Admins may require email verification or approval for new registrations."
+    },
+    {
+      "id": "community_6",
+      "pattern": "Content visibility settings (e.g., NSFW, public/members-only) are user-configurable or set by editors/admins.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Users can configure visibility of sensitive content in their feed."
+    },
+    {
+      "id": "community_7",
+      "pattern": "Administrative users can configure or restrict certain actions (e.g., channel creation, invites, plugin settings, moderation actions).",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Admins can decide who may create channels or invite others."
+    },
+    {
+      "id": "community_8",
+      "pattern": "Moderators or admins have authority to ban, mute or deactivate abusive, spam, or troll users.",
+      "kind": "access",
+      "frequency_estimate": 3,
+      "example_phrasing": "Moderators can ban users who violate community rules."
+    },
+    {
+      "id": "community_9",
+      "pattern": "Federation features: users can follow communities or content across federated instances.",
+      "kind": "scope",
+      "frequency_estimate": 3,
+      "example_phrasing": "Users can follow and subscribe to posts from other federated communities."
+    },
+    {
+      "id": "community_10",
+      "pattern": "Action limits and anti-abuse mechanisms (e.g., limiting registrations per day, filtering duplicate inputs) prevent spam and abuse.",
+      "kind": "integrity",
+      "frequency_estimate": 3,
+      "example_phrasing": "Users can only register once per day to prevent abuse."
+    },
+    {
+      "id": "community_11",
+      "pattern": "Sensitive administrative panels (e.g., ACP) must be protected from unauthorized access.",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "The admin control panel should only be visible to authorized admins."
+    },
+    {
+      "id": "community_12",
+      "pattern": "State changes or deletions in system components (e.g., plugin disabling, extension removal, account moves) may be irreversible, often requiring caution or explicit confirmation.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Removing extensions or disabling plugins is irreversible and requires explicit confirmation."
+    },
+    {
+      "id": "community_13",
+      "pattern": "Scheduling and job posting features can expire or require reactivation after a set period (e.g., job ads expire after 30 days).",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "Job postings expire after 30 days unless extended."
+    },
+    {
+      "id": "community_14",
+      "pattern": "Content moderation tools filter spam, inappropriate content (e.g., nudity, copyright infringement), and automate premoderation.",
+      "kind": "access",
+      "frequency_estimate": 2,
+      "example_phrasing": "Admins can automatically filter offensive or abusive content."
+    },
+    {
+      "id": "community_15",
+      "pattern": "Profile, session, and account transitions transfer limited information; some data types are excluded from moves.",
+      "kind": "state",
+      "frequency_estimate": 2,
+      "example_phrasing": "When an account is moved, only followers transfer; posts and bookmarks do not."
+    },
+    {
+      "id": "community_16",
+      "pattern": "Key configuration dependencies: certain features (e.g., registration, notification) only work if required configurations (e.g., email) are valid.",
+      "kind": "integrity",
+      "frequency_estimate": 2,
+      "example_phrasing": "User registration requires valid email configuration."
+    },
+    {
+      "id": "community_17",
+      "pattern": "Content recommendation and notifications are personalized based on user profiles and activity.",
+      "kind": "other",
+      "frequency_estimate": 2,
+      "example_phrasing": "Recommended content is tailored to each user’s profile and news events."
+    },
+    {
+      "id": "community_18",
+      "pattern": "All user-generated changes (e.g., content, documentation edits) are encouraged via an open contribution model (pull requests).",
+      "kind": "other",
+      "frequency_estimate": 1,
+      "example_phrasing": "All edits to documentation are welcome and should be submitted via pull request."
+    }
+  ]
+}

@@ -1,0 +1,338 @@
+{
+  "id": "core",
+  "version": "2026.08.22-1",
+  "archetype": "core",
+  "description": "Generic decisions that exist for almost any app. Consequence 0-5 = blast radius if defaulted wrong. Priors are v1 hand-set and will be replaced by learned population priors.",
+  "nodes": [
+    {
+      "id": "user_accounts",
+      "topic": "who logs in",
+      "question": "Who needs an account to use the app?",
+      "options": [
+        { "id": "none", "label": "Nobody logs in — one person uses it on their own device", "implies": [
+          { "node": "roles", "option": "single" }, { "node": "invite_flow", "option": "none" },
+          { "node": "identity_provider", "option": "none" }, { "node": "concurrency", "option": "last_write_wins" } ] },
+        { "id": "single_user", "label": "Exactly one person logs in (the owner)", "implies": [
+          { "node": "roles", "option": "single" }, { "node": "invite_flow", "option": "none" }, { "node": "concurrency", "option": "last_write_wins" } ] },
+        { "id": "multi_user", "label": "Several people log in, possibly with different powers" }
+      ],
+      "consequence": 5, "sections": ["actors_permissions", "data_model", "journeys"],
+      "prior": { "none": 0.1, "single_user": 0.25, "multi_user": 0.65 }, "tags": ["auth"]
+    },
+    {
+      "id": "roles",
+      "topic": "who can do what",
+      "question": "Do different people have different powers?",
+      "options": [
+        { "id": "single", "label": "Everyone who logs in can do everything" },
+        { "id": "owner_staff", "label": "An owner/admin plus staff with fewer powers" },
+        { "id": "custom", "label": "Admins define their own roles and permissions", "implies": [ { "node": "user_accounts", "option": "multi_user" } ] }
+      ],
+      "consequence": 4, "sections": ["actors_permissions"],
+      "prior": { "single": 0.35, "owner_staff": 0.5, "custom": 0.15 }, "tags": ["auth"]
+    },
+    {
+      "id": "external_access",
+      "topic": "outside parties",
+      "question": "Do outside parties (customers, clients, vendors) use the app directly?",
+      "options": [
+        { "id": "none", "label": "No — outsiders only receive emails/PDFs/messages", "implies": [ { "node": "client_portal_scope", "option": "none" } ] },
+        { "id": "secure_link", "label": "They open a secure link (no account needed)" },
+        { "id": "portal", "label": "They have their own accounts and log in", "implies": [ { "node": "user_accounts", "option": "multi_user" } ] }
+      ],
+      "consequence": 5, "sections": ["actors_permissions", "journeys", "rules"],
+      "prior": { "none": 0.3, "secure_link": 0.35, "portal": 0.35 }, "tags": ["auth", "tenancy"]
+    },
+    {
+      "id": "tenancy",
+      "topic": "one business or many",
+      "question": "Is this for one business, or will many separate businesses use it with their data kept apart?",
+      "options": [
+        { "id": "single_org", "label": "One business (ours)" },
+        { "id": "multi_org", "label": "Many separate businesses, each seeing only its own data", "implies": [ { "node": "user_accounts", "option": "multi_user" } ] }
+      ],
+      "consequence": 5, "sections": ["data_model", "rules", "actors_permissions"],
+      "prior": { "single_org": 0.4, "multi_org": 0.6 }, "tags": ["tenancy"]
+    },
+    {
+      "id": "invite_flow",
+      "topic": "adding people",
+      "question": "How do additional people get access?",
+      "options": [
+        { "id": "none", "label": "No additional people" },
+        { "id": "invite_by_admin", "label": "An admin invites them", "implies": [ { "node": "user_accounts", "option": "multi_user" } ] },
+        { "id": "self_signup", "label": "Anyone can sign up themselves", "implies": [ { "node": "user_accounts", "option": "multi_user" } ] }
+      ],
+      "consequence": 3, "sections": ["journeys", "actors_permissions"],
+      "prior": { "none": 0.2, "invite_by_admin": 0.5, "self_signup": 0.3 }, "tags": ["auth"]
+    },
+    {
+      "id": "identity_provider",
+      "topic": "signing in",
+      "question": "How do people sign in?",
+      "options": [
+        { "id": "none", "label": "No sign-in" },
+        { "id": "email_password", "label": "Email + password" },
+        { "id": "magic_link", "label": "Email link, no password" },
+        { "id": "google_microsoft", "label": "Google/Microsoft sign-in" },
+        { "id": "enterprise_sso", "label": "Company single sign-on (SAML/OIDC)" }
+      ],
+      "consequence": 2, "sections": ["actors_permissions"],
+      "prior": { "none": 0.05, "email_password": 0.4, "magic_link": 0.2, "google_microsoft": 0.3, "enterprise_sso": 0.05 }, "tags": ["auth"]
+    },
+    {
+      "id": "concurrency",
+      "topic": "simultaneous edits",
+      "question": "What happens when two people edit the same thing at once?",
+      "options": [
+        { "id": "last_write_wins", "label": "Rare; the last save wins" },
+        { "id": "guarded", "label": "Common; the app must prevent or merge conflicting edits" }
+      ],
+      "consequence": 2, "sections": ["rules", "state_machines"],
+      "prior": { "last_write_wins": 0.75, "guarded": 0.25 }, "tags": []
+    },
+    {
+      "id": "audit_trail",
+      "topic": "history",
+      "question": "Do you need a record of who changed what and when?",
+      "options": [
+        { "id": "none", "label": "No" },
+        { "id": "basic", "label": "Just created/updated by whom and when" },
+        { "id": "full", "label": "A full, viewable history of every change" }
+      ],
+      "consequence": 3, "sections": ["data_model", "rules"],
+      "prior": { "none": 0.3, "basic": 0.5, "full": 0.2 }, "tags": []
+    },
+    {
+      "id": "notifications",
+      "topic": "reaching people",
+      "question": "How does the app reach people when something happens?",
+      "options": [
+        { "id": "none", "label": "It doesn't — people check the app" },
+        { "id": "email", "label": "Email" },
+        { "id": "email_sms", "label": "Email and SMS" },
+        { "id": "in_app", "label": "Only inside the app (bell/inbox)" }
+      ],
+      "consequence": 3, "sections": ["journeys", "data_model"],
+      "prior": { "none": 0.15, "email": 0.55, "email_sms": 0.1, "in_app": 0.2 }, "tags": []
+    },
+    {
+      "id": "offline",
+      "topic": "connectivity",
+      "question": "Must it work without internet?",
+      "options": [
+        { "id": "online_only", "label": "Online only" },
+        { "id": "offline_tolerant", "label": "Keeps working offline and syncs later" }
+      ],
+      "consequence": 4, "sections": ["data_model", "rules", "journeys"],
+      "prior": { "online_only": 0.85, "offline_tolerant": 0.15 }, "tags": []
+    },
+    {
+      "id": "platform",
+      "topic": "where it runs",
+      "question": "Where is it used?",
+      "options": [
+        { "id": "web", "label": "In a browser, on desktop and phone" },
+        { "id": "web_mobile_first", "label": "In a browser, mostly on phones" },
+        { "id": "native_mobile", "label": "As an installed phone app" },
+        { "id": "desktop_app", "label": "As an installed desktop app" }
+      ],
+      "consequence": 4, "sections": ["overview", "journeys"],
+      "prior": { "web": 0.6, "web_mobile_first": 0.2, "native_mobile": 0.12, "desktop_app": 0.08 }, "tags": []
+    },
+    {
+      "id": "data_import",
+      "topic": "starting data",
+      "question": "Do you start with existing data?",
+      "options": [
+        { "id": "fresh_start", "label": "Start empty" },
+        { "id": "import_spreadsheet", "label": "Import from a spreadsheet/CSV once" },
+        { "id": "migrate_from_tool", "label": "Migrate from another tool" }
+      ],
+      "consequence": 3, "sections": ["journeys", "data_model"],
+      "prior": { "fresh_start": 0.4, "import_spreadsheet": 0.45, "migrate_from_tool": 0.15 }, "tags": []
+    },
+    {
+      "id": "data_export",
+      "topic": "getting data out",
+      "question": "Do people need to get their data out?",
+      "options": [
+        { "id": "none", "label": "No" },
+        { "id": "csv_export", "label": "Download lists as CSV/Excel" },
+        { "id": "full_export_api", "label": "Full export and/or an API" }
+      ],
+      "consequence": 2, "sections": ["journeys"],
+      "prior": { "none": 0.2, "csv_export": 0.6, "full_export_api": 0.2 }, "tags": []
+    },
+    {
+      "id": "deletion",
+      "topic": "deleting",
+      "question": "When something is deleted, what really happens?",
+      "options": [
+        { "id": "hard_delete", "label": "It's gone" },
+        { "id": "soft_delete", "label": "It's archived and can be restored" },
+        { "id": "never_delete", "label": "Records are never deleted, only voided/cancelled" }
+      ],
+      "consequence": 3, "sections": ["rules", "state_machines", "data_model"],
+      "prior": { "hard_delete": 0.2, "soft_delete": 0.55, "never_delete": 0.25 }, "tags": []
+    },
+    {
+      "id": "data_scale",
+      "topic": "volume",
+      "question": "How much data will there be?",
+      "options": [
+        { "id": "small", "label": "Hundreds of records" },
+        { "id": "medium", "label": "Tens of thousands" },
+        { "id": "large", "label": "Millions" }
+      ],
+      "consequence": 3, "sections": ["overview", "data_model"],
+      "prior": { "small": 0.4, "medium": 0.45, "large": 0.15 }, "tags": []
+    },
+    {
+      "id": "integrations",
+      "topic": "other tools",
+      "question": "Does it need to connect to other tools?",
+      "options": [
+        { "id": "none", "label": "No" },
+        { "id": "a_few_key", "label": "A few key ones (e.g., accounting, payments, calendar)" },
+        { "id": "many_via_api", "label": "Many — it needs a public API / webhooks" }
+      ],
+      "consequence": 4, "sections": ["overview", "journeys"],
+      "prior": { "none": 0.3, "a_few_key": 0.5, "many_via_api": 0.2 }, "tags": []
+    },
+    {
+      "id": "payments_in_app",
+      "topic": "money",
+      "question": "Does money move through the app?",
+      "options": [
+        { "id": "none", "label": "No payments involved" },
+        { "id": "record_only", "label": "It records payments that happen elsewhere" },
+        { "id": "collect_online", "label": "It collects card/bank payments via a provider" },
+        { "id": "payouts_too", "label": "It collects payments and pays out to others (marketplace-style)" }
+      ],
+      "consequence": 5, "sections": ["data_model", "rules", "journeys", "state_machines"],
+      "prior": { "none": 0.3, "record_only": 0.3, "collect_online": 0.3, "payouts_too": 0.1 }, "tags": ["payments"]
+    },
+    {
+      "id": "localization",
+      "topic": "languages & regions",
+      "question": "Languages and regions?",
+      "options": [
+        { "id": "single_locale", "label": "One language, one country" },
+        { "id": "multi_language", "label": "Several languages" },
+        { "id": "multi_region", "label": "Several countries (taxes, formats, currencies)" }
+      ],
+      "consequence": 3, "sections": ["overview", "data_model"],
+      "prior": { "single_locale": 0.65, "multi_language": 0.2, "multi_region": 0.15 }, "tags": []
+    },
+    {
+      "id": "attachments",
+      "topic": "files",
+      "question": "Can files/photos be attached to things?",
+      "options": [
+        { "id": "none", "label": "No" },
+        { "id": "basic", "label": "Yes — upload and download" },
+        { "id": "rich", "label": "Yes — with previews, versions, and sharing" }
+      ],
+      "consequence": 2, "sections": ["data_model"],
+      "prior": { "none": 0.35, "basic": 0.5, "rich": 0.15 }, "tags": []
+    },
+    {
+      "id": "approval_workflow",
+      "topic": "sign-off",
+      "question": "Do some actions need someone else's approval first?",
+      "options": [
+        { "id": "none", "label": "No" },
+        { "id": "single_approver", "label": "One approver" },
+        { "id": "multi_step", "label": "Multi-step approval chains" }
+      ],
+      "consequence": 4, "sections": ["state_machines", "actors_permissions", "rules"],
+      "prior": { "none": 0.55, "single_approver": 0.3, "multi_step": 0.15 }, "tags": []
+    },
+    {
+      "id": "recurring_scheduled",
+      "topic": "automation",
+      "question": "Must anything happen automatically on a schedule?",
+      "options": [
+        { "id": "none", "label": "No" },
+        { "id": "reminders_only", "label": "Only reminders/notifications" },
+        { "id": "recurring_records", "label": "Records get created automatically (recurring invoices, appointments, reports)" }
+      ],
+      "consequence": 3, "sections": ["journeys", "state_machines"],
+      "prior": { "none": 0.35, "reminders_only": 0.35, "recurring_records": 0.3 }, "tags": []
+    },
+    {
+      "id": "public_facing",
+      "topic": "public pages",
+      "question": "Is any part visible to the public without logging in?",
+      "options": [
+        { "id": "none", "label": "No" },
+        { "id": "public_pages", "label": "Yes — marketing/landing pages only" },
+        { "id": "public_content", "label": "Yes — content people create is public" }
+      ],
+      "consequence": 3, "sections": ["actors_permissions", "journeys"],
+      "prior": { "none": 0.5, "public_pages": 0.35, "public_content": 0.15 }, "tags": []
+    },
+    {
+      "id": "compliance_sensitivity",
+      "topic": "sensitive data",
+      "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+      "options": [
+        { "id": "ordinary", "label": "Ordinary business data" },
+        { "id": "personal_sensitive", "label": "Personal data needing consent/retention care (GDPR-like)" },
+        { "id": "regulated", "label": "Regulated data (health, cards, finance)" }
+      ],
+      "consequence": 4, "sections": ["rules", "overview"],
+      "prior": { "ordinary": 0.6, "personal_sensitive": 0.3, "regulated": 0.1 }, "tags": []
+    },
+    {
+      "id": "retention",
+      "topic": "keeping data",
+      "question": "How long is data kept?",
+      "options": [
+        { "id": "forever", "label": "Until someone deletes it" },
+        { "id": "policy_based", "label": "Auto-removed after a set period" },
+        { "id": "user_controlled", "label": "Each business sets its own policy" }
+      ],
+      "consequence": 2, "sections": ["rules"],
+      "prior": { "forever": 0.6, "policy_based": 0.25, "user_controlled": 0.15 }, "tags": []
+    },
+    {
+      "id": "customization",
+      "topic": "per-business customization",
+      "question": "Can each business customize the app?",
+      "options": [
+        { "id": "fixed", "label": "No — everyone gets the same thing" },
+        { "id": "branding_templates", "label": "Branding and templates (logo, colors, wording)" },
+        { "id": "custom_fields", "label": "Custom fields and workflows" }
+      ],
+      "consequence": 3, "sections": ["data_model", "journeys"],
+      "prior": { "fixed": 0.4, "branding_templates": 0.4, "custom_fields": 0.2 }, "tags": []
+    },
+    {
+      "id": "reporting",
+      "topic": "overviews",
+      "question": "What do people need to see across many records?",
+      "options": [
+        { "id": "lists_only", "label": "Sortable, filterable lists" },
+        { "id": "basic_dashboard", "label": "A dashboard with totals and counts" },
+        { "id": "custom_reports", "label": "Custom reports people build themselves" }
+      ],
+      "consequence": 3, "sections": ["journeys"],
+      "prior": { "lists_only": 0.25, "basic_dashboard": 0.55, "custom_reports": 0.2 }, "tags": []
+    },
+    {
+      "id": "client_portal_scope",
+      "topic": "outside parties",
+      "question": "What can outside parties do when they access the app?",
+      "options": [
+        { "id": "none", "label": "They don't access it" },
+        { "id": "view_act", "label": "View what's theirs and act on it (pay, approve, book)" },
+        { "id": "view_history", "label": "View everything that's theirs, including history" },
+        { "id": "self_service", "label": "Full self-service: edit their details, create requests, message" }
+      ],
+      "consequence": 3, "sections": ["actors_permissions", "journeys"],
+      "prior": { "none": 0.3, "view_act": 0.3, "view_history": 0.25, "self_service": 0.15 }, "tags": ["auth"]
+    }
+  ]
+}

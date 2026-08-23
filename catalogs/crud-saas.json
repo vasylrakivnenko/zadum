@@ -1,0 +1,541 @@
+{
+  "id": "crud-saas",
+  "version": "2026.08.23-1",
+  "archetype": "crud-saas",
+  "description": "Generic 'keep track of things with a team' apps (CRM-lite, project/task trackers, asset and client registers). Priors skew toward small teams sharing one workspace.",
+  "nodes": [
+    {
+      "id": "workspace_structure",
+      "topic": "how things are grouped",
+      "question": "Are records grouped into separate projects/workspaces, or is it one shared pool?",
+      "options": [
+        {
+          "id": "single_pool",
+          "label": "One shared pool — everything lives in one place with filters"
+        },
+        {
+          "id": "projects_with_members",
+          "label": "Separate projects/workspaces, each with its own members",
+          "implies": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "actors_permissions",
+        "overview"
+      ],
+      "prior": {
+        "single_pool": 0.55,
+        "projects_with_members": 0.45
+      },
+      "tags": []
+    },
+    {
+      "id": "record_ownership",
+      "topic": "who sees what",
+      "question": "Who can see a record?",
+      "options": [
+        {
+          "id": "everyone_in_workspace",
+          "label": "Everyone in the team sees everything"
+        },
+        {
+          "id": "owner_plus_shared",
+          "label": "Records are private to their owner unless shared or assigned",
+          "implies": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        {
+          "id": "team_scoped",
+          "label": "Visible within the owner's team/department; admins see all",
+          "implies": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "actors_permissions",
+        "rules_invariants",
+        "data_model"
+      ],
+      "prior": {
+        "everyone_in_workspace": 0.55,
+        "owner_plus_shared": 0.3,
+        "team_scoped": 0.15
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "record_edit_rights",
+      "topic": "who can do what",
+      "question": "Who can change a record?",
+      "options": [
+        {
+          "id": "anyone_who_sees",
+          "label": "Anyone who can see it can edit it"
+        },
+        {
+          "id": "owner_assignee_admin",
+          "label": "Only its owner/assignee and admins; others just view"
+        },
+        {
+          "id": "per_record_roles",
+          "label": "Set per record: view / comment / edit"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "actors_permissions",
+        "rules_invariants"
+      ],
+      "prior": {
+        "anyone_who_sees": 0.5,
+        "owner_assignee_admin": 0.35,
+        "per_record_roles": 0.15
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "record_custom_fields",
+      "topic": "fields",
+      "question": "Are the fields on a record fixed, or can admins add their own?",
+      "options": [
+        {
+          "id": "fixed_fields",
+          "label": "Fixed — the same fields for everyone"
+        },
+        {
+          "id": "admin_custom_fields",
+          "label": "Admins add custom fields (text, number, date, dropdown) to each record type",
+          "implies": [
+            {
+              "node": "customization",
+              "option": "custom_fields"
+            }
+          ]
+        },
+        {
+          "id": "custom_record_types",
+          "label": "Admins define whole new record types with their own fields",
+          "implies": [
+            {
+              "node": "customization",
+              "option": "custom_fields"
+            }
+          ]
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "data_model",
+        "rules_invariants"
+      ],
+      "prior": {
+        "fixed_fields": 0.45,
+        "admin_custom_fields": 0.4,
+        "custom_record_types": 0.15
+      },
+      "tags": []
+    },
+    {
+      "id": "record_pipeline",
+      "topic": "stages",
+      "question": "Do records move through stages?",
+      "options": [
+        {
+          "id": "no_stages",
+          "label": "No — just a status flag (open/closed)"
+        },
+        {
+          "id": "fixed_stages",
+          "label": "Yes — a fixed set of stages (e.g., Lead → Qualified → Won/Lost)"
+        },
+        {
+          "id": "admin_defined_pipelines",
+          "label": "Yes — admins define stages and can have several pipelines",
+          "implies": [
+            {
+              "node": "customization",
+              "option": "custom_fields"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "state_machines",
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "no_stages": 0.25,
+        "fixed_stages": 0.45,
+        "admin_defined_pipelines": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "record_assignment",
+      "topic": "assignments",
+      "question": "Are records assigned to people with deadlines?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No assignments"
+        },
+        {
+          "id": "single_assignee_due",
+          "label": "One assignee and an optional due date",
+          "implies": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        {
+          "id": "multi_assignee_watchers",
+          "label": "Several assignees plus watchers, with due dates and reminders",
+          "implies": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "journeys",
+        "actors_permissions"
+      ],
+      "prior": {
+        "none": 0.2,
+        "single_assignee_due": 0.55,
+        "multi_assignee_watchers": 0.25
+      },
+      "tags": []
+    },
+    {
+      "id": "record_activity_feed",
+      "topic": "collaboration",
+      "question": "Can people discuss a record inside the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — just the fields"
+        },
+        {
+          "id": "comments",
+          "label": "Comments on each record"
+        },
+        {
+          "id": "comments_mentions_activity",
+          "label": "Comments with @mentions plus an automatic activity log of every change",
+          "implies": [
+            {
+              "node": "audit_trail",
+              "option": "full"
+            }
+          ]
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "none": 0.318,
+        "comments": 0.239,
+        "comments_mentions_activity": 0.444
+      },
+      "tags": []
+    },
+    {
+      "id": "record_relationships",
+      "topic": "links between records",
+      "question": "Are records linked to each other?",
+      "options": [
+        {
+          "id": "standalone",
+          "label": "No — each record stands alone"
+        },
+        {
+          "id": "linked_types",
+          "label": "Yes — records of different types reference each other (contact → company → deal)"
+        },
+        {
+          "id": "hierarchy",
+          "label": "Yes — including parent/child trees (projects → tasks → sub-tasks)"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants"
+      ],
+      "prior": {
+        "standalone": 0.25,
+        "linked_types": 0.5,
+        "hierarchy": 0.25
+      },
+      "tags": []
+    },
+    {
+      "id": "record_views",
+      "topic": "views",
+      "question": "How do people look at their records?",
+      "options": [
+        {
+          "id": "list_only",
+          "label": "A sortable, filterable list/table"
+        },
+        {
+          "id": "list_and_board",
+          "label": "List plus a board (cards in columns by stage)"
+        },
+        {
+          "id": "list_board_calendar",
+          "label": "List, board, and calendar/timeline"
+        },
+        {
+          "id": "saved_custom_views",
+          "label": "All of the above, with saved personal and shared views"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys"
+      ],
+      "prior": {
+        "list_only": 0.431,
+        "list_and_board": 0.181,
+        "list_board_calendar": 0.194,
+        "saved_custom_views": 0.194
+      },
+      "tags": []
+    },
+    {
+      "id": "record_automation",
+      "topic": "automation",
+      "question": "Should the app do things on its own when records change?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — people do everything by hand"
+        },
+        {
+          "id": "simple_rules",
+          "label": "Simple rules: when X happens, notify/assign/change stage"
+        },
+        {
+          "id": "multi_step_workflows",
+          "label": "Multi-step workflows with conditions and delays"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "rules_invariants",
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "none": 0.45,
+        "simple_rules": 0.4,
+        "multi_step_workflows": 0.15
+      },
+      "tags": []
+    },
+    {
+      "id": "record_templates",
+      "topic": "templates",
+      "question": "Templates for new records/projects?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — start from blank"
+        },
+        {
+          "id": "templates",
+          "label": "Yes — pre-filled templates (e.g., onboarding checklist, standard project)"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "none": 0.382,
+        "templates": 0.618
+      },
+      "tags": []
+    },
+    {
+      "id": "record_duplicates",
+      "topic": "data quality",
+      "question": "Can two records be the same thing (same email, same serial number)?",
+      "options": [
+        {
+          "id": "allowed",
+          "label": "Allowed — nothing stops duplicates"
+        },
+        {
+          "id": "warn",
+          "label": "The app warns about likely duplicates and offers to merge"
+        },
+        {
+          "id": "unique_key_enforced",
+          "label": "A key field must be unique; duplicates are rejected"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "rules_invariants",
+        "data_model"
+      ],
+      "prior": {
+        "allowed": 0.35,
+        "warn": 0.4,
+        "unique_key_enforced": 0.25
+      },
+      "tags": []
+    },
+    {
+      "id": "record_search",
+      "topic": "finding things",
+      "question": "How do people find a record?",
+      "options": [
+        {
+          "id": "filters_in_lists",
+          "label": "Filter and sort within each list"
+        },
+        {
+          "id": "global_search",
+          "label": "One search box across all record types"
+        },
+        {
+          "id": "full_text_everything",
+          "label": "Search that also looks inside comments and attachments"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "filters_in_lists": 0.3,
+        "global_search": 0.5,
+        "full_text_everything": 0.2
+      },
+      "tags": []
+    },
+    {
+      "id": "record_watchers",
+      "topic": "reaching people",
+      "question": "Who gets told when a record changes?",
+      "options": [
+        {
+          "id": "nobody",
+          "label": "Nobody — people check the app"
+        },
+        {
+          "id": "assignee_and_mentions",
+          "label": "The assignee, and anyone @mentioned"
+        },
+        {
+          "id": "subscribers",
+          "label": "Anyone who follows the record, with per-person preferences"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys",
+        "data_model"
+      ],
+      "prior": {
+        "nobody": 0.25,
+        "assignee_and_mentions": 0.5,
+        "subscribers": 0.25
+      },
+      "tags": []
+    },
+    {
+      "id": "record_bulk_edit",
+      "topic": "bulk actions",
+      "question": "Can people change many records at once?",
+      "options": [
+        {
+          "id": "one_at_a_time",
+          "label": "No — one record at a time"
+        },
+        {
+          "id": "bulk_actions",
+          "label": "Yes — select many and assign/move/tag/delete together"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "journeys",
+        "actors_permissions"
+      ],
+      "prior": {
+        "one_at_a_time": 0.4,
+        "bulk_actions": 0.6
+      },
+      "tags": []
+    },
+    {
+      "id": "record_recurring",
+      "topic": "automation",
+      "question": "Do some records repeat on a schedule (weekly check-in, monthly inspection)?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "recurring_records",
+          "label": "Yes — they are created automatically on a schedule",
+          "implies": [
+            {
+              "node": "recurring_scheduled",
+              "option": "recurring_records"
+            }
+          ]
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "no": 0.6,
+        "recurring_records": 0.4
+      },
+      "tags": []
+    }
+  ]
+}

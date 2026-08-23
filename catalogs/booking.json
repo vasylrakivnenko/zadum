@@ -1,0 +1,751 @@
+{
+  "id": "booking",
+  "version": "2026.08.23-1",
+  "archetype": "booking",
+  "description": "Appointment / reservation apps (salons, clinics, consultants, studios, equipment and space rentals). Priors skew toward small service businesses taking bookings from the public.",
+  "nodes": [
+    {
+      "id": "booking_who_books",
+      "topic": "who books",
+      "question": "Who creates bookings?",
+      "options": [
+        {
+          "id": "staff_only",
+          "label": "Only staff, on behalf of customers (phone, front desk)"
+        },
+        {
+          "id": "customers_no_account",
+          "label": "Customers book themselves online without an account (they get a confirmation link)",
+          "implies": [
+            {
+              "node": "external_access",
+              "option": "secure_link"
+            }
+          ]
+        },
+        {
+          "id": "customers_with_account",
+          "label": "Customers book from their own account and see their history",
+          "implies": [
+            {
+              "node": "external_access",
+              "option": "portal"
+            },
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "overview",
+        "actors_permissions",
+        "journeys"
+      ],
+      "prior": {
+        "staff_only": 0.267,
+        "customers_no_account": 0.525,
+        "customers_with_account": 0.208
+      },
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "id": "booking_resource_model",
+      "topic": "what gets booked",
+      "question": "What is actually being reserved?",
+      "options": [
+        {
+          "id": "staff_time",
+          "label": "A person's time (stylist, doctor, consultant)"
+        },
+        {
+          "id": "asset_or_space",
+          "label": "A room, table, court, or piece of equipment"
+        },
+        {
+          "id": "staff_and_asset",
+          "label": "Both at once — a person and a room/asset must be free"
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "overview"
+      ],
+      "prior": {
+        "staff_time": 0.422,
+        "asset_or_space": 0.39,
+        "staff_and_asset": 0.188
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_service_catalog",
+      "topic": "services",
+      "question": "How are bookable services defined?",
+      "options": [
+        {
+          "id": "single_fixed",
+          "label": "One kind of booking with a fixed length"
+        },
+        {
+          "id": "menu_fixed_durations",
+          "label": "A menu of services, each with its own length and price"
+        },
+        {
+          "id": "menu_with_addons",
+          "label": "A menu plus add-ons/extras that change length and price"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants"
+      ],
+      "prior": {
+        "single_fixed": 0.267,
+        "menu_fixed_durations": 0.575,
+        "menu_with_addons": 0.159
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_availability_rules",
+      "topic": "availability",
+      "question": "Where do open time slots come from?",
+      "options": [
+        {
+          "id": "business_hours",
+          "label": "Fixed business hours for everyone"
+        },
+        {
+          "id": "per_resource_schedule",
+          "label": "Each staff member/resource has its own weekly hours plus days off"
+        },
+        {
+          "id": "external_calendar",
+          "label": "Whatever is free in each person's external calendar",
+          "implies": [
+            {
+              "node": "booking_calendar_sync",
+              "option": "two_way"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "journeys"
+      ],
+      "prior": {
+        "business_hours": 0.383,
+        "per_resource_schedule": 0.508,
+        "external_calendar": 0.108
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_buffers",
+      "topic": "availability",
+      "question": "Is there gap time between appointments?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — back to back"
+        },
+        {
+          "id": "fixed_buffer",
+          "label": "A fixed gap after every booking"
+        },
+        {
+          "id": "per_service_buffer",
+          "label": "Different setup/cleanup time per service"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "rules_invariants"
+      ],
+      "prior": {
+        "none": 0.583,
+        "fixed_buffer": 0.263,
+        "per_service_buffer": 0.154
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_slot_capacity",
+      "topic": "capacity",
+      "question": "How many people can a single slot hold?",
+      "options": [
+        {
+          "id": "one_per_slot",
+          "label": "One booking per slot (1:1 appointments)"
+        },
+        {
+          "id": "group_capacity",
+          "label": "Several people per slot up to a capacity (classes, tours)"
+        },
+        {
+          "id": "both_types",
+          "label": "Some services are 1:1, some are group sessions"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "state_machines"
+      ],
+      "prior": {
+        "one_per_slot": 0.447,
+        "group_capacity": 0.423,
+        "both_types": 0.13
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_recurring",
+      "topic": "automation",
+      "question": "Can a booking repeat (every Tuesday, monthly)?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No — each booking is made separately"
+        },
+        {
+          "id": "series",
+          "label": "Yes — a series is created and can be edited as one or per occurrence",
+          "implies": [
+            {
+              "node": "recurring_scheduled",
+              "option": "recurring_records"
+            }
+          ]
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "no": 0.621,
+        "series": 0.379
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_waitlist",
+      "topic": "full slots",
+      "question": "What happens when the wanted time is full?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nothing — they pick another time"
+        },
+        {
+          "id": "manual_waitlist",
+          "label": "They join a waitlist and staff call them if something opens"
+        },
+        {
+          "id": "auto_offer",
+          "label": "They join a waitlist and get an automatic offer when a slot frees up"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "state_machines",
+        "journeys"
+      ],
+      "prior": {
+        "none": 0.55,
+        "manual_waitlist": 0.25,
+        "auto_offer": 0.2
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_cancellation_policy",
+      "topic": "cancellations",
+      "question": "Who can cancel a booking, and until when?",
+      "options": [
+        {
+          "id": "anytime_free",
+          "label": "Customers cancel any time, no consequence"
+        },
+        {
+          "id": "cutoff_window",
+          "label": "Customers cancel freely until a cut-off (e.g., 24h); after that it counts as late"
+        },
+        {
+          "id": "staff_only_cancel",
+          "label": "Only staff can cancel; customers must contact the business"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "rules_invariants",
+        "state_machines",
+        "actors_permissions"
+      ],
+      "prior": {
+        "anytime_free": 0.25,
+        "cutoff_window": 0.55,
+        "staff_only_cancel": 0.2
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_reschedule",
+      "topic": "changes",
+      "question": "Can customers move a booking themselves?",
+      "options": [
+        {
+          "id": "self_within_window",
+          "label": "Yes — up to the same cut-off as cancellations"
+        },
+        {
+          "id": "self_anytime",
+          "label": "Yes — any time before it starts"
+        },
+        {
+          "id": "contact_staff",
+          "label": "No — they contact the business"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys",
+        "state_machines",
+        "actors_permissions"
+      ],
+      "prior": {
+        "self_within_window": 0.5,
+        "self_anytime": 0.25,
+        "contact_staff": 0.25
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_no_show",
+      "topic": "no-shows",
+      "question": "What happens when someone doesn't turn up?",
+      "options": [
+        {
+          "id": "mark_only",
+          "label": "Staff mark it as a no-show; nothing else"
+        },
+        {
+          "id": "charge_fee",
+          "label": "A no-show fee is charged to the card on file",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        {
+          "id": "track_and_restrict",
+          "label": "No-shows are counted and repeat offenders must prepay or are blocked"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "rules_invariants",
+        "state_machines",
+        "data_model"
+      ],
+      "prior": {
+        "mark_only": 0.5,
+        "charge_fee": 0.25,
+        "track_and_restrict": 0.25
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "booking_prepayment",
+      "topic": "money",
+      "question": "Is money taken when booking?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — free, or paid in person/elsewhere"
+        },
+        {
+          "id": "recorded_only",
+          "label": "Paid in person; the app just records the price and payment status",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "record_only"
+            }
+          ]
+        },
+        {
+          "id": "deposit_online",
+          "label": "A deposit is paid online to confirm; the rest later",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        {
+          "id": "full_prepay_online",
+          "label": "The full price is paid online at booking",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "data_model",
+        "state_machines",
+        "rules_invariants",
+        "journeys"
+      ],
+      "prior": {
+        "none": 0.25,
+        "recorded_only": 0.25,
+        "deposit_online": 0.25,
+        "full_prepay_online": 0.25
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "booking_confirmation",
+      "topic": "confirming",
+      "question": "Is a booking confirmed instantly, or does someone approve it first?",
+      "options": [
+        {
+          "id": "instant",
+          "label": "Instantly confirmed if the slot is free"
+        },
+        {
+          "id": "request_approve",
+          "label": "It's a request until staff accept or decline it",
+          "implies": [
+            {
+              "node": "approval_workflow",
+              "option": "single_approver"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "state_machines",
+        "journeys",
+        "actors_permissions"
+      ],
+      "prior": {
+        "instant": 0.671,
+        "request_approve": 0.329
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_reminders",
+      "topic": "reminders",
+      "question": "How are customers reminded before their booking?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No reminders"
+        },
+        {
+          "id": "email_before",
+          "label": "An email some hours/days before"
+        },
+        {
+          "id": "email_sms_confirm",
+          "label": "Email and SMS, and customers can confirm or cancel from the reminder",
+          "implies": [
+            {
+              "node": "notifications",
+              "option": "email_sms"
+            }
+          ]
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys",
+        "state_machines"
+      ],
+      "prior": {
+        "none": 0.15,
+        "email_before": 0.45,
+        "email_sms_confirm": 0.4
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_calendar_sync",
+      "topic": "other tools",
+      "question": "Does it talk to Google/Outlook/Apple calendars?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — the app is the calendar"
+        },
+        {
+          "id": "push_only",
+          "label": "Bookings are pushed to staff calendars (one way)",
+          "implies": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        },
+        {
+          "id": "two_way",
+          "label": "Two way — busy time in their external calendar also blocks availability here",
+          "implies": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "journeys",
+        "rules_invariants",
+        "overview"
+      ],
+      "prior": {
+        "none": 0.408,
+        "push_only": 0.275,
+        "two_way": 0.317
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_time_zones",
+      "topic": "time zones",
+      "question": "Are customers and staff in the same time zone?",
+      "options": [
+        {
+          "id": "single_zone",
+          "label": "Yes — one local time zone everywhere"
+        },
+        {
+          "id": "customer_zone_shown",
+          "label": "No — times must be shown in each person's own zone"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "rules_invariants",
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "single_zone": 0.7,
+        "customer_zone_shown": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_intake_form",
+      "topic": "information at booking",
+      "question": "What must the customer fill in when booking?",
+      "options": [
+        {
+          "id": "contact_only",
+          "label": "Just name and contact details"
+        },
+        {
+          "id": "fixed_questions",
+          "label": "A few fixed questions (notes, preferences, allergies)"
+        },
+        {
+          "id": "per_service_form",
+          "label": "Different questions per service, set up by the business"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "contact_only": 0.4,
+        "fixed_questions": 0.4,
+        "per_service_form": 0.2
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_locations",
+      "topic": "where",
+      "question": "Where do bookings take place?",
+      "options": [
+        {
+          "id": "single_location",
+          "label": "One location"
+        },
+        {
+          "id": "multi_location",
+          "label": "Several locations, each with its own staff and hours"
+        },
+        {
+          "id": "remote_or_onsite",
+          "label": "Online/video or at the customer's address"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules_invariants",
+        "overview"
+      ],
+      "prior": {
+        "single_location": 0.6,
+        "multi_location": 0.25,
+        "remote_or_onsite": 0.15
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_walk_ins",
+      "topic": "staff bookings",
+      "question": "Do staff also add bookings and block time by hand?",
+      "options": [
+        {
+          "id": "online_only",
+          "label": "No — everything comes through the online flow"
+        },
+        {
+          "id": "staff_manual",
+          "label": "Yes — walk-ins, phone bookings, holds, and blocked time"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "actors_permissions",
+        "journeys",
+        "state_machines"
+      ],
+      "prior": {
+        "online_only": 0.25,
+        "staff_manual": 0.75
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_pricing_variation",
+      "topic": "pricing",
+      "question": "Does the price of a service vary?",
+      "options": [
+        {
+          "id": "fixed_per_service",
+          "label": "One price per service"
+        },
+        {
+          "id": "varies_by_staff_or_time",
+          "label": "Varies by who does it or when (senior stylist, peak hours)"
+        },
+        {
+          "id": "quoted_per_booking",
+          "label": "Quoted per booking by staff"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules_invariants"
+      ],
+      "prior": {
+        "fixed_per_service": 0.6,
+        "varies_by_staff_or_time": 0.3,
+        "quoted_per_booking": 0.1
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_customer_records",
+      "topic": "customers",
+      "question": "How much is kept about each customer?",
+      "options": [
+        {
+          "id": "per_booking_contact",
+          "label": "Just the contact details typed for each booking"
+        },
+        {
+          "id": "customer_profile",
+          "label": "A customer record with all past and future visits"
+        },
+        {
+          "id": "profile_with_notes",
+          "label": "A customer record plus private staff notes and preferences"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "actors_permissions"
+      ],
+      "prior": {
+        "per_booking_contact": 0.25,
+        "customer_profile": 0.45,
+        "profile_with_notes": 0.3
+      },
+      "tags": []
+    },
+    {
+      "id": "booking_staff_schedule_control",
+      "topic": "who can do what",
+      "question": "Who edits staff working hours and time off?",
+      "options": [
+        {
+          "id": "admin_only",
+          "label": "Only the owner/admin"
+        },
+        {
+          "id": "staff_own",
+          "label": "Each staff member edits their own hours; admin sees all",
+          "implies": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "actors_permissions"
+      ],
+      "prior": {
+        "admin_only": 0.55,
+        "staff_own": 0.45
+      },
+      "tags": [
+        "auth"
+      ]
+    }
+  ]
+}

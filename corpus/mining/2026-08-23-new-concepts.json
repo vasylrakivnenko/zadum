@@ -1,0 +1,4733 @@
+{
+  "b2b-invoicing": [
+    {
+      "concept": "purchase_order_reference_on_invoices",
+      "values": {
+        "yes": 2
+      },
+      "n": 2,
+      "examples": [
+        "PO Number — your client's purchase order reference, printed on the PDF so their accounts team can match the invoice to their own records.",
+        "Customer's Purchase Order: Track customer's PO No. received, primarily to prevent the creation of duplicate Sales Order or Invoice for the same PO"
+      ]
+    },
+    {
+      "concept": "apply_vat_to_non_eu_business_customers",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Controls whether or not to apply VAT to non-EU business customers."
+      ]
+    },
+    {
+      "concept": "archiving_invoices",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The `Archived` tab shows invoices you have archived. Archived invoices are hidden from the active list and from outstanding balance calculations. They are not deleted and can be viewed at any time."
+      ]
+    },
+    {
+      "concept": "barcode_for_items",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "scan barcode: You can add Items...by scanning their barcodes if you have a barcode scanner."
+      ]
+    },
+    {
+      "concept": "batch_and_serial_item_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If your Item is serialized or batched, you will have to enter Serial Number and Batch in the Items table."
+      ]
+    },
+    {
+      "concept": "cash_discounts",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Cash discounts are reductions in the amount a customer must pay... as incentive for paying their invoice promptly."
+      ]
+    },
+    {
+      "concept": "cash_rounding",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Go to Accounting --> Configuration --> Settings and enable Cash Rounding"
+      ]
+    },
+    {
+      "concept": "category_specific_payment_method_enabling",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "you can disable it by pressing the 'options' button on the category, selecting the payment method you would like to disable..."
+      ]
+    },
+    {
+      "concept": "charge_deletion_retains_events",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Deleting a charge does not delete the events associated with the corresponding billable metric."
+      ]
+    },
+    {
+      "concept": "client_chooses_contact_recipients",
+      "values": {
+        "yes_per_invoice": 1
+      },
+      "n": 1,
+      "examples": [
+        "each one can be individually checked or unchecked for this specific invoice"
+      ]
+    },
+    {
+      "concept": "client_credits_on_cancelled_invoice",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Cancelling an invoice ... converts any payments already recorded on the invoice into **client credits**, which can be applied to future invoices."
+      ]
+    },
+    {
+      "concept": "custom_offline_payment_methods",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Custom offline payment methods allow you as an organizer to define your own payment methods"
+      ]
+    },
+    {
+      "concept": "deferred_revenue_per_item",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Enable Deferred Revenue: If the income for this Item will be billed over the coming months in parts, then tick on 'Enable Deferred Revenue'."
+      ]
+    },
+    {
+      "concept": "delivery_without_delivery_note",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If you're skipping the creation of Delivery Note, tick this checkbox."
+      ]
+    },
+    {
+      "concept": "discounts_line_and_global",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can apply a discount on individual Items...Additional Discount...to the whole Invoice can be set in this section."
+      ]
+    },
+    {
+      "concept": "document_design_selection",
+      "values": {
+        "selectable_per_invoice": 1
+      },
+      "n": 1,
+      "examples": [
+        "pick one of the built-in designs or a custom one you've built under Settings > Invoice Design"
+      ]
+    },
+    {
+      "concept": "down_payment_types",
+      "values": {
+        "percentage_and_fixed": 1
+      },
+      "n": 1,
+      "examples": [
+        "On the Create invoice(s) pop-up window, the down payment options are: Down payment (percentage), Down payment (fixed amount)"
+      ]
+    },
+    {
+      "concept": "e_invoice_addressee_handling",
+      "values": {
+        "select_code_pec_none": 1
+      },
+      "n": 1,
+      "examples": [
+        "It specifies the final recipient of the invoice. It can be: Addressee Code... PEC... Neither..."
+      ]
+    },
+    {
+      "concept": "fiscal_code_required_for_italy",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Fiscal Code (Codice Fiscale)... It is a required information"
+      ]
+    },
+    {
+      "concept": "fractional_quantities",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Fractional quantities are supported to six decimal places, so you can bill part-hours, metered usage or weights exactly."
+      ]
+    },
+    {
+      "concept": "income_account_modify_on_invoice",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Open an invoice, click the drop-down arrow on the entry in the Account column ... a different account can be chosen ... a new account can also be created."
+      ]
+    },
+    {
+      "concept": "inline_formatting_in_line_descriptions",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Description — free text. HTML and Markdown are both supported when enabled under Settings > Account Management"
+      ]
+    },
+    {
+      "concept": "invoiceable_option_on_charge",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If a charge needs to be paid in advance, you can choose whether or not it generates an invoice."
+      ]
+    },
+    {
+      "concept": "italian_e_invoice_collection_only",
+      "values": {
+        "manual_submission": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product is not capable of sending the invoices directly to the italian taxation authority, so you'll have to submit them manually."
+      ]
+    },
+    {
+      "concept": "loyalty_points_redemption_on_invoice",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If the Customer is enrolled in a Loyalty Program, they can choose to redeem it."
+      ]
+    },
+    {
+      "concept": "mandatory_transaction_registration",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "It is mandatory to register all the transactions, even if the customer is not a company."
+      ]
+    },
+    {
+      "concept": "milestone_invoicing",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "milestone invoicing is configured at the product level in the Sales app, with milestone progress and completion managed in the Projects app."
+      ]
+    },
+    {
+      "concept": "multi_branch_and_dimension_tagging",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Accounting Dimensions lets you tag transactions based on a specific Territory, Branch, Customer, etc."
+      ]
+    },
+    {
+      "concept": "multi_language_payment_method_instructions",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can add additional translations and edit existing ones as needed."
+      ]
+    },
+    {
+      "concept": "multiple_payment_methods_per_account",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can add as many payment methods as needed to a given account (across one or multiple plugins)."
+      ]
+    },
+    {
+      "concept": "option_for_anniversary_vs_calendar_billing",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The next invoice will be generated for the period August 1st to August 31st; or... billed every 10th of the month."
+      ]
+    },
+    {
+      "concept": "payment_terms",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Payment terms specify all the conditions of a sale's payment to help ensure customers pay their invoices correctly and on time."
+      ]
+    },
+    {
+      "concept": "plugin_specific_properties_supported",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "For each API, one can specify custom properties by using query parameters -- those query parameters should be URL encoded"
+      ]
+    },
+    {
+      "concept": "pos_invoice_mode",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If you check the Is POS checkbox, then all your POS Profile data is fetched into the Sales Invoice and you can easily make payments."
+      ]
+    },
+    {
+      "concept": "pro_forma_invoices_supported",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "With the Pro-Forma Invoice feature activated, the option to send a pro-forma invoice is now available on any quotation or sales order."
+      ]
+    },
+    {
+      "concept": "pro_rata_subscription_fees",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product automatically applies a pro-rata for the first and the last subscription period of a Plan."
+      ]
+    },
+    {
+      "concept": "quote_validity_period",
+      "values": {
+        "per_client_setting_or_manual": 1
+      },
+      "n": 1,
+      "examples": [
+        "If a client sets a default quote validity period on their record (see Clients), it will be applied here automatically."
+      ]
+    },
+    {
+      "concept": "reverse_charge_mechanism_support",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Enable this flag if you want to activate the Reverse Charge mechanism"
+      ]
+    },
+    {
+      "concept": "structured_electronic_invoice",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Download E-Invoice — download the structured electronic invoice file (for jurisdictions using E-Invoicing)"
+      ]
+    },
+    {
+      "concept": "subscription_name_on_invoice",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The subscription names will make it easier to differentiate each plan and will also be displayed on the invoices."
+      ]
+    },
+    {
+      "concept": "trial_period_on_base_plan_only",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "trial period exclusively applies to the base amount of the plan and does not extend to usage-based charges."
+      ]
+    },
+    {
+      "concept": "vat_number_required_for_business_customers",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Enable this flag if you want to force every business customer to enter their TAX ID number."
+      ]
+    },
+    {
+      "concept": "vat_validation_using_vies",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Controls whether or not to call the VIES Webservice to validate a given EU VAT number"
+      ]
+    },
+    {
+      "concept": "write_off_underpayment",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Write off happens when the Customer pays an amount less than the invoice amount...the difference amount is 'written off'."
+      ]
+    }
+  ],
+  "booking": [
+    {
+      "concept": "admin_staff_mode_permission_override",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "system administrators ... can temporarily turn on 'staff mode' via a button ... grants them all permissions as long as staff mode is active."
+      ]
+    },
+    {
+      "concept": "attendance_tracking_daily",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a camp administrator, I want to be quickly log attendance everyday, so that I can track which kids are coming in."
+      ]
+    },
+    {
+      "concept": "automatic_data_retention_exemption_for_pro",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Polls are automatically deleted when all date options are in the past AND there has been no activity for over 30 days. This does not apply to Pro users."
+      ]
+    },
+    {
+      "concept": "biweekly_feedback_to_parents",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a camp administrator, I want to provide bi-weekly feedback to camper's parents, so that they can be aware of their child's behavior and performance at camp."
+      ]
+    },
+    {
+      "concept": "calendar_sync_caldav",
+      "values": {
+        "manual": 1
+      },
+      "n": 1,
+      "examples": [
+        "Click Enable Sync → CalDAV. Enter the following: URL, Username, Password... your appointments will now sync with the Baikal CalDAV server."
+      ]
+    },
+    {
+      "concept": "camp_suspension_of_campers",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a camp administrator, I want to be able to suspend a camper who had behavioral problems."
+      ]
+    },
+    {
+      "concept": "cancellation_reason_requirement",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Add a dropdown setting in Event Type Advanced settings that allows hosts to configure when cancellation reasons are required from hosts and/or attendees."
+      ]
+    },
+    {
+      "concept": "clinical_lab_section_modification_allowed_only_empty",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Program Administrators/Nursing Staff Members shall be able to cancel a clinical lab section only if there are no students registered for that clinical lab section."
+      ]
+    },
+    {
+      "concept": "completion_reporting_by_staff",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a camp worker, I would be able to submit a completion report for the tasks which was assigned to me."
+      ]
+    },
+    {
+      "concept": "configurable_time_slot_interval",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can change this from the backend service settings by editing the Slot Interval (Minutes) field."
+      ]
+    },
+    {
+      "concept": "invoice_immutability",
+      "values": {
+        "immutable": 1
+      },
+      "n": 1,
+      "examples": [
+        "invoices are generally considered immutable. Once they are issued, they no longer change."
+      ]
+    },
+    {
+      "concept": "must_book_related_resources",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Resource Relationships can be used to define resources that must be the product together. To configure this, add a resource within the Must Be the product With section."
+      ]
+    },
+    {
+      "concept": "parent_feedback_portal",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a camp administrator, I want to create an avenue so parents can submit feedback and general concerns, so that I can keep improving the services I provide."
+      ]
+    },
+    {
+      "concept": "parent_guardian_contact_storage",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a camp administrator, I want to store camper's immediate parent/guardian's information, so that I can easily call to notify them in case a grossly unacceptable behavior."
+      ]
+    },
+    {
+      "concept": "photo_sharing_with_parents",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a parent, I want to be able to share any photos the camp has taken of my child."
+      ]
+    },
+    {
+      "concept": "promo_code_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Allow for the creation of promo codes to offer discounts, manage special pricing, and implement marketing strategies."
+      ]
+    },
+    {
+      "concept": "public_schedule_view_read_only",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "view.schedules will allow unauthenticated users to browse your schedules, though they will need to log in to book any resources."
+      ]
+    },
+    {
+      "concept": "purchase_order_reference_on_invoices",
+      "values": {
+        "no": 1
+      },
+      "n": 1,
+      "examples": [
+        "There is an invoices table and invoice data but no mention of PO reference field."
+      ]
+    },
+    {
+      "concept": "quota_reservation_limits",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Quotas restrict reservations from being the product based on a configurable limit. The quota system is very flexible, allowing you to build limits based on reservation length and number of reservations."
+      ]
+    },
+    {
+      "concept": "resource_image_upload",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can upload an unlimited number of resource images. These will be displayed when viewing resource details from the reservation page."
+      ]
+    },
+    {
+      "concept": "resource_status_hidden",
+      "values": {
+        "prevents_booking": 1
+      },
+      "n": 1,
+      "examples": [
+        "The Hidden status will remove the resource from the schedule and prevent bookings from all users."
+      ]
+    },
+    {
+      "concept": "role_promotion_to_admin",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Select 'Change Role' and choose the new role...Changing roles affects what the member can do immediately."
+      ]
+    },
+    {
+      "concept": "self_hosted_installation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Fully self-hosted — your data stays under your control"
+      ]
+    },
+    {
+      "concept": "staff_can_move_student_between_lab_sections",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The system shall allow a Program Administrator/Nursing Staff Member to move a student from one clinical lab section to another clinical lab section corresponding to the same clinical class."
+      ]
+    },
+    {
+      "concept": "test_mode_time_machine",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "In test mode, the product provides a 'time machine' feature ... test their shop as if it were a different date and time."
+      ]
+    },
+    {
+      "concept": "ticket_pricing_tiers",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Multiple pricing tiers can be set based on categories or time periods, including early bird discounts."
+      ]
+    }
+  ],
+  "marketplace": [
+    {
+      "concept": "automatic_listing_closure_on_zero_stock",
+      "values": {
+        "optional": 1
+      },
+      "n": 1,
+      "examples": [
+        "Yes! This feature can be built into your the product marketplace app with relative ease, even though it is not part of the default template."
+      ]
+    },
+    {
+      "concept": "booking_acceptation_and_expiration_delays",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Booking expiration depends on ... the product.booking.min_start_time_delay the product.booking.acceptation_delay the product.booking.expiration_delay"
+      ]
+    },
+    {
+      "concept": "booking_time_unit_modes",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Time unit depend on value of some parameters. See `the product/CoreBundle/Resources/config/parameters.yml` to view default values."
+      ]
+    },
+    {
+      "concept": "data_package_download_as_sqlite",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Consumer, I want to download a DataPackage's data one coherent SQLite database, so that that I can get it easily in one form."
+      ]
+    },
+    {
+      "concept": "data_package_popularity_count",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Consumer, I want to see how much the data has been downloaded, so that that I can choose most popular"
+      ]
+    },
+    {
+      "concept": "data_package_preview",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Publisher, I want to be able to preview the views of the current data package using cli prior to publishing, so that that I can refine the json declarations of datapackage view section to achieve a great looking result."
+      ]
+    },
+    {
+      "concept": "data_package_snapshot_tagging",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Publisher, I want to tag datapackage to create a snapshot of data on the registry server, so that that consumers can refer to it."
+      ]
+    },
+    {
+      "concept": "data_package_versioning",
+      "values": {
+        "multi_version": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Publisher, I want to version my Data Package and keep multiple versions around including older versions, so that that I do not break consumer systems when I change my datapackage."
+      ]
+    },
+    {
+      "concept": "data_restore_after_delete",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Publisher, I want to be able to restore the deleted data package via cli"
+      ]
+    },
+    {
+      "concept": "data_validation_on_publish",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Publisher, I want to data to be validated when I publish it, so that that I know immediately if I have accidentally broken my data or have bugs and can take action to correct."
+      ]
+    },
+    {
+      "concept": "extended_data_types_for_listing",
+      "values": {
+        "public_private_protected_metadata": 1
+      },
+      "n": 1,
+      "examples": [
+        "There are six possible types of extended data, defined by who can edit and view them. Five out of these are available in the product at this time."
+      ]
+    },
+    {
+      "concept": "message_send_requires_transaction",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Messages always need to be associated with a transaction and can not be sent outside of one."
+      ]
+    },
+    {
+      "concept": "multi_vendor_unlimited",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "unlimited number of vendors on any marketplace, each with the ability to create an unlimited number of products"
+      ]
+    },
+    {
+      "concept": "notification_editor_visual",
+      "values": {
+        "no": 1
+      },
+      "n": 1,
+      "examples": [
+        "built-in email template editor does not include a visual editor, but ... you can design your email in any WYSIWYG email editor"
+      ]
+    },
+    {
+      "concept": "notification_requires_email_verification",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Users will not receive email notifications until they have verified their email address."
+      ]
+    },
+    {
+      "concept": "notification_template_language",
+      "values": {
+        "handlebars": 1
+      },
+      "n": 1,
+      "examples": [
+        "The email templates use the Handlebars template language."
+      ]
+    },
+    {
+      "concept": "order_split_per_seller",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "OrderSellerStrategy API...split the Order from a single order into one Aggregate Order and multiple Seller Orders"
+      ]
+    },
+    {
+      "concept": "package_activity_metrics_visible",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Consumer, I want to see how active the site is, so that I can decide if I should get involved."
+      ]
+    },
+    {
+      "concept": "price_sync_across_channels",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "the example multi-vendor plugin sets the syncPricesAcrossChannels property of the DefaultProductVariantPriceUpdateStrategy to true"
+      ]
+    },
+    {
+      "concept": "publish_command_via_cli",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Publisher, I want to use a publish command to update a data package that is already in the registry, so that it appears there."
+      ]
+    },
+    {
+      "concept": "publisher_member_invite",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an owner, I want to invite someone using their email to sign up and become a member of my Publisher, so that that they are authorized to publish data packages under my Publisher."
+      ]
+    },
+    {
+      "concept": "publisher_profile_visibility",
+      "values": {
+        "public": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Consumer, I want to view a publisher's profile, so that that I can discover their packages and get a sense of how active and good they are."
+      ]
+    },
+    {
+      "concept": "search_by_seats_available",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Listing search can be modified so that available seats are taken into account."
+      ]
+    },
+    {
+      "concept": "search_packages_by_publisher",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Consumer, I want to search among all data packages owned by a publisher, so that that I can easily find one data package amongst all the data packages by this publisher."
+      ]
+    },
+    {
+      "concept": "seat_management_per_timeslot",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Seats allow you to define the specific number of people that book the same time slot in an event, space, or service."
+      ]
+    },
+    {
+      "concept": "seller_shipping_methods_limited",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "customer can only choose from the ShippingMethods which are supported by the Seller. To do this...ShippingEligibilityChecker which will filter the available ShippingMethods based on the sellerChannelId properties."
+      ]
+    },
+    {
+      "concept": "stock_management_per_listing",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can determine the available stock (quantity) of any given listing as well as add to and subtract from it."
+      ]
+    },
+    {
+      "concept": "user_specific_fee_rate",
+      "values": {
+        "configurable_per_user": 1
+      },
+      "n": 1,
+      "examples": [
+        "administrator can choose to change the fee rate of each user as asker and as offerer."
+      ]
+    },
+    {
+      "concept": "vat_included_control_on_listing_prices",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "listing price fixing can be set with or without VAT included depending on the parameter `the product.include_vat` value."
+      ]
+    },
+    {
+      "concept": "vendor_frontend_dashboard_only",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "every vendor has a personalized customizable dashboard on the store frontend. Backend access is restricted to only the admin"
+      ]
+    }
+  ],
+  "e-commerce": [
+    {
+      "concept": "admin_assignable_store_credit",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can issue store credit in two ways: Click the three-dot menu...select Add Store Credit..."
+      ]
+    },
+    {
+      "concept": "attribute_types_supported",
+      "values": {
+        "dropdown_multiselect_file_reference_single_reference_numeric_rich_text_plain_text_swatch_boolean_date_date_time": 1
+      },
+      "n": 1,
+      "examples": [
+        "Here is an overview of all possible attribute types: Dropdown, Multiselect, File, Reference, Single reference, Numeric, etc."
+      ]
+    },
+    {
+      "concept": "automatic_address_validation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Use the Google Places API to ensure that partner delivery addresses are valid."
+      ]
+    },
+    {
+      "concept": "automatic_invoices",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "To automate invoicing: enable Automatic Invoice."
+      ]
+    },
+    {
+      "concept": "brand_address_management",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Each brand can have its own address registered with the product. This serves mainly as a reminder for yourself."
+      ]
+    },
+    {
+      "concept": "brand_enablement_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "New brands are automatically disabled. You must enable them in order to have them appear online."
+      ]
+    },
+    {
+      "concept": "card_activation_by_admin_only",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Only administrators can activate a pre-paid card."
+      ]
+    },
+    {
+      "concept": "cart_sales_channel_scope",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Cart Scoping: ... the product creates links to other Commerce Modules, scoping a cart to a sales channel, region, and a customer."
+      ]
+    },
+    {
+      "concept": "category_display_control",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can indicate the ones you want to hide from the customer by clicking on the green check-mark icon, thus turning it into a red 'x' mark."
+      ]
+    },
+    {
+      "concept": "category_featured_products_limit",
+      "values": {
+        "8_default": 1
+      },
+      "n": 1,
+      "examples": [
+        "By default, you can only display 8 products on the homepage."
+      ]
+    },
+    {
+      "concept": "category_friendly_url",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "'Friendly URL.' Enables you to rewrite the addresses of your categories as you wish."
+      ]
+    },
+    {
+      "concept": "category_group_access_control",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Group access. Restricts access to the category and its products to certain shoppers. To see these categories, your shoppers must belong to a user group."
+      ]
+    },
+    {
+      "concept": "category_hierarchy",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "All the categories are actually sub-categories of the 'Home' category."
+      ]
+    },
+    {
+      "concept": "category_multistore_root",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The root category is very useful in multistore mode. Imagine you have 3 stores with different...categories: you might want to use a different root category for each store."
+      ]
+    },
+    {
+      "concept": "category_types_include_page_folder_link",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Types: `page`: regular category (listing or landing page). `folder`: structuring element; not rendered as a page ... `link`: redirects to an external URL ..."
+      ]
+    },
+    {
+      "concept": "channel_access_control_on_orders",
+      "values": {
+        "restricted": 1
+      },
+      "n": 1,
+      "examples": [
+        "Admin access to order data can be configured on a channel level, this is useful for businesses that have different legal entities..."
+      ]
+    },
+    {
+      "concept": "channel_customization_scope",
+      "values": {
+        "per_entity_deep_customization": 1
+      },
+      "n": 1,
+      "examples": [
+        "Adding a channel creates a wide scope of customization options; below is the degree of customization per entity:..."
+      ]
+    },
+    {
+      "concept": "cms_layout_inheritance_for_categories",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "Layout selection is inherited: if `cmsPageId` is missing, the parent layout is used."
+      ]
+    },
+    {
+      "concept": "collection_filter_inheritance",
+      "values": {
+        "optional": 1
+      },
+      "n": 1,
+      "examples": [
+        "In order to create a child collection which contains product variants _not_ contained by the parent collection, you must disable filter inheritance in the child collection."
+      ]
+    },
+    {
+      "concept": "customer_group_based_pricing",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "By pairing a customer group with a Price List, every member of that group automatically sees their correct prices..."
+      ]
+    },
+    {
+      "concept": "customer_profile_search_and_filters",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "search, sort, and filter customer records with precision. The new table interface allows you to customize how customer data is displayed."
+      ]
+    },
+    {
+      "concept": "customer_tags",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Tags help you categorize and segment customers based on purchasing behavior or account type, and can improve filtering, reporting, and personalization."
+      ]
+    },
+    {
+      "concept": "facet_visibility_control",
+      "values": {
+        "public_or_private": 1
+      },
+      "n": 1,
+      "examples": [
+        "Each facet has a `isPrivate` flag. When set to `true`, the facet and its values are hidden from the Shop API and will not appear in storefront search results or filter menus."
+      ]
+    },
+    {
+      "concept": "free_trial_periods",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Website must be able to support free trial periods with various parameters set by the Izogn Manager."
+      ]
+    },
+    {
+      "concept": "gift_card_adjustment_safety",
+      "values": {
+        "atomic": 1
+      },
+      "n": 1,
+      "examples": [
+        "The adjustment is applied atomically at the database level. This makes it safe to run while a card is being charged in a concurrent checkout."
+      ]
+    },
+    {
+      "concept": "gift_card_assign_edit_delete_per_customer",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "issue gift cards to individual customers...modify a gift card...delete a gift card"
+      ]
+    },
+    {
+      "concept": "gift_card_assignment_to_customer",
+      "values": {
+        "manual": 1
+      },
+      "n": 1,
+      "examples": [
+        "Assignment is manual only. the product never auto-assigns a card to whoever pays with it."
+      ]
+    },
+    {
+      "concept": "gift_card_currency_scope",
+      "values": {
+        "per_currency": 1
+      },
+      "n": 1,
+      "examples": [
+        "Gift cards are currency-based and usable across channels with the same currency."
+      ]
+    },
+    {
+      "concept": "gift_card_expiry_configurable",
+      "values": {
+        "optional_expiry": 1
+      },
+      "n": 1,
+      "examples": [
+        "If you want to create a non-expiring card, do not provide the expiryDate value."
+      ]
+    },
+    {
+      "concept": "internal_admin_notes_on_customer",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Internal notes are only visible to admins and are never shown on the storefront."
+      ]
+    },
+    {
+      "concept": "measurement_units_configurable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The configurable measurement units are only available in the product v6.7.1.0 and later version. Before that, the values are always stored in the metric system and displayed in the same way."
+      ]
+    },
+    {
+      "concept": "metadata_vs_attributes_distinction",
+      "values": {
+        "attributes_strict_metadata_untyped": 1
+      },
+      "n": 1,
+      "examples": [
+        "Attributes have a strict structure with data types, validation, schema etc. Metadata is a simple key: value structure without types."
+      ]
+    },
+    {
+      "concept": "multi_currency_price_lists",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Select the currency (if your store supports multiple currencies)...setting a base price in that currency on your products."
+      ]
+    },
+    {
+      "concept": "option_types_translatable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Option type `name` and `label` fields are translatable."
+      ]
+    },
+    {
+      "concept": "order_version_control",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "... with version-based control over the order's timeline."
+      ]
+    },
+    {
+      "concept": "product_category_assignments_dynamic_or_explicit",
+      "values": {
+        "both": 1
+      },
+      "n": 1,
+      "examples": [
+        "Dynamic Product Groups (product streams): attached to a category to evaluate saved filters at runtime and automate listings ... Both assignment types are merged for a category listing."
+      ]
+    },
+    {
+      "concept": "product_publications_control_visibility_per_channel",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "A product is visible on a Channel only when a ProductPublication record joins the two. Publications carry an optional time window ... publication state controls visibility."
+      ]
+    },
+    {
+      "concept": "review_approval_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Website shall allow the Izogn administrator to approve a review posted by a customer."
+      ]
+    },
+    {
+      "concept": "shopping_cart_model",
+      "values": {
+        "none": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product has no distinct object type for shopping carts and checkouts. We wanted the same features...so we've decided to use the same object type for both."
+      ]
+    },
+    {
+      "concept": "single_active_cart_per_customer_session",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Every customer session (whether authenticated or guest) can have at most one **active order** — the order in the `AddingItems` state."
+      ]
+    },
+    {
+      "concept": "stock_locations_can_be_propagated_to_all_variants",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "propagate_all_variants: A boolean indicating whether new stock items should be automatically created for all Store variants when a new stock location is added."
+      ]
+    },
+    {
+      "concept": "store_credit_edit_delete",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "To edit a store credit assignment...Click Edit...To remove a store credit: Click Delete from the menu."
+      ]
+    },
+    {
+      "concept": "streaming_access_window",
+      "values": {
+        "per_purchase_2_days": 1
+      },
+      "n": 1,
+      "examples": [
+        "A customer can only stream a movie if they purchased it and are within the 2 day viewing period."
+      ]
+    },
+    {
+      "concept": "support_phone_number_provided",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The system will provide a 24 hour 800 toll free number for support to its customers."
+      ]
+    }
+  ],
+  "crud-saas": [
+    {
+      "concept": "accessible_css_xhtml_compliant",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a developer, I want to have written a site which is compliant with XHTML and CSS standards... comply with W3C accessibility guidelines"
+      ]
+    },
+    {
+      "concept": "account_password_reminder_email",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to get a password reminder by email"
+      ]
+    },
+    {
+      "concept": "activity_feed_speech_repeat",
+      "values": {
+        "repeat_last_phrase": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have the product device that repeats the last phrase."
+      ]
+    },
+    {
+      "concept": "after_sales_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have clear instructions and service after sales that guide me if I have trouble in using the product."
+      ]
+    },
+    {
+      "concept": "ai_agent_enabled",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "AI agents that work autonomously within your CRM — answering questions, enriching records, and executing multi-step tasks"
+      ]
+    },
+    {
+      "concept": "ai_detect_fields_enabled",
+      "values": {
+        "optional": 1
+      },
+      "n": 1,
+      "examples": [
+        "...place fields automatically using Google Vertex AI (Gemini). The feature is optional and only available when your organisation or team has **AI Features** enabled."
+      ]
+    },
+    {
+      "concept": "ai_detect_recipients_enabled",
+      "values": {
+        "optional": 1
+      },
+      "n": 1,
+      "examples": [
+        "...suggest recipients ... available when your organisation or team has **AI Features** enabled."
+      ]
+    },
+    {
+      "concept": "ai_translation_filling",
+      "values": {
+        "enterprise_only": 1
+      },
+      "n": 1,
+      "examples": [
+        "AI translation is an Enterprise feature and requires Smart functionality (AI) to be enabled at the organization level."
+      ]
+    },
+    {
+      "concept": "api_type",
+      "values": {
+        "graphql_and_rest": 1
+      },
+      "n": 1,
+      "examples": [
+        "A developer-first API that adapts to your custom data model. Both GraphQL and REST endpoints"
+      ]
+    },
+    {
+      "concept": "api_user_secret_token_authentication",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "API users get an automatically generated secret token."
+      ]
+    },
+    {
+      "concept": "battery_life_requirement",
+      "values": {
+        "all_day": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have a very good battery for the product so I can keep him on the whole day."
+      ]
+    },
+    {
+      "concept": "bounce_handling_autoblocklist_delete",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Based on settings, subscribers returning bounced e-mails can either be blocklisted or deleted automatically."
+      ]
+    },
+    {
+      "concept": "bulk_macro_application",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "To apply a macro to many tickets at the same time: ... Drag the tickets to the top and hover over the Run Macro action ... Drop the tickets on your target macro."
+      ]
+    },
+    {
+      "concept": "calendar_sync_supported",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Calendar events sync automatically from your connected account."
+      ]
+    },
+    {
+      "concept": "click_tracking_privacy_options",
+      "values": {
+        "anonymous": 1
+      },
+      "n": 1,
+      "examples": [
+        "It is possible to track link clicks anonymously without associating an e-mail read to a subscriber."
+      ]
+    },
+    {
+      "concept": "data_anonymization_planning_supported",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a data manager, I want to plan the anonymization of data, so that we protect the privacy ..."
+      ]
+    },
+    {
+      "concept": "data_conservation_period_recorded",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivemanager, I want to know in advance the conservation period of data, so that I can better organize the service by adapting the preservation actions."
+      ]
+    },
+    {
+      "concept": "data_ownership_recorded",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a PI, I want to know who owns the data, so that I know what I am allowed to do with it."
+      ]
+    },
+    {
+      "concept": "data_security_requirements_recorded",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an IT staff member, I want to know the security requirements of the data, so that I know which kind of security measures to apply."
+      ]
+    },
+    {
+      "concept": "data_storage_location",
+      "values": {
+        "on_phone": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have my data stored directly on the phone."
+      ]
+    },
+    {
+      "concept": "data_types_specification_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a data manager, I want to know which kind of data types will be produced or collected..."
+      ]
+    },
+    {
+      "concept": "data_volume_estimation_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an IT staff member, I want to have an estimate of the produced data volume, so that I can plan the overall storage consumption."
+      ]
+    },
+    {
+      "concept": "database_indexing",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a developer, I want to have created database indexes"
+      ]
+    },
+    {
+      "concept": "default_recipients_team_override",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Setting the default recipients at the team level will override organisation-level defaults."
+      ]
+    },
+    {
+      "concept": "definitions_glossary_available",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a developer, I want to have a list of definitions for commonly used terms"
+      ]
+    },
+    {
+      "concept": "delete_account_erases_data",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to delete my account, so that account information and games are no longer stored."
+      ]
+    },
+    {
+      "concept": "device_form_factor",
+      "values": {
+        "wearable": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have a small the product device that is wearable and easy to carry with me."
+      ]
+    },
+    {
+      "concept": "device_listens_on_request_only",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have the product device that only listens to me when I ask it to."
+      ]
+    },
+    {
+      "concept": "device_preinstallation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have everything preinstalled, so that I do not have to set up the product by myself."
+      ]
+    },
+    {
+      "concept": "device_reacts_only_to_owner",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have the product device that only reacts to me."
+      ]
+    },
+    {
+      "concept": "document_visibility_owner_override",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The `document owner` (the user who created the document) always has access to the document, regardless of the document's visibility settings."
+      ]
+    },
+    {
+      "concept": "document_visibility_recipient_override",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The `recipient` ... also has access to the document, regardless of the document's visibility settings."
+      ]
+    },
+    {
+      "concept": "email_sync_supported",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Connect your Google Workspace or Microsoft 365 mailbox. Emails are automatically linked... send emails directly from the product"
+      ]
+    },
+    {
+      "concept": "estimate_field_auto_fill_if_unanimous",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to have the \"estimate\" field filled in automatically if all estimators show the same card"
+      ]
+    },
+    {
+      "concept": "estimate_method_selectable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to select whether to have the team estimate with {0, 1/2, 1, 2, 3, 5, 8, etc.} or {0, 1, 2, 4, 8, 16, 32, etc.}"
+      ]
+    },
+    {
+      "concept": "estimate_reestimation_permitted",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to estimate a story we estimated earlier in the session again"
+      ]
+    },
+    {
+      "concept": "estimator_photo_displayed",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a participant, I want to have a small thumbnail photo displayed near where my cards are played"
+      ]
+    },
+    {
+      "concept": "funding_source_recorded",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an administrator, I want to know who funded the project and their requirements, so that I can track funder specific obligations."
+      ]
+    },
+    {
+      "concept": "game_transcript_export_html",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to export a transcript of a game as a HTML file"
+      ]
+    },
+    {
+      "concept": "game_transcript_viewable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to view a transcript of a game"
+      ]
+    },
+    {
+      "concept": "granular_list_permissions_per_user",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "List roles ... per list permission. Each list can be assigned a view (read) or manage (update) permission ... attached to user accounts."
+      ]
+    },
+    {
+      "concept": "hearing_accessibility",
+      "values": {
+        "adaptable": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have the product device that can be easily adapted for user that have hearing trouble."
+      ]
+    },
+    {
+      "concept": "hidden_fields_per_survey",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You will see a section called Hidden Fields. Make sure to enable it by toggling the switch."
+      ]
+    },
+    {
+      "concept": "internet_explorer_firefox_safari_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a developer, I want the application function correctly in Internet Explorer 6 and 7, Firefox 1.5 and 2, and Safari 2"
+      ]
+    },
+    {
+      "concept": "local_timezone_display",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to see dates and times in my local timezone"
+      ]
+    },
+    {
+      "concept": "max_estimators_per_game",
+      "values": {
+        "15": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a moderator, I want to invite up to 15 estimators"
+      ]
+    },
+    {
+      "concept": "metrics_on_game_use",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Mike, I want to be able to see some metrics on use of the game"
+      ]
+    },
+    {
+      "concept": "nice_error_pages",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to have nice error pages when something goes wrong"
+      ]
+    },
+    {
+      "concept": "non_identifiable_data_storage",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a Researcher, I want results to be stored in a non-identifiable way"
+      ]
+    },
+    {
+      "concept": "partial_in_quota_counting",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "By default, Quota Management includes partial responses in quota counts. You can change this behavior..."
+      ]
+    },
+    {
+      "concept": "partial_submission_tracking",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "Tracking of partial submissions is automatically enabled for all the product surveys, capturing every interaction from the moment a respondent begins the survey."
+      ]
+    },
+    {
+      "concept": "participant_timer_visible",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a participant, I want to be able start a two-minute countdown timer that all participants can see"
+      ]
+    },
+    {
+      "concept": "pdf_placeholder_field_detection",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product scans for text matching the placeholder pattern... Each placeholder can specify: Field type, Recipient, Options."
+      ]
+    },
+    {
+      "concept": "predictable_logical_urls",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to see sensible and predictable URLs, so that the application feels logical and transparent."
+      ]
+    },
+    {
+      "concept": "project_public_access",
+      "values": {
+        "optional": 1
+      },
+      "n": 1,
+      "examples": [
+        "Set a project to Public. This means it can be accessed without signing in to the product."
+      ]
+    },
+    {
+      "concept": "quota_management",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Quota Management allows you to set limits on the number of responses collected for specific segments or criteria in your survey."
+      ]
+    },
+    {
+      "concept": "recipient_role_cc",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "CC: Receives a copy after the document is completed"
+      ]
+    },
+    {
+      "concept": "rtl_language_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product fully supports Right-to-Left (RTL) languages such as Arabic, Hebrew, Persian, and Urdu."
+      ]
+    },
+    {
+      "concept": "self_hosting_allowed",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Run the product on your own infrastructure with a single Docker Compose command"
+      ]
+    },
+    {
+      "concept": "speech_interaction_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to use the product as much as possible with speech interaction."
+      ]
+    },
+    {
+      "concept": "subscriber_attributes_json_schema",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Attributes are arbitrary properties attached to a subscriber ... represented as a JSON map."
+      ]
+    },
+    {
+      "concept": "system_templates_customizable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "System templates ... can be customized by copying the static directory locally, and passing its path to the product"
+      ]
+    },
+    {
+      "concept": "text_modules_group_restriction",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Text modules can be tied to groups: if that's the case, they are only available once the ticket you're working on has been assigned to the appropriate group."
+      ]
+    },
+    {
+      "concept": "text_modules_insertion",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product offers so-called text modules. ... To access available text modules, simply type :: within an article body."
+      ]
+    },
+    {
+      "concept": "tracking_pixel_privacy_options",
+      "values": {
+        "anonymous": 1
+      },
+      "n": 1,
+      "examples": [
+        "It is possible to track reads anonymously without associating an e-mail read to a subscriber."
+      ]
+    },
+    {
+      "concept": "unicode_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to be able to use Unicode, so that I can use any language I like."
+      ]
+    },
+    {
+      "concept": "user_privacy_control",
+      "values": {
+        "manual": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to be able to manage my privacy and data settings."
+      ]
+    },
+    {
+      "concept": "validation_rules_per_question",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "By adding validation rules to your questions, you can improve data quality, reduce errors..."
+      ]
+    },
+    {
+      "concept": "visual_accessibility",
+      "values": {
+        "adaptable": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have the product device that can be easily adapted for user that have visual troubles."
+      ]
+    },
+    {
+      "concept": "wake_up_call",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to receive a wake up call from the product in the morning checking on me if I am ok."
+      ]
+    },
+    {
+      "concept": "work_package_id_uneditable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Work package identifiers cannot be edited manually and remain associated with the work package throughout its lifecycle."
+      ]
+    }
+  ],
+  "internal-dashboard": [
+    {
+      "concept": "access_control_response_choice",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "If a user requests access... the System must provide one of the following responses (selectable at configuration time)"
+      ]
+    },
+    {
+      "concept": "admin_roles_tied_to_divisions",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The system shall save the user info to the database with specified roles associated with divisions for the newly created/added user."
+      ]
+    },
+    {
+      "concept": "audit_log_of_unauthorized_access_attempts",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If the System allows users to make unauthorised attempts... it must log these in the audit trail."
+      ]
+    },
+    {
+      "concept": "audit_trail_export_by_case",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "System must be able to export audit trails for specified cases"
+      ]
+    },
+    {
+      "concept": "author_authority_control",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "a tool to perform author authority control."
+      ]
+    },
+    {
+      "concept": "bar_code_and_bio_metric_integration_for_transaction_authentication",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "system will interface with the bar-code reader...thumb-print reader for verifying claims form used by the clients."
+      ]
+    },
+    {
+      "concept": "chain_of_custody_for_lab_samples",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Chain of custody information for all specimens/samples should be captured."
+      ]
+    },
+    {
+      "concept": "collection_level_encryption",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "have my collection be encrypted with a key maintained on that server, a checksum made and stored of the encrypted file"
+      ]
+    },
+    {
+      "concept": "custom_notification_templates",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "To do this you can Customize The Alert Template...select \"Custom template\". A box will appear, consisting of input fields for subject and body."
+      ]
+    },
+    {
+      "concept": "dashboard_auto_refresh",
+      "values": {
+        "per_session": 1
+      },
+      "n": 1,
+      "examples": [
+        "Dashboards can be configured to refresh automatically at a fixed interval without user interaction. ... The setting is per-session and resets when you close the tab."
+      ]
+    },
+    {
+      "concept": "dashboard_auto_refresh_interval",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can set your dashboard to update in 1, 5, 10, 15, 30, and 60 minute intervals, depending on how fresh you need the data to be."
+      ]
+    },
+    {
+      "concept": "dashboard_favorites",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can favorite a dashboard or query by clicking the star to the left of its title anywhere in the product."
+      ]
+    },
+    {
+      "concept": "dashboard_fullscreen_url_mode",
+      "values": {
+        "supported": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can amend the URL of a dashboard to automatically enter fullscreen or auto-refresh the dashboard."
+      ]
+    },
+    {
+      "concept": "dashboard_multi_editor_support",
+      "values": {
+        "experimental": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product includes experimental support to share edit permissions with non-Admin users."
+      ]
+    },
+    {
+      "concept": "dashboard_refresh_intervals",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "Automatic Dashboard Refresh...allowed refresh intervals are expressed in seconds: 60, 300, 600, 1800, 3600, 43200, and 86400."
+      ]
+    },
+    {
+      "concept": "dashboard_sections",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Sections are templates with headings and pre-arranged cards."
+      ]
+    },
+    {
+      "concept": "dashboard_tabs",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can add multiple tabs to a dashboard to keep your cards organized."
+      ]
+    },
+    {
+      "concept": "dashboard_tagging",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can tag queries and queries by subject matter, location, user or any parameter..."
+      ]
+    },
+    {
+      "concept": "dashboard_variable_filters",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can include a variable in a text card, then wire that variable up to a dashboard filter."
+      ]
+    },
+    {
+      "concept": "delete_only_if_no_child_records",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Delete (deleting will be allowed only if no child records are created)"
+      ]
+    },
+    {
+      "concept": "distributor_and_salesman_duplicate_name_warning",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "system will give a warning message to have the duplicate name or to change the name."
+      ]
+    },
+    {
+      "concept": "dynamic_currency_formatting",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Chart metric values can display currencies dynamically ... set Currency Code Column ... select Auto-detect for currency."
+      ]
+    },
+    {
+      "concept": "dynamic_event_specific_data_model",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Systems supporting OM must allow for dynamic, event-specific case investigation data to be captured."
+      ]
+    },
+    {
+      "concept": "field_validation_required_fields_marked",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "All required fields as specified in the UIS must be marked with a red asterisk alerting the user to fill the required fields in."
+      ]
+    },
+    {
+      "concept": "git_sync_application_management",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "use GitSync to streamline application management"
+      ]
+    },
+    {
+      "concept": "group_based_permissions",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Permissions are granted to groups, not people."
+      ]
+    },
+    {
+      "concept": "hide_card_if_no_results",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Toggle the option Hide this card if there are no results. When you turn on this option, the query will still run in the background, but the dashboard won't display the card."
+      ]
+    },
+    {
+      "concept": "interface_accessibility_standards",
+      "values": {
+        "iso_9241_wcag": 1
+      },
+      "n": 1,
+      "examples": [
+        "user interfaces of the system should comply with Standard ISO 9241.... Content accessibility WCAG 1.0 shall be the standard..."
+      ]
+    },
+    {
+      "concept": "ip_based_access_control",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "restrict access to my collection or items to Duke IP addresses"
+      ]
+    },
+    {
+      "concept": "item_embargo",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "option of setting an embargo date at deposit... repository to lift embargoes on the release date and set the access controls to the configuration set on item on that date."
+      ]
+    },
+    {
+      "concept": "license_acceptance_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "users to be presented with a license or a selection of licenses, specific to the collection, and deposit to be denied if the submitter does not accept the license."
+      ]
+    },
+    {
+      "concept": "mandatory_fields_on_distributor_and_salesman",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "All fields with * are mandatory!"
+      ]
+    },
+    {
+      "concept": "mentorship_assignment",
+      "values": {
+        "manual": 1
+      },
+      "n": 1,
+      "examples": [
+        "./UMM mentor assign -student STUDENT_ID -mentor FACULTY_ID"
+      ]
+    },
+    {
+      "concept": "metadata_propagated_to_doi_service",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "metadata changes made to items with repository-assigned DOIs to be propagated to the EZID."
+      ]
+    },
+    {
+      "concept": "object_version_restore",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "view available versions of an object and restore a version from the staff interface."
+      ]
+    },
+    {
+      "concept": "per_user_folders_for_datasets",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Folders are per-user organizational aids — they do not affect dataset access permissions or how other users see the datasets."
+      ]
+    },
+    {
+      "concept": "personal_collection_permissions_fixed",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "A personal collection works just like any other collection except that its permissions are fixed and cannot be changed."
+      ]
+    },
+    {
+      "concept": "printer_friendly_document_version",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "a printer-friendly version of the document should be provided that prints the content in a form acceptable to the user"
+      ]
+    },
+    {
+      "concept": "raw_html_render_in_table_cells",
+      "values": {
+        "optional_per_column": 1
+      },
+      "n": 1,
+      "examples": [
+        "Enable this per-column in the chart's Column Configuration panel by toggling Render HTML."
+      ]
+    },
+    {
+      "concept": "remote_replication",
+      "values": {
+        "per_collection_policy": 1
+      },
+      "n": 1,
+      "examples": [
+        "specify the remote replication policy for each collection ... replicate remotely or not and possibly to replicate beyond the primary remote site."
+      ]
+    },
+    {
+      "concept": "standardized_vocabulary_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Where they exist, systems supporting OM should use [standard vocabularies]. As additional standards are defined, they should be accepted and implemented."
+      ]
+    },
+    {
+      "concept": "superuser_mode",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "enter and exit the superuser scope"
+      ]
+    },
+    {
+      "concept": "table_chart_conditional_formatting",
+      "values": {
+        "per_rule_customization": 1
+      },
+      "n": 1,
+      "examples": [
+        "Each rule's color is set with a full color picker rather than a fixed dropdown of presets. ... use the Colors preset swatches, which reference theme tokens"
+      ]
+    },
+    {
+      "concept": "text_equivalents_for_non_text_media",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "All non-text media objects... should be provided with alternative equivalent textual descriptions"
+      ]
+    },
+    {
+      "concept": "ui_help_system_via_robohelp",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "RoboHelp version 8 will be used to create the online [system name] Help hypertext links..."
+      ]
+    },
+    {
+      "concept": "user_profile_configurations_saved",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Such configurations must be saved in the user profile."
+      ]
+    },
+    {
+      "concept": "voucher_slips_with_tear_off_for_client_and_partner",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Each voucher should have two portions with three tear off voucher slips each for Client and Partner."
+      ]
+    },
+    {
+      "concept": "voucher_validity_amendment_by_admin_only",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "This validity date can be amended or altered at the system level ONLY by the authorized user"
+      ]
+    },
+    {
+      "concept": "voucher_withholding_instead_of_deletion",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Once created vouchers will not be edited or deleted but there will be a provision to with-hold any voucher number if the admin team decides to do for any reason."
+      ]
+    },
+    {
+      "concept": "white_labeling",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Super Admins can implement more intricate settings like white labeling"
+      ]
+    }
+  ],
+  "community": [
+    {
+      "concept": "account_migration_preserves_followers_only",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Moving your account... will also irreversibly force everyone to unfollow your current account and follow your new account, if their software supports the Move activity. Your posts will not be moved, due to technical limitations."
+      ]
+    },
+    {
+      "concept": "application_to_certified_status",
+      "values": {
+        "manual": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a site member, I want to fill out an application to become a Certified Scrum Practitioner..."
+      ]
+    },
+    {
+      "concept": "article_teaser_control",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As the site editor, I want to include a teaser with each article..."
+      ]
+    },
+    {
+      "concept": "automatic_content_prefiltering",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to prefilter nudity content. prefilter content using search based on low­level asset information."
+      ]
+    },
+    {
+      "concept": "automatic_copyright_detection",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "automatically validated the ingested contents for copyright infringement."
+      ]
+    },
+    {
+      "concept": "automatic_video_segmentation_and_annotation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an admin, I want to see, validate and edit segmentation of videos. annotate news video segments and extract a topic."
+      ]
+    },
+    {
+      "concept": "cancellation_terms_acceptance",
+      "values": {
+        "required": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a trainee, I want to must accept the cancellation terms with a checkbox, so that they can be accountable."
+      ]
+    },
+    {
+      "concept": "comment_and_annotation_based_education_prompting",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "detect when a scientist should be prompted to look at a subject, based on annotations and information from Talk comments."
+      ]
+    },
+    {
+      "concept": "content_recommendations_based_on_profile",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to receive content recommendations from similar profiles."
+      ]
+    },
+    {
+      "concept": "email_privacy_option",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a site member, I want to mark my email address as private even if the rest of my profile is not..."
+      ]
+    },
+    {
+      "concept": "extension_authentication_methods",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If it is a private source, you will need to enter an authentication method through the New authentication method button."
+      ]
+    },
+    {
+      "concept": "extension_management_ui",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The extension manager is an extension that comes bundled with the product when installed via an archive. It provides a graphical interface for installing and updating both extensions and the product itself."
+      ]
+    },
+    {
+      "concept": "extension_minimum_stability_setting",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If for whatever reason you want to install a non-stable extension ... update the Minimum stability setting to the wanted stability."
+      ]
+    },
+    {
+      "concept": "extension_repository_sources",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can configure additional sources for the extension manager to look for extensions in."
+      ]
+    },
+    {
+      "concept": "federation_via_activitypub",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product uses a standardized, open protocol to implement federation which is called ActivityPub."
+      ]
+    },
+    {
+      "concept": "filters_can_expire",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Optionally only apply the filter for a limited amount of time. Expired filters are not automatically deleted, but can be reactivated"
+      ]
+    },
+    {
+      "concept": "guest_user_channel_access",
+      "values": {
+        "explicit_subscribe_required": 1
+      },
+      "n": 1,
+      "examples": [
+        "Guest users can't see public (or private) channels, unless they have been specifically subscribed to the channel."
+      ]
+    },
+    {
+      "concept": "guest_user_permissions_configurable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can also configure other permissions for guest users, such as whether they can: Move or edit messages. Notify a large number of users with a wildcard mention."
+      ]
+    },
+    {
+      "concept": "guest_user_visibility_restricted",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can restrict guests' ability to see other users in the organization. If you do so, guests will be able to see information about other users only in... direct messages or shared channels."
+      ]
+    },
+    {
+      "concept": "help_wanted_ad_extension",
+      "values": {
+        "manual": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a recruiter, I want to be able to extend an ad for another 30 days by visiting the site..."
+      ]
+    },
+    {
+      "concept": "hide_boosts_per_user",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "If you hide boosts from someone, you won’t see their boosts in your home feed."
+      ]
+    },
+    {
+      "concept": "hierarchical_comments",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Comments are by default arranged in a hierarchy which shows at a glance who it is replying to."
+      ]
+    },
+    {
+      "concept": "image_tag_enrichment_for_discovery",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "search and discover music by exploiting enriched metadata and image tags"
+      ]
+    },
+    {
+      "concept": "listing_fee_per_event_course",
+      "values": {
+        "admin_settable": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a site administrator, I want to set the listing fee per Other Course or Event..."
+      ]
+    },
+    {
+      "concept": "moderation_tools",
+      "values": {
+        "strong": 1
+      },
+      "n": 1,
+      "examples": [
+        "There are strong moderation tools to keep out spam and trolls."
+      ]
+    },
+    {
+      "concept": "news_item_priority",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a site editor, I want to assign priority numbers to news items..."
+      ]
+    },
+    {
+      "concept": "newsletter_signup",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a anonymoususer, I want to sign up for the product newsletter, so that I can stay up to date with the latest communications about the product."
+      ]
+    },
+    {
+      "concept": "nsfw_content_control",
+      "values": {
+        "per_user": 1
+      },
+      "n": 1,
+      "examples": [
+        "Show NSFW content: Here you can choose if content that is 'not safe for work' should be shown."
+      ]
+    },
+    {
+      "concept": "private_channel_history_access_control",
+      "values": {
+        "configurable_per_channel": 1
+      },
+      "n": 1,
+      "examples": [
+        "In private channels with shared history, new subscribers can access the channel's full message history... In protected history, new subscribers can only see messages sent after they join."
+      ]
+    },
+    {
+      "concept": "profile_directory_opt_in",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The profile directory shows all accounts that have opted into being shown in the directory"
+      ]
+    },
+    {
+      "concept": "profile_privacy_option",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a site member, I want to mark my profile as private in which case only my name will appear..."
+      ]
+    },
+    {
+      "concept": "public_vs_members_only_articles",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a site editor, I want to be able to designate whether an article is publicly available or for members only..."
+      ]
+    },
+    {
+      "concept": "registration_limit_per_user_per_day",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a trainee, I want to limit to one registration per day per authenticated user, so that we don't have duplicate spaces."
+      ]
+    },
+    {
+      "concept": "site_rss_feeds",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a site member, I want to subscribe to an RSS feed of news...As a site visitor, I want to subscribe to an RSS feed of jobs available..."
+      ]
+    },
+    {
+      "concept": "theme_switching",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Allows you to customize the forum's colors, branding and add additional CSS for customization."
+      ]
+    },
+    {
+      "concept": "trainer_rating_display",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a trainer, I want to show my rating up on my profile page..."
+      ]
+    },
+    {
+      "concept": "translation_by_community",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Help Translate the product - It's a really simple translation tool and you don't need to know how to code."
+      ]
+    },
+    {
+      "concept": "volunteer_experience_weighting",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "assess the probability/weight of a volunteer’s classification based on their experience."
+      ]
+    },
+    {
+      "concept": "waitlist_for_trainings",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a attendee, I want to be added to a training waitlist, so that so they can be considered for a class."
+      ]
+    },
+    {
+      "concept": "wysiwyg_editor_for_long_content",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a authenticateduser, I want to use a WYSIWYG editor for all long-form content, so that I don't have to know HTML to update my content."
+      ]
+    }
+  ],
+  "content-site": [
+    {
+      "concept": "backend_enum_list_management",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want backend changes for managing enum lists."
+      ]
+    },
+    {
+      "concept": "bulk_upload_through_python_client",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have a functioning Python Client, So that I can add data to the datastore in bulk from the command line"
+      ]
+    },
+    {
+      "concept": "collection_assembly_flexibility",
+      "values": {
+        "per_object_definition": 1
+      },
+      "n": 1,
+      "examples": [
+        "assembly a collection from other collections and objects"
+      ]
+    },
+    {
+      "concept": "collection_soft_delete",
+      "values": {
+        "per_collection": 1
+      },
+      "n": 1,
+      "examples": [
+        "`trash` A boolean to enable soft deletes for this collection. Defaults to `false`."
+      ]
+    },
+    {
+      "concept": "component_hierarchy_navigation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to be able to see and navigate the component hierarchy of an object."
+      ]
+    },
+    {
+      "concept": "content_checker_for_accessibility",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product includes an content checker built into the user bar and editing views supporting previews."
+      ]
+    },
+    {
+      "concept": "content_translation_linking",
+      "values": {
+        "automatic_and_by_translation_key": 1
+      },
+      "n": 1,
+      "examples": [
+        "Any pages sharing the same `translationKey` set in front matter will be linked as translated pages regardless of basename or location."
+      ]
+    },
+    {
+      "concept": "cookie_consent_banner",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "enable Cookies Bar in the Tracking & SEO section. This activates Block tracking 3rd-party services by default...visitors accept optional cookies."
+      ]
+    },
+    {
+      "concept": "currency_conversion_in_visualisation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to be able to change the display of all monetary measures across a set of currencies"
+      ]
+    },
+    {
+      "concept": "custom_accessibility_checks",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "You can also implement custom checks. This can be useful to enforce more advanced accessibility checks."
+      ]
+    },
+    {
+      "concept": "customizable_workflows_for_ingestion",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have easy, well documented and supported workflows that can be easily passed on to others when she/others retire, so that continuity can be maintained."
+      ]
+    },
+    {
+      "concept": "dataset_auto_update_from_source",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have my dataset update automatically as the source file/files changes"
+      ]
+    },
+    {
+      "concept": "dataset_search_by_metadata",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to be able to search any dataset published and publicly accessible by their title and metadata"
+      ]
+    },
+    {
+      "concept": "dataset_state_management",
+      "values": {
+        "hidden_visible": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to be able to add a dataset in a Hidden state...I want to be able to Hide a dataset that I have already added as Public"
+      ]
+    },
+    {
+      "concept": "default_pretty_urls",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "which is the default behavior for the product"
+      ]
+    },
+    {
+      "concept": "detailed_rights_management",
+      "values": {
+        "per_component_level": 1
+      },
+      "n": 1,
+      "examples": [
+        "indicate if the component has a copyright status different than that of of the object as a whole"
+      ]
+    },
+    {
+      "concept": "document_versioning",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "`versions` Set to true to enable default options, or configure with object properties."
+      ]
+    },
+    {
+      "concept": "edit_published_content_inline",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "To customize the layout...click Edit --> Style...After applying the desired changes, click Save."
+      ]
+    },
+    {
+      "concept": "enum_list_editing",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want frontend changes for managing enum lists."
+      ]
+    },
+    {
+      "concept": "event_tracking_across_all_entities",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to know all events occurring to a collection/object/component/file over its life cycle."
+      ]
+    },
+    {
+      "concept": "frontend_enum_list_management",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want frontend changes for managing enum lists."
+      ]
+    },
+    {
+      "concept": "group_based_access_control",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Accessible to users in specific groups: The user must be logged in, and a member of one or more of the specified groups, in order to view the page."
+      ]
+    },
+    {
+      "concept": "historical_data_loading",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an Agency user, I want historical FPDS data loaded."
+      ]
+    },
+    {
+      "concept": "ldap_authentication",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a User , I want to authenticate using LDAP."
+      ]
+    },
+    {
+      "concept": "link_objects_to_external_descriptions",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to indicate other descriptions of the collection that are outside the DAMS and of probable importance to users."
+      ]
+    },
+    {
+      "concept": "list_page_for_section",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The list page for the articles section includes all articles, regardless of directory structure; none of the subdirectories are sections."
+      ]
+    },
+    {
+      "concept": "map_visualisation_geojson_source",
+      "values": {
+        "user_providable": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to be able to provide the Platform Administrator with additional GeoJSON sources"
+      ]
+    },
+    {
+      "concept": "menu_entry_localization",
+      "values": {
+        "per_language": 1
+      },
+      "n": 1,
+      "examples": [
+        "You must create language-specific menu entries under each language key."
+      ]
+    },
+    {
+      "concept": "multiple_websites_per_instance",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "the product allows you to create multiple websites from the same database."
+      ]
+    },
+    {
+      "concept": "nested_sections_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The sections can be nested as deeply as you want."
+      ]
+    },
+    {
+      "concept": "researcher_identity_validation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to associate a researcherID or ORCID with a submission, so that there is no ambiguity between my work and someone else with same name."
+      ]
+    },
+    {
+      "concept": "supports_shared_password_access",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Accessible with a shared password: The user must enter the given shared password to view the page."
+      ]
+    },
+    {
+      "concept": "taxonomy_term_metadata_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Display metadata about each term by creating a corresponding branch bundle in the `content` directory."
+      ]
+    },
+    {
+      "concept": "taxonomy_term_weighting",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Assign a taxonomic weight using a front matter key named `[taxonomy_name]_weight`."
+      ]
+    },
+    {
+      "concept": "template_selection_by_section",
+      "values": {
+        "top_level_section_only": 1
+      },
+      "n": 1,
+      "examples": [
+        "The lookup rules consider the top-level section name; subsection names are not considered when selecting a template."
+      ]
+    },
+    {
+      "concept": "versioning_of_content_records",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "...manage customizable relationship groups in support of patron see also option.\nI want to upload revised report/dataset... while retaining previous versions..."
+      ]
+    },
+    {
+      "concept": "visualisation_persistence",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to be able to persistently store visualisation state in the database"
+      ]
+    }
+  ],
+  "other": [
+    {
+      "concept": "acceptance_testing_of_models",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The repository should include acceptance testing for both the renko and line break indicator calculation models."
+      ]
+    },
+    {
+      "concept": "admin_block_users_by_ip",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an admin, I want to be able to block specific users based on IP address, so that I can prevent spamming on the websites."
+      ]
+    },
+    {
+      "concept": "adult_content_filtering",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The user will have the option to filter out videos containing certain content depending on age restrictions, for example adult content."
+      ]
+    },
+    {
+      "concept": "audit_report_includes_percentage_of_parts_used",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The audit report shall include the percentage of available recycled parts used in the estimate"
+      ]
+    },
+    {
+      "concept": "automatic_access_derivatives",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to automatically create access derivatives of digital objects, so that I don't have to do this manually."
+      ]
+    },
+    {
+      "concept": "automatic_metadata_embedding_in_file_headers",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to automatically embed metadata in file headers, so that I avoid repetitive and easily-forgotten tasks."
+      ]
+    },
+    {
+      "concept": "automatic_software_updates_for_security",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall have the ability to receive automatic software updates as new threats emerge. 100% of customers will be able to receive automatic software updates transmitted to the installed product."
+      ]
+    },
+    {
+      "concept": "automatic_technical_metadata_extraction",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to automatically generate technical metadata, so that I know the file size."
+      ]
+    },
+    {
+      "concept": "automatic_unique_identifier_assignment",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to automatically assign unique identifiers to material I scan, so that I avoid potential errors."
+      ]
+    },
+    {
+      "concept": "batch_comparison_output_file",
+      "values": {
+        "output_txt": 1
+      },
+      "n": 1,
+      "examples": [
+        "Capable of performing batch comparisons of images based on input and outputting the comparison results to a specified file."
+      ]
+    },
+    {
+      "concept": "billing_between_peers_based_on_negotiated_relationships",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "CDNs exchange accounting information to perform billing based on the negotiated relationships."
+      ]
+    },
+    {
+      "concept": "block_position_history_limit",
+      "values": {
+        "10000": 1
+      },
+      "n": 1,
+      "examples": [
+        "their last 10000 previous positions"
+      ]
+    },
+    {
+      "concept": "build_gradle_dependency_management",
+      "values": {
+        "required": 1
+      },
+      "n": 1,
+      "examples": [
+        "It's necessary to implement build.gradle to solve dependencies."
+      ]
+    },
+    {
+      "concept": "bulk_file_upload",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a researcher, I want to have the ability to bulk upload directories and files with minimal effort."
+      ]
+    },
+    {
+      "concept": "citation_tracking",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to track citations of my data, so that I can demonstrate the impact of my work"
+      ]
+    },
+    {
+      "concept": "cli_argument_configurable",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Argument parsing for specifying delimiters, schema, CSV input filepath, and JSON output filepath."
+      ]
+    },
+    {
+      "concept": "column_names_and_data_rows_extraction",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Ability to read CSV files and extract column names and data rows."
+      ]
+    },
+    {
+      "concept": "communication_between_admin_and_facilities",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an admin, I want to be able to communicate directly with facilities, so that I can keep them updated about features..."
+      ]
+    },
+    {
+      "concept": "content_replication_pull_model",
+      "values": {
+        "cooperative_pull": 1
+      },
+      "n": 1,
+      "examples": [
+        "Content replication is performed using a cooperative pull-based approach where participating CDNs assist each others in serving data."
+      ]
+    },
+    {
+      "concept": "context_manager_for_file_operations",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Context managers for file operations to ensure proper handling of resources."
+      ]
+    },
+    {
+      "concept": "criteria_evidence_mapping_per_country",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "So the link between individual evidences and the respective criteria they may approve for (as listed above) must be precisely indicated and mapped."
+      ]
+    },
+    {
+      "concept": "custom_delimiter_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Support for custom delimiters within CSV files for enhanced parsing flexibility."
+      ]
+    },
+    {
+      "concept": "custom_queue_stack_implementation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "This project requires custom `queue` and `stack` and cannot use c++STL `queue` and `stack`."
+      ]
+    },
+    {
+      "concept": "customization_of_license_variables",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Allows specification of the year and organization for the generated license."
+      ]
+    },
+    {
+      "concept": "data_embargo_supported",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to place data under an embargo, so that my right of first use is protected"
+      ]
+    },
+    {
+      "concept": "data_input_formats",
+      "values": {
+        "csv": 1
+      },
+      "n": 1,
+      "examples": [
+        "Load and preprocess financial data from various formats, including CSV."
+      ]
+    },
+    {
+      "concept": "data_validation_on_update",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want an online service that is connected to my data repository that validates data on update, so that I can delegate data validation to a third party."
+      ]
+    },
+    {
+      "concept": "dataset_explore_enabled",
+      "values": {
+        "configurable": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to specify as part of dataset configuration whether it is explorable."
+      ]
+    },
+    {
+      "concept": "dataset_instance_atomic_reconfiguration",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to ensure that if reconfiguration of a dataset fails then no changes have taken effect, so that all steps required to reconfigure a dataset must be done as a single atomic action."
+      ]
+    },
+    {
+      "concept": "dataset_instance_custom_admin_ops",
+      "values": {
+        "supported": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to implement custom administrative operations such as \"compaction\" or \"rebalance\" that are no common to all dataset types."
+      ]
+    },
+    {
+      "concept": "dataset_instance_migration_procedure",
+      "values": {
+        "optional": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have the option of implementing a migration procedure that can be run after an upgrade of a dataset instance to a new version of it type."
+      ]
+    },
+    {
+      "concept": "dataset_instance_upgrade_handling",
+      "values": {
+        "controlled": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have a way to reject an upgrade of a dataset instance to a newer version of it type if the upgrade is not compatible."
+      ]
+    },
+    {
+      "concept": "dataset_schema_specification_methods",
+      "values": {
+        "json_and_sql": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to specify schema as a JSON string. As a user, I want to specify schema as a SQL schema string."
+      ]
+    },
+    {
+      "concept": "dataset_type_artifact_deployment",
+      "values": {
+        "allowed": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to include the code of a dataset type in my app artifact and create a dataset of that type when deploying the app."
+      ]
+    },
+    {
+      "concept": "dataset_type_interface_implementation_separation",
+      "values": {
+        "required": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to separate the interface from the implementation of a dataset type."
+      ]
+    },
+    {
+      "concept": "dataset_type_sharing_across_apps",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to share a dataset type across multiple applications that include the dataset type's code in their artifacts."
+      ]
+    },
+    {
+      "concept": "dataset_type_versioning",
+      "values": {
+        "explicit": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a dataset developer, I want to assign explicit versions to the code of a dataset type."
+      ]
+    },
+    {
+      "concept": "display_calendar_dates_times_by_locale",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall be able to display calendar dates and times according to the user’s locale."
+      ]
+    },
+    {
+      "concept": "doi_minting_for_data",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to mint DOIs for my data..."
+      ]
+    },
+    {
+      "concept": "download_tracking",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to track downloads of my data..."
+      ]
+    },
+    {
+      "concept": "embed_data_preview_on_external_sites",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a DeveloperPublisher, I want a tool to create an embeddable data summary via iframe, so that I can embed data summaries across sites."
+      ]
+    },
+    {
+      "concept": "exception_logging_for_analysis",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall create an exception log of problems encountered within the product for transmission to our company for analysis and resolution."
+      ]
+    },
+    {
+      "concept": "experiment_provenance_tracking",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a researcher, I want to have the ability to store all the inputs for an experiment so that the provenance of the results can be verified."
+      ]
+    },
+    {
+      "concept": "extensible_comparison_architecture",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The architecture should be flexible, enabling future enhancements or customizations, such as adding new methods for image comparison or integrating with other systems."
+      ]
+    },
+    {
+      "concept": "external_service_dependency",
+      "values": {
+        "tmdb_api": 1
+      },
+      "n": 1,
+      "examples": [
+        "The project depends on external services such as the TMDB API for data fetching."
+      ]
+    },
+    {
+      "concept": "facility_favorites",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to add donation centers as favorites on my profile, so that I can view them later."
+      ]
+    },
+    {
+      "concept": "facility_filtering_by_material_type",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to be able to select different types of recyclable waste, so I have and get a list of facilities that accept each type..."
+      ]
+    },
+    {
+      "concept": "facility_onboarding_by_admin",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an admin, I want to onboard the product centers on the platform, so that I can increase information accuracy."
+      ]
+    },
+    {
+      "concept": "fav_videos_storage",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "They will have the facility for users to store their favorite videos, so that they can come back to the video at another time."
+      ]
+    },
+    {
+      "concept": "file_generation_for_license_files",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Can generate a new source file with the license commented in the header."
+      ]
+    },
+    {
+      "concept": "file_tagging_controlled_vocabulary",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to use the tags that I use are part of a controlled vocabulary."
+      ]
+    },
+    {
+      "concept": "file_versioning",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to revert to an older version of an uploaded file."
+      ]
+    },
+    {
+      "concept": "game_grid_display_mode",
+      "values": {
+        "periscope_circle": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall display the grids within a circle as a view from a periscope."
+      ]
+    },
+    {
+      "concept": "graph_input_file_format_specified",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Data input should be flexible, allowing users to input graphs via specific file formats. The specific format of the input file is as follows: ..."
+      ]
+    },
+    {
+      "concept": "graph_serialization_format",
+      "values": {
+        "serialized_java_object": 1
+      },
+      "n": 1,
+      "examples": [
+        "Stores `actorGraph.ser` to a specified path."
+      ]
+    },
+    {
+      "concept": "group_level_repository",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a researcher, I want to have a group-level repository for sharing papers/reviews/comments with other researchers."
+      ]
+    },
+    {
+      "concept": "http_client_library",
+      "values": {
+        "axios": 1
+      },
+      "n": 1,
+      "examples": [
+        "Axios: For making HTTP requests to the backend."
+      ]
+    },
+    {
+      "concept": "image_comparison_methods",
+      "values": {
+        "histogram_and_perceptual_hashing": 1
+      },
+      "n": 1,
+      "examples": [
+        "two independent methods - histogram comparison and perceptual hashing algorithm"
+      ]
+    },
+    {
+      "concept": "inactive_player_auto_removal_period",
+      "values": {
+        "24_hours": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall remove players who have been inactive for 24 hours from the list of players."
+      ]
+    },
+    {
+      "concept": "indent_sorted_json_output",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Output JSON files with proper indentation and sorted keys for readability."
+      ]
+    },
+    {
+      "concept": "indicator_param_customization",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Calculate Renko charts with customizable brick sizes."
+      ]
+    },
+    {
+      "concept": "indicator_types_supported",
+      "values": {
+        "renko_line_break_point_and_figure": 1
+      },
+      "n": 1,
+      "examples": [
+        "Provide options for different Renko chart types ... Implement Line Break chart calculations ... Develop functionality for calculating PnF charts."
+      ]
+    },
+    {
+      "concept": "integration_with_git_and_env_vars",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "Tries to use `git config` or the `$USER` environment variable if the organization is not specified."
+      ]
+    },
+    {
+      "concept": "java_build_gradle_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "It's necessary to implement build.gradle to solve dependencies."
+      ]
+    },
+    {
+      "concept": "java_only_implementation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The application must be written in Java."
+      ]
+    },
+    {
+      "concept": "java_version_required",
+      "values": {
+        "11": 1
+      },
+      "n": 1,
+      "examples": [
+        "The project must be written in Java, and it requires Java 11 as the Java version"
+      ]
+    },
+    {
+      "concept": "language_detection_for_license_headers",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "Automatically detects the language for file formatting based on the file extension provided."
+      ]
+    },
+    {
+      "concept": "license_application_per_dataset",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to apply licenses to datasets, so that my IP rights are protected appropriately."
+      ]
+    },
+    {
+      "concept": "license_generation_supported",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Users can generate various licenses such as BSD-3, MIT, GPL, etc., with simple commands."
+      ]
+    },
+    {
+      "concept": "link_datasets_to_publications",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to link datasets to publications in Opus..."
+      ]
+    },
+    {
+      "concept": "load_distribution_hierarchical_reporting",
+      "values": {
+        "hierarchical_periodic_threshold": 1
+      },
+      "n": 1,
+      "examples": [
+        "Load distribution... measuring the load information and disseminating... using a hierarchical approach ... reported in a periodic or threshold-based manner."
+      ]
+    },
+    {
+      "concept": "manual_and_auto_image_manipulation",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to perform contrast, level and other manipulations manually, so that I can improve on results from automated tools."
+      ]
+    },
+    {
+      "concept": "map_based_facility_display",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to view all locations of the product centers on a map..."
+      ]
+    },
+    {
+      "concept": "maximum_saved_player_statistics",
+      "values": {
+        "10": 1
+      },
+      "n": 1,
+      "examples": [
+        "The game statistics is composed of 10 player statistics."
+      ]
+    },
+    {
+      "concept": "meeting_acknowledgement_tracking",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product will record meeting acknowledgements."
+      ]
+    },
+    {
+      "concept": "metadata_auto_completion",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "I want to have metadata automatically filled from other University systems and remembered from previous deposits..."
+      ]
+    },
+    {
+      "concept": "metadata_restriction_on_entry",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to restrict what can be entered to a metadata field."
+      ]
+    },
+    {
+      "concept": "minimum_browser_support",
+      "values": {
+        "latest": 1
+      },
+      "n": 1,
+      "examples": [
+        "Must support the latest versions of Chrome, Firefox, Safari, and Edge."
+      ]
+    },
+    {
+      "concept": "model_checkpoint_save_strategy",
+      "values": {
+        "highest_accuracy": 1
+      },
+      "n": 1,
+      "examples": [
+        "ability to save the model checkpoint with the highest evaluation accuracy during training;"
+      ]
+    },
+    {
+      "concept": "os_independent_python_package",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The package should be OS-independent and capable of running on any standard Python environment."
+      ]
+    },
+    {
+      "concept": "output_file_format_specified",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The output file is formatted to print the adjacency matrix, then the adjacency table, and finally the results of the non-recursive dfs and bfs in that order."
+      ]
+    },
+    {
+      "concept": "page_navigation_mechanism",
+      "values": {
+        "vue_router": 1
+      },
+      "n": 1,
+      "examples": [
+        "Vue Router: For navigation between pages."
+      ]
+    },
+    {
+      "concept": "parcel_id_format",
+      "values": {
+        "kd_eight_digits": 1
+      },
+      "n": 1,
+      "examples": [
+        "Logistics ID: ... follows the format \"KD\" followed by eight digits (padded with zeros if necessary)"
+      ]
+    },
+    {
+      "concept": "parts_feed_frequency",
+      "values": {
+        "daily": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall interface with the ChoiceParts system once per day at approximately 1:00 AM."
+      ]
+    },
+    {
+      "concept": "peer_negotiation_through_mediator",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "triggered by an initialization request sent to the mediator... mediator... negotiates with other CDNs."
+      ]
+    },
+    {
+      "concept": "preferred_repair_facility_rating_categories",
+      "values": {
+        "attempted_use_actual_use": 1
+      },
+      "n": 1,
+      "examples": [
+        "The ratings shall include categories for attempted use of recycled parts and actual use of recycled parts"
+      ]
+    },
+    {
+      "concept": "preferred_repair_facility_rating_scale",
+      "values": {
+        "1_10": 1
+      },
+      "n": 1,
+      "examples": [
+        "The ratings shall be from a scale of 1-10"
+      ]
+    },
+    {
+      "concept": "project_packaging_maven",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The project packaging should be completed using a Maven environment."
+      ]
+    },
+    {
+      "concept": "redaction_period_on_file",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to redact information in digital files for a period of time, so that I can provide access to non-sensitive portions of a record."
+      ]
+    },
+    {
+      "concept": "redis_required_local_instance",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Prior to running the project, a Redis instance should be running locally"
+      ]
+    },
+    {
+      "concept": "repair_facility_search_radius_limit",
+      "values": {
+        "30": 1
+      },
+      "n": 1,
+      "examples": [
+        "The search radius shall be between 1 and 30 miles"
+      ]
+    },
+    {
+      "concept": "reproducibility_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "ability to reproduce the training and testing results when random seeds are fixed."
+      ]
+    },
+    {
+      "concept": "request_assignment_at_multiple_levels",
+      "values": {
+        "dns_gateway_server": 1
+      },
+      "n": 1,
+      "examples": [
+        "Request assignment and redirection... at DNS, gateways to local clusters, (redirection) between servers in a cluster."
+      ]
+    },
+    {
+      "concept": "responsive_design_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The interface should be responsive and compatible with both desktop and mobile devices."
+      ]
+    },
+    {
+      "concept": "restriction_by_ip_address",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to restrict access to some files by IP address, so that I can give reading room access only to certain digital files."
+      ]
+    },
+    {
+      "concept": "restriction_by_user",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to restrict access to certain files by user, so that I can allow donor representatives to see certain files."
+      ]
+    },
+    {
+      "concept": "restriction_end_date",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to set a date on which restrictions will be removed from a file."
+      ]
+    },
+    {
+      "concept": "revision_control_system_integration",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a researcher, I want to have the ability to interact with a revision control system so that I can keep track of changes to files over time."
+      ]
+    },
+    {
+      "concept": "rewards_incentives",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to be able to receive tempting rewards, so that I have a reason to use the website."
+      ]
+    },
+    {
+      "concept": "rights_management_on_files",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an archivist, I want to apply a license or rights statement, so that I know what I can do with a file."
+      ]
+    },
+    {
+      "concept": "route_planning_and_recommendations",
+      "values": {
+        "automatic": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to upload my week's schedule, so that I can get recommendations for the product centers..."
+      ]
+    },
+    {
+      "concept": "schema_based_json_output",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Conversion of flat CSV data into a nested JSON structure using a custom or automatically generated schema."
+      ]
+    },
+    {
+      "concept": "self_declaration_when_no_document_available",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "...may be replaced by a declaration on oath, a solemn declaration, a notary..."
+      ]
+    },
+    {
+      "concept": "sheet_to_file_mapping",
+      "values": {
+        "per_sheet": 1
+      },
+      "n": 1,
+      "examples": [
+        "Ability to process XLSX files with multiple sheets and output separate CSV files named after the sheets."
+      ]
+    },
+    {
+      "concept": "ship_positioning_modes",
+      "values": {
+        "horizontal_vertical_diagonal": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall allow a player to position ships horizontally on their grid. vertically ... diagonally ..."
+      ]
+    },
+    {
+      "concept": "site_database_auto_update",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "These databases can be easily updated to provide a wider searching range. Database of torrent sites can be updated via the internet."
+      ]
+    },
+    {
+      "concept": "sla_enforced_by_mediator",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "mediator instance on the primary CDN’s behalf generates its service requirements based on SLA requirements of its customer(s), terms of SLAs enforced."
+      ]
+    },
+    {
+      "concept": "sound_simulation_for_game_events",
+      "values": {
+        "required": 1
+      },
+      "n": 1,
+      "examples": [
+        "The product shall simulate the sound of a ship at sea ... sound of a shot missing ... sound of a shot hitting ... sound of a sinking ship."
+      ]
+    },
+    {
+      "concept": "standard_library_only_dependencies",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "No external dependencies are required for the core functionality."
+      ]
+    },
+    {
+      "concept": "support_site_access_for_registered_users",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Every registered user will have access to the product’s support site via the Internet. 70% of registered users shall find a solution to their problem within 5 minutes of using the support site."
+      ]
+    },
+    {
+      "concept": "supported_excel_features",
+      "values": {
+        "shared_strings": 1
+      },
+      "n": 1,
+      "examples": [
+        "Ensure it supports XLSX with shared strings."
+      ]
+    },
+    {
+      "concept": "supports_both_directed_and_undirected",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "This project supports both undirected and directed graphs, enabling the storage, computation and printing of each."
+      ]
+    },
+    {
+      "concept": "testing_must_validate_data_integrity",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Implement tests to check data shape and size after processing, ensuring data integrity."
+      ]
+    },
+    {
+      "concept": "third_party_dependencies_allowed",
+      "values": {
+        "no": 1
+      },
+      "n": 1,
+      "examples": [
+        "Meanwhile this project does not allow non-specified third-party dependencies."
+      ]
+    },
+    {
+      "concept": "tmdb_api_key_required",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "The API Key for TMDB API is obtained securely through an environment variable named `TMDB_API_KEY`."
+      ]
+    },
+    {
+      "concept": "train_val_split_ratio",
+      "values": {
+        "0_1": 1
+      },
+      "n": 1,
+      "examples": [
+        "ability to split the train dataset into train and validation sets, specify the split ratio to 0.1."
+      ]
+    },
+    {
+      "concept": "transaction_history_access",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to be able to check transaction history and keep a record of it, so that I can go back when needed."
+      ]
+    },
+    {
+      "concept": "undo_redo_limit",
+      "values": {
+        "1000": 1
+      },
+      "n": 1,
+      "examples": [
+        "The user must undo and redo its last thousand actions."
+      ]
+    },
+    {
+      "concept": "user_deletion_allowed",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "When delete link is clicked, dispatches deleteUser action."
+      ]
+    },
+    {
+      "concept": "user_documentation_access",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to view user documentation for the website, so that I know how to use the web app."
+      ]
+    },
+    {
+      "concept": "user_error_feedback_zip_code",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to get feedback when I enter an invalid zip code."
+      ]
+    },
+    {
+      "concept": "user_feedback_handling",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As an admin, I want to be able to read users' feedback and complaints, so that we can add more features and keep improving the service we provide to them."
+      ]
+    },
+    {
+      "concept": "user_type_model",
+      "values": {
+        "root_admin_normal_user": 1
+      },
+      "n": 1,
+      "examples": [
+        "user type is an integer with values 0/1/2, representing root/admin/normal user respectively"
+      ]
+    },
+    {
+      "concept": "workflow_state_logging",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a user, I want to have the details of the workflow execution to be recorded in the product log book while executing a workflow."
+      ]
+    },
+    {
+      "concept": "workspace_file_alerts",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "As a researcher, I want to receive an alert of any unattached files that are in my workspace."
+      ]
+    },
+    {
+      "concept": "write_json_to_stdout_support",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Helper methods to...writing JSON to standard output."
+      ]
+    }
+  ],
+  "portfolio-landing": [
+    {
+      "concept": "faq_blog_by_staff",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "Ask a Grad or Prof – FAQ (new)... Answers are posted in an FAQ section for all to read. A Grad or Prof BLOG on CS careers would also work here."
+      ]
+    },
+    {
+      "concept": "rss_feed_curated_content",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "RSS feeds of current CS information (new)... fed to RSS subscribers on the product site."
+      ]
+    },
+    {
+      "concept": "site_search_for_users",
+      "values": {
+        "yes": 1
+      },
+      "n": 1,
+      "examples": [
+        "At least two kinds of searches are needed, 1) internal search of the product site, and 2) external search of CS related outside sites"
+      ]
+    }
+  ]
+}

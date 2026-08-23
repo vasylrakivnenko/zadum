@@ -1,0 +1,687 @@
+{
+  "id": "b2b-invoicing",
+  "version": "2026.08.23-1",
+  "archetype": "b2b-invoicing",
+  "description": "Invoicing / billing apps (freelancers, agencies, bookkeeping firms). Priors skew toward small professional-services businesses.",
+  "nodes": [
+    {
+      "id": "invoicing_model",
+      "topic": "who invoices whom",
+      "question": "Who sends invoices to whom?",
+      "options": [
+        {
+          "id": "firm_bills_own_clients",
+          "label": "The business bills its own clients"
+        },
+        {
+          "id": "on_behalf_of_clients",
+          "label": "The business sends invoices on behalf of its clients to their customers",
+          "implies": [
+            {
+              "node": "tenancy",
+              "option": "multi_org"
+            }
+          ]
+        },
+        {
+          "id": "both",
+          "label": "Both",
+          "implies": [
+            {
+              "node": "tenancy",
+              "option": "multi_org"
+            }
+          ]
+        }
+      ],
+      "consequence": 5,
+      "sections": [
+        "overview",
+        "data_model",
+        "actors_permissions",
+        "rules"
+      ],
+      "prior": {
+        "firm_bills_own_clients": 0.673,
+        "on_behalf_of_clients": 0.189,
+        "both": 0.139
+      },
+      "tags": []
+    },
+    {
+      "id": "invoice_numbering",
+      "topic": "numbering",
+      "question": "How are invoices numbered?",
+      "options": [
+        {
+          "id": "sequential",
+          "label": "Strictly sequential per business (no gaps; legally safe)"
+        },
+        {
+          "id": "free_form",
+          "label": "Any number/format the user types"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "rules",
+        "data_model"
+      ],
+      "prior": {
+        "sequential": 0.817,
+        "free_form": 0.183
+      },
+      "tags": []
+    },
+    {
+      "id": "invoice_edit_after_send",
+      "topic": "changing sent invoices",
+      "question": "Can an invoice change after it's sent?",
+      "options": [
+        {
+          "id": "locked",
+          "label": "No — corrections go through a credit note / new invoice"
+        },
+        {
+          "id": "editable_until_paid",
+          "label": "Yes, until it's paid"
+        },
+        {
+          "id": "always_editable",
+          "label": "Always editable"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "state_machines",
+        "rules"
+      ],
+      "prior": {
+        "locked": 0.633,
+        "editable_until_paid": 0.204,
+        "always_editable": 0.163
+      },
+      "tags": []
+    },
+    {
+      "id": "payment_recording",
+      "topic": "getting paid",
+      "question": "How do payments get recorded?",
+      "options": [
+        {
+          "id": "manual",
+          "label": "Someone marks invoices paid by hand",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "record_only"
+            }
+          ]
+        },
+        {
+          "id": "online_auto",
+          "label": "Clients pay online and it's recorded automatically",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        {
+          "id": "both",
+          "label": "Both",
+          "implies": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "journeys",
+        "state_machines",
+        "data_model"
+      ],
+      "prior": {
+        "manual": 0.367,
+        "online_auto": 0.292,
+        "both": 0.34
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "partial_payments",
+      "topic": "getting paid",
+      "question": "Can an invoice be paid in parts?",
+      "options": [
+        {
+          "id": "not_allowed",
+          "label": "No — paid in full or not"
+        },
+        {
+          "id": "allowed",
+          "label": "Yes — partial payments and balances"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "state_machines",
+        "data_model",
+        "rules"
+      ],
+      "prior": {
+        "not_allowed": 0.356,
+        "allowed": 0.644
+      },
+      "tags": [
+        "payments"
+      ]
+    },
+    {
+      "id": "taxes",
+      "topic": "tax",
+      "question": "How is tax handled on invoices?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No tax lines"
+        },
+        {
+          "id": "single_rate",
+          "label": "One tax rate per invoice"
+        },
+        {
+          "id": "per_line",
+          "label": "Different rates per line item"
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "data_model",
+        "rules"
+      ],
+      "prior": {
+        "none": 0.2,
+        "single_rate": 0.259,
+        "per_line": 0.541
+      },
+      "tags": []
+    },
+    {
+      "id": "currencies",
+      "topic": "money",
+      "question": "One currency or several?",
+      "options": [
+        {
+          "id": "single",
+          "label": "One currency"
+        },
+        {
+          "id": "multi",
+          "label": "Invoices in different currencies"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules"
+      ],
+      "prior": {
+        "single": 0.506,
+        "multi": 0.494
+      },
+      "tags": []
+    },
+    {
+      "id": "recurring_invoices",
+      "topic": "automation",
+      "question": "Recurring invoices (e.g., monthly retainers)?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "yes",
+          "label": "Yes — created and sent automatically on a schedule",
+          "implies": [
+            {
+              "node": "recurring_scheduled",
+              "option": "recurring_records"
+            }
+          ]
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys",
+        "state_machines"
+      ],
+      "prior": {
+        "no": 0.444,
+        "yes": 0.556
+      },
+      "tags": []
+    },
+    {
+      "id": "overdue_reminders",
+      "topic": "late invoices",
+      "question": "What happens when an invoice is overdue?",
+      "options": [
+        {
+          "id": "nothing",
+          "label": "Nothing automatic"
+        },
+        {
+          "id": "manual_reminder",
+          "label": "Someone sends a reminder by hand"
+        },
+        {
+          "id": "auto_reminders",
+          "label": "Automatic reminders on a schedule"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys",
+        "state_machines"
+      ],
+      "prior": {
+        "nothing": 0.146,
+        "manual_reminder": 0.286,
+        "auto_reminders": 0.568
+      },
+      "tags": []
+    },
+    {
+      "id": "late_fees",
+      "topic": "late invoices",
+      "question": "Late fees?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "manual",
+          "label": "Added by hand when needed"
+        },
+        {
+          "id": "automatic",
+          "label": "Applied automatically by policy"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "rules"
+      ],
+      "prior": {
+        "none": 0.5,
+        "manual": 0.3,
+        "automatic": 0.2
+      },
+      "tags": []
+    },
+    {
+      "id": "estimates",
+      "topic": "before invoicing",
+      "question": "Estimates/quotes before invoices?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "yes_convert",
+          "label": "Yes — and an accepted quote becomes an invoice"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "state_machines"
+      ],
+      "prior": {
+        "no": 0.409,
+        "yes_convert": 0.592
+      },
+      "tags": []
+    },
+    {
+      "id": "credit_notes",
+      "topic": "corrections & refunds",
+      "question": "Corrections and refunds?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Not needed"
+        },
+        {
+          "id": "credit_notes",
+          "label": "Credit notes against invoices"
+        },
+        {
+          "id": "refunds_via_provider",
+          "label": "Credit notes plus refunds through the payment provider"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "state_machines",
+        "rules"
+      ],
+      "prior": {
+        "none": 0.266,
+        "credit_notes": 0.596,
+        "refunds_via_provider": 0.139
+      },
+      "tags": []
+    },
+    {
+      "id": "expenses",
+      "topic": "scope",
+      "question": "Track expenses and bill them to clients?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "billable_expenses",
+          "label": "Yes — billable expenses appear on invoices"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "no": 0.5,
+        "billable_expenses": 0.5
+      },
+      "tags": []
+    },
+    {
+      "id": "time_tracking",
+      "topic": "scope",
+      "question": "Track time and bill hours?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "billable_hours",
+          "label": "Yes — tracked hours become invoice lines"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "journeys"
+      ],
+      "prior": {
+        "no": 0.454,
+        "billable_hours": 0.546
+      },
+      "tags": []
+    },
+    {
+      "id": "invoice_delivery",
+      "topic": "sending",
+      "question": "How do invoices reach clients?",
+      "options": [
+        {
+          "id": "pdf_email",
+          "label": "PDF attached to an email"
+        },
+        {
+          "id": "hosted_link",
+          "label": "A link to an online invoice page (where they can also pay)"
+        },
+        {
+          "id": "both",
+          "label": "Email with PDF and a link"
+        },
+        {
+          "id": "print_mail",
+          "label": "Printed and mailed"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "journeys"
+      ],
+      "prior": {
+        "pdf_email": 0.358,
+        "hosted_link": 0.167,
+        "both": 0.408,
+        "print_mail": 0.067
+      },
+      "tags": []
+    },
+    {
+      "id": "accounting_sync",
+      "topic": "other tools",
+      "question": "Connect to accounting software?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "export",
+          "label": "Export files for the accountant"
+        },
+        {
+          "id": "sync",
+          "label": "Two-way sync with QuickBooks/Xero-like tools",
+          "implies": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        }
+      ],
+      "consequence": 4,
+      "sections": [
+        "journeys",
+        "overview"
+      ],
+      "prior": {
+        "none": 0.394,
+        "export": 0.29,
+        "sync": 0.316
+      },
+      "tags": []
+    },
+    {
+      "id": "invoice_statuses",
+      "topic": "lifecycle",
+      "question": "How detailed is the invoice lifecycle?",
+      "options": [
+        {
+          "id": "simple",
+          "label": "Draft → Sent → Paid"
+        },
+        {
+          "id": "detailed",
+          "label": "Draft → Sent → Viewed → Partially paid → Paid / Overdue / Void"
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "state_machines"
+      ],
+      "prior": {
+        "simple": 0.325,
+        "detailed": 0.675
+      },
+      "tags": []
+    },
+    {
+      "id": "branding",
+      "topic": "looks",
+      "question": "Branding on invoices?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Plain"
+        },
+        {
+          "id": "logo_colors",
+          "label": "Logo and colors"
+        },
+        {
+          "id": "full_templates",
+          "label": "Fully customizable templates"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "journeys"
+      ],
+      "prior": {
+        "none": 0.2,
+        "logo_colors": 0.666,
+        "full_templates": 0.134
+      },
+      "tags": []
+    },
+    {
+      "id": "deposits",
+      "topic": "getting paid",
+      "question": "Deposits / retainers up front?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "yes",
+          "label": "Yes — deposits that later apply to invoices"
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "data_model",
+        "state_machines"
+      ],
+      "prior": {
+        "no": 0.45,
+        "yes": 0.55
+      },
+      "tags": []
+    },
+    {
+      "id": "invoice_po_reference",
+      "topic": "customer references",
+      "question": "Do invoices need to carry the customer's purchase order (PO) number?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — invoices don't track customer PO numbers",
+          "implies": []
+        },
+        {
+          "id": "optional_reference",
+          "label": "Yes — an optional PO number field is printed on the invoice for the client's records",
+          "implies": []
+        },
+        {
+          "id": "required_and_deduplicated",
+          "label": "Yes — required per client, and the system blocks a second invoice against the same PO",
+          "implies": []
+        }
+      ],
+      "consequence": 2,
+      "sections": [
+        "data_model",
+        "rules"
+      ],
+      "prior": {
+        "none": 0.143,
+        "optional_reference": 0.429,
+        "required_and_deduplicated": 0.429
+      },
+      "applies_to": [],
+      "tags": []
+    },
+    {
+      "id": "invoice_discounts",
+      "topic": "discounts",
+      "question": "Can discounts be applied to invoices?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No discounts",
+          "implies": []
+        },
+        {
+          "id": "invoice_level",
+          "label": "A single discount on the whole invoice",
+          "implies": []
+        },
+        {
+          "id": "line_and_invoice",
+          "label": "Per-line discounts and an overall invoice discount",
+          "implies": []
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules"
+      ],
+      "prior": {
+        "none": 0.2,
+        "invoice_level": 0.2,
+        "line_and_invoice": 0.6
+      },
+      "applies_to": [],
+      "tags": []
+    },
+    {
+      "id": "payment_terms",
+      "topic": "getting paid",
+      "question": "What payment terms do invoices carry (when is payment due)?",
+      "options": [
+        {
+          "id": "due_on_receipt",
+          "label": "Due immediately on receipt",
+          "implies": []
+        },
+        {
+          "id": "net_terms",
+          "label": "Net terms (e.g., Net 15/30/60) counted from the invoice date",
+          "implies": []
+        },
+        {
+          "id": "custom_per_client",
+          "label": "Configurable per client or per invoice",
+          "implies": []
+        }
+      ],
+      "consequence": 3,
+      "sections": [
+        "data_model",
+        "rules"
+      ],
+      "prior": {
+        "due_on_receipt": 0.2,
+        "net_terms": 0.2,
+        "custom_per_client": 0.6
+      },
+      "applies_to": [],
+      "tags": []
+    }
+  ]
+}

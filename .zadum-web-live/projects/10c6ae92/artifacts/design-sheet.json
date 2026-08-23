@@ -1,0 +1,1753 @@
+{
+  "project_id": "10c6ae92",
+  "version": 16,
+  "one_liner": "an invoicing app for small bookkeeping firms",
+  "archetypes": [
+    "b2b-invoicing",
+    "crud-saas"
+  ],
+  "actors": [
+    {
+      "id": "p1",
+      "name": "Bookkeeper",
+      "description": "Employee or owner of a bookkeeping firm handling client accounts.",
+      "source": "draft"
+    },
+    {
+      "id": "p2",
+      "name": "Client",
+      "description": "Business customer receiving invoices from the bookkeeping firm.",
+      "source": "draft"
+    },
+    {
+      "id": "p3",
+      "name": "Administrator",
+      "description": "Person managing user access and firm-wide settings.",
+      "source": "draft"
+    }
+  ],
+  "nouns": [
+    {
+      "id": "n1",
+      "name": "Invoice",
+      "description": "A bill sent to a client for bookkeeping services.",
+      "fields_hint": [
+        "Invoice number",
+        "Client name",
+        "Amount",
+        "Due date",
+        "Status"
+      ],
+      "example": "Invoice #1208 for Smith & Co., $600, due June 30, status: Sent.",
+      "source": "draft"
+    },
+    {
+      "id": "n2",
+      "name": "Client Profile",
+      "description": "Business information for each client the firm invoices.",
+      "fields_hint": [
+        "Business name",
+        "Contact email",
+        "Phone",
+        "Address"
+      ],
+      "example": "ABC Retail, contact@abcretail.com, 555-1234.",
+      "source": "draft"
+    },
+    {
+      "id": "n3",
+      "name": "Bookkeeper Profile",
+      "description": "Information about a bookkeeper who sends invoices.",
+      "fields_hint": [
+        "Full name",
+        "Email",
+        "Assigned clients"
+      ],
+      "example": "Jane Doe, jane@firm.com, assigned to Smith & Co.",
+      "source": "draft"
+    },
+    {
+      "id": "n4",
+      "name": "Payment Record",
+      "description": "Details of payments received on invoices.",
+      "fields_hint": [
+        "Invoice number",
+        "Date received",
+        "Amount",
+        "Payment method"
+      ],
+      "example": "Invoice #1208, paid June 25, $600, ACH Transfer.",
+      "source": "draft"
+    },
+    {
+      "id": "n5",
+      "name": "Firm Settings",
+      "description": "General information and configuration for the bookkeeping firm.",
+      "fields_hint": [
+        "Firm name",
+        "Address",
+        "Payment terms",
+        "Email templates"
+      ],
+      "example": "Acme Bookkeeping, default terms: Net 15.",
+      "source": "draft"
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "actor": "p1",
+      "verb": "creates",
+      "object": "n1",
+      "example": "Jane creates an invoice for Smith & Co. for May's services.",
+      "source": "draft"
+    },
+    {
+      "id": "a2",
+      "actor": "p1",
+      "verb": "edits",
+      "object": "n1",
+      "example": "Jane updates the due date on Invoice #1208.",
+      "source": "draft"
+    },
+    {
+      "id": "a3",
+      "actor": "p1",
+      "verb": "marks paid",
+      "object": "n1",
+      "example": "Jane records a payment for Invoice #1208.",
+      "source": "draft"
+    },
+    {
+      "id": "a4",
+      "actor": "p1",
+      "verb": "views",
+      "object": "n2",
+      "example": "Jane checks ABC Retail's contact info.",
+      "source": "draft"
+    },
+    {
+      "id": "a5",
+      "actor": "p3",
+      "verb": "adds",
+      "object": "n3",
+      "example": "Admin adds John as a new bookkeeper.",
+      "source": "draft"
+    },
+    {
+      "id": "a6",
+      "actor": "p3",
+      "verb": "edits",
+      "object": "n5",
+      "example": "Admin changes the firm's default payment terms.",
+      "source": "draft"
+    },
+    {
+      "id": "a7",
+      "actor": "p2",
+      "verb": "views",
+      "object": "n1",
+      "example": "Smith & Co. checks their latest invoice online.",
+      "source": "draft"
+    },
+    {
+      "id": "a8",
+      "actor": "p2",
+      "verb": "downloads",
+      "object": "n1",
+      "example": "ABC Retail downloads Invoice #1212 as PDF.",
+      "source": "draft"
+    },
+    {
+      "id": "a9",
+      "actor": "p2",
+      "verb": "pays",
+      "object": "n1",
+      "description": "Client pays their invoice through the portal.",
+      "example": "Smith & Co. pays Invoice #1208 online.",
+      "source": "user_edit:25243835-111b-4853-9062-1889aa75f832"
+    }
+  ],
+  "rules": [
+    {
+      "id": "r1",
+      "text": "Only bookkeepers assigned to a client may create or edit that client's invoices.",
+      "kind": "access",
+      "example": "Jane can't edit invoices for clients she isn't assigned to.",
+      "source": "draft"
+    },
+    {
+      "id": "r2",
+      "text": "An invoice cannot be marked as paid until it has been sent.",
+      "kind": "state",
+      "example": "Status must be 'Sent' before payment is recorded.",
+      "source": "draft"
+    },
+    {
+      "id": "r3",
+      "text": "Total payments recorded for an invoice may not exceed the invoice amount.",
+      "kind": "integrity",
+      "example": "Cannot record $700 payment for $600 invoice.",
+      "source": "draft"
+    },
+    {
+      "id": "r4",
+      "text": "Clients can only view and download their own invoices.",
+      "kind": "access",
+      "example": "Smith & Co. can't see ABC Retail's invoices.",
+      "source": "draft"
+    },
+    {
+      "id": "r5",
+      "text": "Each invoice must have a unique invoice number within the firm.",
+      "kind": "integrity",
+      "example": "No two invoices can be #1208 for Acme Bookkeeping.",
+      "source": "draft"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "g1",
+      "text": "Does not handle online payment processing or receive money directly.",
+      "source": "draft"
+    },
+    {
+      "id": "g2",
+      "text": "No built-in time tracking or expense management for bookkeeping activities.",
+      "source": "draft"
+    },
+    {
+      "id": "g3",
+      "text": "Does not provide tax filing or advanced accounting functions.",
+      "source": "draft"
+    },
+    {
+      "id": "g4",
+      "text": "No integration with external accounting software in version one.",
+      "source": "draft"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "user_accounts",
+      "topic": "who logs in",
+      "question": "Who needs an account to use the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nobody logs in — one person uses it on their own device"
+        },
+        {
+          "id": "single_user",
+          "label": "Exactly one person logs in (the owner)"
+        },
+        {
+          "id": "multi_user",
+          "label": "Several people log in, possibly with different powers"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "multi_user",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Actors include Bookkeeper, Client, and Administrator, so several people must log in."
+    },
+    {
+      "id": "roles",
+      "topic": "who can do what",
+      "question": "Do different people have different powers?",
+      "options": [
+        {
+          "id": "single",
+          "label": "Everyone who logs in can do everything"
+        },
+        {
+          "id": "owner_staff",
+          "label": "An owner/admin plus staff with fewer powers"
+        },
+        {
+          "id": "custom",
+          "label": "Admins define their own roles and permissions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "owner_staff",
+      "confidence": 0.95,
+      "rationale": "stated in the description: The Sheet distinguishes administrator and bookkeeper roles with differing powers."
+    },
+    {
+      "id": "external_access",
+      "topic": "outside parties",
+      "question": "Do outside parties (customers, clients, vendors) use the app directly?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — outsiders only receive emails/PDFs/messages"
+        },
+        {
+          "id": "secure_link",
+          "label": "They open a secure link (no account needed)"
+        },
+        {
+          "id": "portal",
+          "label": "They have their own accounts and log in"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "portal",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Clients log in to view and download invoices, not just receive emails or links."
+    },
+    {
+      "id": "tenancy",
+      "topic": "one business or many",
+      "question": "Is this for one business, or will many separate businesses use it with their data kept apart?",
+      "options": [
+        {
+          "id": "single_org",
+          "label": "One business (ours)"
+        },
+        {
+          "id": "multi_org",
+          "label": "Many separate businesses, each seeing only its own data"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "default",
+      "chosen": "single_org",
+      "confidence": 0.956,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "invite_flow",
+      "topic": "adding people",
+      "question": "How do additional people get access?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No additional people"
+        },
+        {
+          "id": "invite_by_admin",
+          "label": "An admin invites them"
+        },
+        {
+          "id": "self_signup",
+          "label": "Anyone can sign up themselves"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "plan",
+      "chosen": "invite_by_admin",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Administrator adds bookkeeper profiles (invites) as described in actions."
+    },
+    {
+      "id": "identity_provider",
+      "topic": "signing in",
+      "question": "How do people sign in?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No sign-in"
+        },
+        {
+          "id": "email_password",
+          "label": "Email + password"
+        },
+        {
+          "id": "magic_link",
+          "label": "Email link, no password"
+        },
+        {
+          "id": "google_microsoft",
+          "label": "Google/Microsoft sign-in"
+        },
+        {
+          "id": "enterprise_sso",
+          "label": "Company single sign-on (SAML/OIDC)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "email_password",
+      "confidence": 0.948,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "concurrency",
+      "topic": "simultaneous edits",
+      "question": "What happens when two people edit the same thing at once?",
+      "options": [
+        {
+          "id": "last_write_wins",
+          "label": "Rare; the last save wins"
+        },
+        {
+          "id": "guarded",
+          "label": "Common; the app must prevent or merge conflicting edits"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "implied:record_pipeline",
+      "chosen": "last_write_wins",
+      "confidence": 0.955,
+      "implied_by": "record_pipeline",
+      "rationale": "very likely given record_pipeline=no_stages"
+    },
+    {
+      "id": "audit_trail",
+      "topic": "history",
+      "question": "Do you need a record of who changed what and when?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Just created/updated by whom and when"
+        },
+        {
+          "id": "full",
+          "label": "A full, viewable history of every change"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 3,
+      "source": "card:0809fc90-ae81-48ae-8fe2-a443924873aa",
+      "chosen": "basic",
+      "confidence": 1,
+      "rationale": "card answer: You see who created or last updated an invoice and when, letting you track basic changes without details."
+    },
+    {
+      "id": "notifications",
+      "topic": "reaching people",
+      "question": "How does the app reach people when something happens?",
+      "options": [
+        {
+          "id": "none",
+          "label": "It doesn't — people check the app"
+        },
+        {
+          "id": "email",
+          "label": "Email"
+        },
+        {
+          "id": "email_sms",
+          "label": "Email and SMS"
+        },
+        {
+          "id": "in_app",
+          "label": "Only inside the app (bell/inbox)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "implied:record_activity_feed",
+      "chosen": "email",
+      "confidence": 0.954,
+      "implied_by": "record_activity_feed",
+      "rationale": "very likely given record_activity_feed=comments"
+    },
+    {
+      "id": "offline",
+      "topic": "connectivity",
+      "question": "Must it work without internet?",
+      "options": [
+        {
+          "id": "online_only",
+          "label": "Online only"
+        },
+        {
+          "id": "offline_tolerant",
+          "label": "Keeps working offline and syncs later"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "online_only",
+      "confidence": 0.989,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "platform",
+      "topic": "where it runs",
+      "question": "Where is it used?",
+      "options": [
+        {
+          "id": "web",
+          "label": "In a browser, on desktop and phone"
+        },
+        {
+          "id": "web_mobile_first",
+          "label": "In a browser, mostly on phones"
+        },
+        {
+          "id": "native_mobile",
+          "label": "As an installed phone app"
+        },
+        {
+          "id": "desktop_app",
+          "label": "As an installed desktop app"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "web",
+      "confidence": 0.97,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "data_import",
+      "topic": "starting data",
+      "question": "Do you start with existing data?",
+      "options": [
+        {
+          "id": "fresh_start",
+          "label": "Start empty"
+        },
+        {
+          "id": "import_spreadsheet",
+          "label": "Import from a spreadsheet/CSV once"
+        },
+        {
+          "id": "migrate_from_tool",
+          "label": "Migrate from another tool"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "import_spreadsheet",
+      "confidence": 0.573,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "data_export",
+      "topic": "getting data out",
+      "question": "Do people need to get their data out?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "csv_export",
+          "label": "Download lists as CSV/Excel"
+        },
+        {
+          "id": "full_export_api",
+          "label": "Full export and/or an API"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "csv_export",
+      "confidence": 0.964,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "deletion",
+      "topic": "deleting",
+      "question": "When something is deleted, what really happens?",
+      "options": [
+        {
+          "id": "hard_delete",
+          "label": "It's gone"
+        },
+        {
+          "id": "soft_delete",
+          "label": "It's archived and can be restored"
+        },
+        {
+          "id": "never_delete",
+          "label": "Records are never deleted, only voided/cancelled"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 3,
+      "source": "card:e64f3616-b244-4219-82ee-dbe0699b4ff5",
+      "chosen": "soft_delete",
+      "confidence": 1,
+      "rationale": "card answer: You archive the invoice or profile, so you or your team can find and restore it later if needed. Clients do not see archived items."
+    },
+    {
+      "id": "data_scale",
+      "topic": "volume",
+      "question": "How much data will there be?",
+      "options": [
+        {
+          "id": "small",
+          "label": "Hundreds of records"
+        },
+        {
+          "id": "medium",
+          "label": "Tens of thousands"
+        },
+        {
+          "id": "large",
+          "label": "Millions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "small",
+      "confidence": 0.87,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "integrations",
+      "topic": "other tools",
+      "question": "Does it need to connect to other tools?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "a_few_key",
+          "label": "A few key ones (e.g., accounting, payments, calendar)"
+        },
+        {
+          "id": "many_via_api",
+          "label": "Many — it needs a public API / webhooks"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "none",
+      "confidence": 0.938,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "localization",
+      "topic": "languages & regions",
+      "question": "Languages and regions?",
+      "options": [
+        {
+          "id": "single_locale",
+          "label": "One language, one country"
+        },
+        {
+          "id": "multi_language",
+          "label": "Several languages"
+        },
+        {
+          "id": "multi_region",
+          "label": "Several countries (taxes, formats, currencies)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "implied:record_pipeline",
+      "chosen": "single_locale",
+      "confidence": 0.957,
+      "implied_by": "record_pipeline",
+      "rationale": "very likely given record_pipeline=no_stages"
+    },
+    {
+      "id": "attachments",
+      "topic": "files",
+      "question": "Can files/photos be attached to things?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Yes — upload and download"
+        },
+        {
+          "id": "rich",
+          "label": "Yes — with previews, versions, and sharing"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "implied:record_activity_feed",
+      "chosen": "basic",
+      "confidence": 0.951,
+      "implied_by": "record_activity_feed",
+      "rationale": "very likely given record_activity_feed=comments"
+    },
+    {
+      "id": "approval_workflow",
+      "topic": "sign-off",
+      "question": "Do some actions need someone else's approval first?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "single_approver",
+          "label": "One approver"
+        },
+        {
+          "id": "multi_step",
+          "label": "Multi-step approval chains"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "implied:x2",
+      "chosen": "none",
+      "confidence": 0.959,
+      "implied_by": "x2",
+      "rationale": "very likely given x2=pdf_only"
+    },
+    {
+      "id": "recurring_scheduled",
+      "topic": "automation",
+      "question": "Must anything happen automatically on a schedule?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "reminders_only",
+          "label": "Only reminders/notifications"
+        },
+        {
+          "id": "recurring_records",
+          "label": "Records get created automatically (recurring invoices, appointments, reports)"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 3,
+      "source": "card:1e6896ec-8fa6-4eaf-82ed-2ea3b905cea2",
+      "chosen": "reminders_only",
+      "confidence": 1,
+      "rationale": "card answer: You and your clients receive periodic reminders about overdue invoices, prompting action without manual follow-up."
+    },
+    {
+      "id": "public_facing",
+      "topic": "public pages",
+      "question": "Is any part visible to the public without logging in?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "public_pages",
+          "label": "Yes — marketing/landing pages only"
+        },
+        {
+          "id": "public_content",
+          "label": "Yes — content people create is public"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "none",
+      "confidence": 0.651,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "compliance_sensitivity",
+      "topic": "sensitive data",
+      "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+      "options": [
+        {
+          "id": "ordinary",
+          "label": "Ordinary business data"
+        },
+        {
+          "id": "personal_sensitive",
+          "label": "Personal data needing consent/retention care (GDPR-like)"
+        },
+        {
+          "id": "regulated",
+          "label": "Regulated data (health, cards, finance)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "implied:record_pipeline",
+      "chosen": "ordinary",
+      "confidence": 0.954,
+      "implied_by": "record_pipeline",
+      "rationale": "very likely given record_pipeline=no_stages"
+    },
+    {
+      "id": "retention",
+      "topic": "keeping data",
+      "question": "How long is data kept?",
+      "options": [
+        {
+          "id": "forever",
+          "label": "Until someone deletes it"
+        },
+        {
+          "id": "policy_based",
+          "label": "Auto-removed after a set period"
+        },
+        {
+          "id": "user_controlled",
+          "label": "Each business sets its own policy"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "forever",
+      "confidence": 0.968,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "customization",
+      "topic": "per-business customization",
+      "question": "Can each business customize the app?",
+      "options": [
+        {
+          "id": "fixed",
+          "label": "No — everyone gets the same thing"
+        },
+        {
+          "id": "branding_templates",
+          "label": "Branding and templates (logo, colors, wording)"
+        },
+        {
+          "id": "custom_fields",
+          "label": "Custom fields and workflows"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "fixed",
+      "confidence": 0.748,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "reporting",
+      "topic": "overviews",
+      "question": "What do people need to see across many records?",
+      "options": [
+        {
+          "id": "lists_only",
+          "label": "Sortable, filterable lists"
+        },
+        {
+          "id": "basic_dashboard",
+          "label": "A dashboard with totals and counts"
+        },
+        {
+          "id": "custom_reports",
+          "label": "Custom reports people build themselves"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "basic_dashboard",
+      "confidence": 0.849,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "client_portal_scope",
+      "topic": "outside parties",
+      "question": "What can outside parties do when they access the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "They don't access it"
+        },
+        {
+          "id": "view_act",
+          "label": "View what's theirs and act on it (pay, approve, book)"
+        },
+        {
+          "id": "view_history",
+          "label": "View everything that's theirs, including history"
+        },
+        {
+          "id": "self_service",
+          "label": "Full self-service: edit their details, create requests, message"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 3,
+      "source": "user_edit:25243835-111b-4853-9062-1889aa75f832",
+      "chosen": "view_act",
+      "confidence": 1,
+      "rationale": "Clients can view and pay their invoices in the portal."
+    },
+    {
+      "id": "invoicing_model",
+      "topic": "who invoices whom",
+      "question": "Who sends invoices to whom?",
+      "options": [
+        {
+          "id": "firm_bills_own_clients",
+          "label": "The business bills its own clients"
+        },
+        {
+          "id": "on_behalf_of_clients",
+          "label": "The business sends invoices on behalf of its clients to their customers"
+        },
+        {
+          "id": "both",
+          "label": "Both"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "firm_bills_own_clients",
+      "confidence": 0.95,
+      "rationale": "stated in the description: It is an invoicing app for bookkeeping firms to bill their own clients."
+    },
+    {
+      "id": "invoice_numbering",
+      "topic": "numbering",
+      "question": "How are invoices numbered?",
+      "options": [
+        {
+          "id": "sequential",
+          "label": "Strictly sequential per business (no gaps; legally safe)"
+        },
+        {
+          "id": "free_form",
+          "label": "Any number/format the user types"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "plan",
+      "chosen": "sequential",
+      "confidence": 0.95,
+      "rationale": "stated in the description: A rule enforces unique invoice numbers within the firm, which strongly implies sequential numbering."
+    },
+    {
+      "id": "invoice_edit_after_send",
+      "topic": "changing sent invoices",
+      "question": "Can an invoice change after it's sent?",
+      "options": [
+        {
+          "id": "locked",
+          "label": "No — corrections go through a credit note / new invoice"
+        },
+        {
+          "id": "editable_until_paid",
+          "label": "Yes, until it's paid"
+        },
+        {
+          "id": "always_editable",
+          "label": "Always editable"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "editable_until_paid",
+      "confidence": 0.899,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "payment_recording",
+      "topic": "getting paid",
+      "question": "How do payments get recorded?",
+      "options": [
+        {
+          "id": "manual",
+          "label": "Someone marks invoices paid by hand"
+        },
+        {
+          "id": "online_auto",
+          "label": "Clients pay online and it's recorded automatically"
+        },
+        {
+          "id": "both",
+          "label": "Both"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "manual",
+      "confidence": 0.952,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "partial_payments",
+      "topic": "getting paid",
+      "question": "Can an invoice be paid in parts?",
+      "options": [
+        {
+          "id": "not_allowed",
+          "label": "No — paid in full or not"
+        },
+        {
+          "id": "allowed",
+          "label": "Yes — partial payments and balances"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "plan",
+      "chosen": "allowed",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Payment Record noun allows for payments to be recorded by amount, implying partials are supported."
+    },
+    {
+      "id": "taxes",
+      "topic": "tax",
+      "question": "How is tax handled on invoices?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No tax lines"
+        },
+        {
+          "id": "single_rate",
+          "label": "One tax rate per invoice"
+        },
+        {
+          "id": "per_line",
+          "label": "Different rates per line item"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "single_rate",
+      "confidence": 0.924,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "currencies",
+      "topic": "money",
+      "question": "One currency or several?",
+      "options": [
+        {
+          "id": "single",
+          "label": "One currency"
+        },
+        {
+          "id": "multi",
+          "label": "Invoices in different currencies"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "implied:record_pipeline",
+      "chosen": "single",
+      "confidence": 0.961,
+      "implied_by": "record_pipeline",
+      "rationale": "very likely given record_pipeline=no_stages"
+    },
+    {
+      "id": "recurring_invoices",
+      "topic": "automation",
+      "question": "Recurring invoices (e.g., monthly retainers)?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "yes",
+          "label": "Yes — created and sent automatically on a schedule"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "no",
+      "confidence": 0.611,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "overdue_reminders",
+      "topic": "late invoices",
+      "question": "What happens when an invoice is overdue?",
+      "options": [
+        {
+          "id": "nothing",
+          "label": "Nothing automatic"
+        },
+        {
+          "id": "manual_reminder",
+          "label": "Someone sends a reminder by hand"
+        },
+        {
+          "id": "auto_reminders",
+          "label": "Automatic reminders on a schedule"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "auto_reminders",
+      "confidence": 0.914,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "late_fees",
+      "topic": "late invoices",
+      "question": "Late fees?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "manual",
+          "label": "Added by hand when needed"
+        },
+        {
+          "id": "automatic",
+          "label": "Applied automatically by policy"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 2,
+      "source": "card:d8632131-469d-4f35-9768-5435ef355e6b",
+      "chosen": "manual",
+      "confidence": 1,
+      "rationale": "card answer: You or your team add late fees to overdue invoices whenever you decide it's appropriate, and clients see these fees on their bills."
+    },
+    {
+      "id": "estimates",
+      "topic": "before invoicing",
+      "question": "Estimates/quotes before invoices?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "yes_convert",
+          "label": "Yes — and an accepted quote becomes an invoice"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "no",
+      "confidence": 0.905,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "credit_notes",
+      "topic": "corrections & refunds",
+      "question": "Corrections and refunds?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Not needed"
+        },
+        {
+          "id": "credit_notes",
+          "label": "Credit notes against invoices"
+        },
+        {
+          "id": "refunds_via_provider",
+          "label": "Credit notes plus refunds through the payment provider"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "credit_notes",
+      "confidence": 0.96,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "invoice_delivery",
+      "topic": "sending",
+      "question": "How do invoices reach clients?",
+      "options": [
+        {
+          "id": "pdf_email",
+          "label": "PDF attached to an email"
+        },
+        {
+          "id": "hosted_link",
+          "label": "A link to an online invoice page (where they can also pay)"
+        },
+        {
+          "id": "both",
+          "label": "Email with PDF and a link"
+        },
+        {
+          "id": "print_mail",
+          "label": "Printed and mailed"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "pdf_email",
+      "confidence": 0.94,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "invoice_statuses",
+      "topic": "lifecycle",
+      "question": "How detailed is the invoice lifecycle?",
+      "options": [
+        {
+          "id": "simple",
+          "label": "Draft → Sent → Paid"
+        },
+        {
+          "id": "detailed",
+          "label": "Draft → Sent → Viewed → Partially paid → Paid / Overdue / Void"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "simple",
+      "confidence": 0.557,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "branding",
+      "topic": "looks",
+      "question": "Branding on invoices?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Plain"
+        },
+        {
+          "id": "logo_colors",
+          "label": "Logo and colors"
+        },
+        {
+          "id": "full_templates",
+          "label": "Fully customizable templates"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "logo_colors",
+      "confidence": 0.964,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "deposits",
+      "topic": "getting paid",
+      "question": "Deposits / retainers up front?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "yes",
+          "label": "Yes — deposits that later apply to invoices"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "implied:record_pipeline",
+      "chosen": "no",
+      "confidence": 0.958,
+      "implied_by": "record_pipeline",
+      "rationale": "very likely given record_pipeline=no_stages"
+    },
+    {
+      "id": "workspace_structure",
+      "topic": "how things are grouped",
+      "question": "Are records grouped into separate projects/workspaces, or is it one shared pool?",
+      "options": [
+        {
+          "id": "single_pool",
+          "label": "One shared pool — everything lives in one place with filters"
+        },
+        {
+          "id": "projects_with_members",
+          "label": "Separate projects/workspaces, each with its own members"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "implied:record_pipeline",
+      "chosen": "single_pool",
+      "confidence": 0.955,
+      "implied_by": "record_pipeline",
+      "rationale": "very likely given record_pipeline=no_stages"
+    },
+    {
+      "id": "record_ownership",
+      "topic": "who sees what",
+      "question": "Who can see a record?",
+      "options": [
+        {
+          "id": "everyone_in_workspace",
+          "label": "Everyone in the team sees everything"
+        },
+        {
+          "id": "owner_plus_shared",
+          "label": "Records are private to their owner unless shared or assigned"
+        },
+        {
+          "id": "team_scoped",
+          "label": "Visible within the owner's team/department; admins see all"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2.5,
+      "source": "default",
+      "chosen": "everyone_in_workspace",
+      "confidence": 0.606,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_edit_rights",
+      "topic": "who can do what",
+      "question": "Who can change a record?",
+      "options": [
+        {
+          "id": "anyone_who_sees",
+          "label": "Anyone who can see it can edit it"
+        },
+        {
+          "id": "owner_assignee_admin",
+          "label": "Only its owner/assignee and admins; others just view"
+        },
+        {
+          "id": "per_record_roles",
+          "label": "Set per record: view / comment / edit"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "owner_assignee_admin",
+      "confidence": 0.948,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_custom_fields",
+      "topic": "fields",
+      "question": "Are the fields on a record fixed, or can admins add their own?",
+      "options": [
+        {
+          "id": "fixed_fields",
+          "label": "Fixed — the same fields for everyone"
+        },
+        {
+          "id": "admin_custom_fields",
+          "label": "Admins add custom fields (text, number, date, dropdown) to each record type"
+        },
+        {
+          "id": "custom_record_types",
+          "label": "Admins define whole new record types with their own fields"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2.5,
+      "source": "default",
+      "chosen": "fixed_fields",
+      "confidence": 0.918,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_pipeline",
+      "topic": "stages",
+      "question": "Do records move through stages?",
+      "options": [
+        {
+          "id": "no_stages",
+          "label": "No — just a status flag (open/closed)"
+        },
+        {
+          "id": "fixed_stages",
+          "label": "Yes — a fixed set of stages (e.g., Lead → Qualified → Won/Lost)"
+        },
+        {
+          "id": "admin_defined_pipelines",
+          "label": "Yes — admins define stages and can have several pipelines"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 2,
+      "source": "card:20d1c3f2-81ea-439f-8b68-b35cb20d0ffd",
+      "chosen": "no_stages",
+      "confidence": 1,
+      "rationale": "card answer: You see each invoice as either open or closed, with a simple status showing if it's active or finished. Bookkeepers work without extra steps or labels."
+    },
+    {
+      "id": "record_assignment",
+      "topic": "assignments",
+      "question": "Are records assigned to people with deadlines?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No assignments"
+        },
+        {
+          "id": "single_assignee_due",
+          "label": "One assignee and an optional due date"
+        },
+        {
+          "id": "multi_assignee_watchers",
+          "label": "Several assignees plus watchers, with due dates and reminders"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1.5,
+      "source": "implied:record_activity_feed",
+      "chosen": "single_assignee_due",
+      "confidence": 0.954,
+      "implied_by": "record_activity_feed",
+      "rationale": "very likely given record_activity_feed=comments"
+    },
+    {
+      "id": "record_activity_feed",
+      "topic": "collaboration",
+      "question": "Can people discuss a record inside the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — just the fields"
+        },
+        {
+          "id": "comments",
+          "label": "Comments on each record"
+        },
+        {
+          "id": "comments_mentions_activity",
+          "label": "Comments with @mentions plus an automatic activity log of every change"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 1.5,
+      "source": "card:62134e2b-1a13-4a26-843d-666b02016888",
+      "chosen": "comments",
+      "confidence": 1,
+      "rationale": "card answer: You and your bookkeepers leave notes and discuss details directly on each invoice or client profile, keeping the conversation organized and visible for future reference."
+    },
+    {
+      "id": "record_relationships",
+      "topic": "links between records",
+      "question": "Are records linked to each other?",
+      "options": [
+        {
+          "id": "standalone",
+          "label": "No — each record stands alone"
+        },
+        {
+          "id": "linked_types",
+          "label": "Yes — records of different types reference each other (contact → company → deal)"
+        },
+        {
+          "id": "hierarchy",
+          "label": "Yes — including parent/child trees (projects → tasks → sub-tasks)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "plan",
+      "chosen": "linked_types",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Invoices and Payment Records are linked by invoice number and client."
+    },
+    {
+      "id": "record_views",
+      "topic": "views",
+      "question": "How do people look at their records?",
+      "options": [
+        {
+          "id": "list_only",
+          "label": "A sortable, filterable list/table"
+        },
+        {
+          "id": "list_and_board",
+          "label": "List plus a board (cards in columns by stage)"
+        },
+        {
+          "id": "list_board_calendar",
+          "label": "List, board, and calendar/timeline"
+        },
+        {
+          "id": "saved_custom_views",
+          "label": "All of the above, with saved personal and shared views"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1.5,
+      "source": "default",
+      "chosen": "list_only",
+      "confidence": 0.938,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_automation",
+      "topic": "automation",
+      "question": "Should the app do things on its own when records change?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — people do everything by hand"
+        },
+        {
+          "id": "simple_rules",
+          "label": "Simple rules: when X happens, notify/assign/change stage"
+        },
+        {
+          "id": "multi_step_workflows",
+          "label": "Multi-step workflows with conditions and delays"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 2,
+      "source": "card:ee448ad3-bfec-4c6a-abf1-9a3808362bd1",
+      "chosen": "none",
+      "confidence": 1,
+      "rationale": "card answer: Bookkeepers and administrators personally handle every step, from updating invoice statuses to notifying clients, ensuring full control over each task."
+    },
+    {
+      "id": "record_templates",
+      "topic": "templates",
+      "question": "Templates for new records/projects?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — start from blank"
+        },
+        {
+          "id": "templates",
+          "label": "Yes — pre-filled templates (e.g., onboarding checklist, standard project)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1,
+      "source": "default",
+      "chosen": "none",
+      "confidence": 0.598,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_duplicates",
+      "topic": "data quality",
+      "question": "Can two records be the same thing (same email, same serial number)?",
+      "options": [
+        {
+          "id": "allowed",
+          "label": "Allowed — nothing stops duplicates"
+        },
+        {
+          "id": "warn",
+          "label": "The app warns about likely duplicates and offers to merge"
+        },
+        {
+          "id": "unique_key_enforced",
+          "label": "A key field must be unique; duplicates are rejected"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1.5,
+      "source": "default",
+      "chosen": "unique_key_enforced",
+      "confidence": 0.935,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_search",
+      "topic": "finding things",
+      "question": "How do people find a record?",
+      "options": [
+        {
+          "id": "filters_in_lists",
+          "label": "Filter and sort within each list"
+        },
+        {
+          "id": "global_search",
+          "label": "One search box across all record types"
+        },
+        {
+          "id": "full_text_everything",
+          "label": "Search that also looks inside comments and attachments"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1.5,
+      "source": "default",
+      "chosen": "filters_in_lists",
+      "confidence": 0.94,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_watchers",
+      "topic": "reaching people",
+      "question": "Who gets told when a record changes?",
+      "options": [
+        {
+          "id": "nobody",
+          "label": "Nobody — people check the app"
+        },
+        {
+          "id": "assignee_and_mentions",
+          "label": "The assignee, and anyone @mentioned"
+        },
+        {
+          "id": "subscribers",
+          "label": "Anyone who follows the record, with per-person preferences"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1.5,
+      "source": "default",
+      "chosen": "assignee_and_mentions",
+      "confidence": 0.959,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_bulk_edit",
+      "topic": "bulk actions",
+      "question": "Can people change many records at once?",
+      "options": [
+        {
+          "id": "one_at_a_time",
+          "label": "No — one record at a time"
+        },
+        {
+          "id": "bulk_actions",
+          "label": "Yes — select many and assign/move/tag/delete together"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1,
+      "source": "default",
+      "chosen": "one_at_a_time",
+      "confidence": 0.915,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_recurring",
+      "topic": "automation",
+      "question": "Do some records repeat on a schedule (weekly check-in, monthly inspection)?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No"
+        },
+        {
+          "id": "recurring_records",
+          "label": "Yes — they are created automatically on a schedule"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1,
+      "source": "default",
+      "chosen": "no",
+      "confidence": 0.933,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x1",
+      "topic": "Firm Settings Customization",
+      "question": "What parts of firm settings are customizable per firm?",
+      "options": [
+        {
+          "id": "basic_settings",
+          "label": "Firm name/address, simple terms"
+        },
+        {
+          "id": "templates_emails",
+          "label": "Also email templates and message wording"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "basic_settings",
+      "confidence": 0.876,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x2",
+      "topic": "Invoice Download Format",
+      "question": "What formats can clients download invoices in?",
+      "options": [
+        {
+          "id": "pdf_only",
+          "label": "PDF only"
+        },
+        {
+          "id": "pdf_csv",
+          "label": "PDF and CSV"
+        },
+        {
+          "id": "pdf_csv_xml",
+          "label": "PDF, CSV, and XML (for import in other systems)"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 2,
+      "source": "card:b9ccff34-239f-4b0e-8c21-d5a4e91732b9",
+      "chosen": "pdf_only",
+      "confidence": 1,
+      "rationale": "card answer: Your client saves a copy of their invoice as a PDF to share or print, seeing it just as it appears on the screen."
+    },
+    {
+      "id": "x3",
+      "topic": "Client Profile Visibility",
+      "question": "Can clients view/edit their own profiles?",
+      "options": [
+        {
+          "id": "view_only",
+          "label": "Can only view"
+        },
+        {
+          "id": "edit_some_fields",
+          "label": "Can edit contact fields"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "implied:record_automation",
+      "chosen": "view_only",
+      "confidence": 0.951,
+      "implied_by": "record_automation",
+      "rationale": "very likely given record_automation=none"
+    },
+    {
+      "id": "x4",
+      "topic": "Invoice Number Format Enforcement",
+      "question": "Are invoice numbers system-generated or user-editable?",
+      "options": [
+        {
+          "id": "system_enforced",
+          "label": "System always generates unique numbers"
+        },
+        {
+          "id": "user_can_edit",
+          "label": "Users can enter or edit numbers (validated for uniqueness)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "system_enforced",
+      "confidence": 0.963,
+      "rationale": "not asked; defaulted from belief"
+    }
+  ]
+}
