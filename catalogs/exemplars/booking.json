@@ -1,0 +1,157 @@
+{
+  "version": "2026-08-24-1",
+  "archetype": "booking",
+  "mined_from": 8,
+  "docs": [
+    "booking-g-resource-reservation",
+    "booking-h-meeting-polls",
+    "booking-d-event-ticketing-features",
+    "booking-b-scheduling-readme",
+    "booking-i-odoo-appointments",
+    "booking-e-ticket-shop-domain",
+    "promise-project03",
+    "booking-c-appointments"
+  ],
+  "section_patterns": [
+    {
+      "name": "integration_setup",
+      "purpose": "Prevents failed integration by detailing credentials and steps needed for third-party services.",
+      "count": 2
+    },
+    {
+      "name": "permission_matrix",
+      "purpose": "Details permission granularity and assignment, preventing unauthorized access and ambiguity in permissions.",
+      "count": 2
+    },
+    {
+      "name": "resource_configuration",
+      "purpose": "Sets clear bounds on reservation rules per-resource and prevents misuse.",
+      "count": 2
+    },
+    {
+      "name": "role_and_permission_matrix",
+      "purpose": "Prevents unauthorized access and clarifies which users can perform which actions.",
+      "count": 2
+    },
+    {
+      "name": "troubleshooting",
+      "purpose": "Guides resolution of common problems and user missteps.",
+      "count": 2
+    },
+    {
+      "name": "accountless_usage",
+      "purpose": "Clarifies what functionality is available without an account and limitations thereof.",
+      "count": 1
+    },
+    {
+      "name": "announcement_management",
+      "purpose": "Settles how notifications are shown and targeted to users.",
+      "count": 1
+    },
+    {
+      "name": "availability_window",
+      "purpose": "Defines when the system must be operational and prevents ambiguity about downtime.",
+      "count": 1
+    }
+  ],
+  "precision_idioms": [
+    {
+      "name": "bounded_window",
+      "template": "X cannot Y outside of the window from N to M.",
+      "example": "No reservations will be allowed outside of the availability date range.",
+      "example_doc": "booking-g-resource-reservation",
+      "count": 7
+    },
+    {
+      "name": "explicit_default",
+      "template": "Unless configured, X is Y.",
+      "example": "By default only logged in users can view schedules, but this can be changed with some configuration updates.",
+      "example_doc": "booking-g-resource-reservation",
+      "count": 7
+    },
+    {
+      "name": "must_never_invariant",
+      "template": "X must never Y; verified by Z.",
+      "example": "Resources cannot be double the product.",
+      "example_doc": "booking-g-resource-reservation",
+      "count": 6
+    },
+    {
+      "name": "state_transition_rule",
+      "template": "State X transitions to Y only when condition Z.",
+      "example": "The reservation becomes active only after an administrator approves it.",
+      "example_doc": "booking-g-resource-reservation",
+      "count": 6
+    },
+    {
+      "name": "permission_matrix",
+      "template": "Role W users may perform X on resources Y under conditions Z.",
+      "example": "Resource Administrators have the same capabilities as Application Administrators for any resource which the group is assigned to.",
+      "example_doc": "booking-g-resource-reservation",
+      "count": 4
+    },
+    {
+      "name": "error_table",
+      "template": "Case X → Expected behavior Y.",
+      "example": "The Unavailable status will show the resource on the schedule but will not allow it to be the product by anyone other than administrators.",
+      "example_doc": "booking-g-resource-reservation",
+      "count": 3
+    },
+    {
+      "name": "exactly_once",
+      "template": "Operation X must happen exactly once per Y.",
+      "example": "You must have at least one schedule defined and every resource must belong to a schedule.",
+      "example_doc": "booking-g-resource-reservation",
+      "count": 3
+    },
+    {
+      "name": "explicit_relationships",
+      "template": "X must have relationships: has many Y, belongs to Z, etc.; verified by ORM/model structure.",
+      "example": "Has many Products, Orders, Attendees, Questions",
+      "example_doc": "booking-d-event-ticketing-features",
+      "count": 1
+    }
+  ],
+  "edge_case_patterns": [
+    {
+      "name": "timezone_boundary",
+      "resolution": "Quota limits and scheduling are enforced based on schedule's timezone, not user's.",
+      "count": 3
+    },
+    {
+      "name": "accountless_action",
+      "resolution": "Users without accounts have restricted access to certain features and alternate identification flows.",
+      "count": 1
+    },
+    {
+      "name": "approval_pending_state",
+      "resolution": "Reservation is not active until approval is granted, with optional notification and re-pending for updates.",
+      "count": 1
+    },
+    {
+      "name": "auto_expiry",
+      "resolution": "Resources are automatically deleted after inactivity and no upcoming relevance, with noted exceptions.",
+      "count": 1
+    },
+    {
+      "name": "background_task_temporal_context",
+      "resolution": "Temporal context must be explicitly passed to background tasks to ensure correct time-dependent behavior.",
+      "count": 1
+    },
+    {
+      "name": "billing_adjustment_window",
+      "resolution": "Seat/billing changes mid-cycle are prorated or credited appropriately dependent on timing.",
+      "count": 1
+    },
+    {
+      "name": "blackout_conflict",
+      "resolution": "No reservations allowed during blackout times, overrides all users including administrators.",
+      "count": 1
+    },
+    {
+      "name": "calendar_account_duplicate",
+      "resolution": "Allow linking of only one external calendar account per provider.",
+      "count": 1
+    }
+  ]
+}

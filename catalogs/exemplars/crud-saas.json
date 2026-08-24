@@ -1,0 +1,157 @@
+{
+  "version": "2026-08-24-1",
+  "archetype": "crud-saas",
+  "mined_from": 8,
+  "docs": [
+    "crud-c-esign",
+    "crud-b-surveys",
+    "crud-e-project-mgmt",
+    "crud-d-newsletter",
+    "crud-a-crm",
+    "crud-f-helpdesk",
+    "crud-i-alfred-userstories",
+    "crud-h-dmp-tool-userstories"
+  ],
+  "section_patterns": [
+    {
+      "name": "permission_matrix",
+      "purpose": "Prevents unauthorized actions and clarifies who can see, edit, or manage entities.",
+      "count": 2
+    },
+    {
+      "name": "accessibility_support",
+      "purpose": "Ensures equitable user experience across physical, sensory, and cognitive limitations.",
+      "count": 1
+    },
+    {
+      "name": "ai_detection",
+      "purpose": "Defines requirements and constraints for AI-based field and recipient detection, preventing misuse or misinterpretation.",
+      "count": 1
+    },
+    {
+      "name": "api_documentation_and_support",
+      "purpose": "Prevents developer confusion and friction by setting standards for API clarity and assistance.",
+      "count": 1
+    },
+    {
+      "name": "attribute_reference",
+      "purpose": "Clarifies record schema and relation, reducing errors in attribute use across tickets and articles.",
+      "count": 1
+    },
+    {
+      "name": "bounce_handling",
+      "purpose": "Defines bounce processing and classification to settle error recovery and notification procedures.",
+      "count": 1
+    },
+    {
+      "name": "bulk_operations",
+      "purpose": "Details procedures for batch-changing records, making clear how mass updates, confirmations, and associated notes are handled.",
+      "count": 1
+    },
+    {
+      "name": "custom_data_model",
+      "purpose": "Ensures the product can model any business's data structure flexibly.",
+      "count": 1
+    }
+  ],
+  "precision_idioms": [
+    {
+      "name": "explicit_default",
+      "template": "Unless configured, X is Y.",
+      "example": "The default is Everyone. Change it in document preferences.",
+      "example_doc": "crud-c-esign",
+      "count": 6
+    },
+    {
+      "name": "state_transition_rule",
+      "template": "From A to B only when C.",
+      "example": "Recipients receive the document one at a time, in the order you specify. Each person must complete their action before the next person is notified.",
+      "example_doc": "crud-c-esign",
+      "count": 6
+    },
+    {
+      "name": "permission_matrix",
+      "template": "Role X may do Y; Role Z must not do Y.",
+      "example": "Viewers cannot have fields assigned",
+      "example_doc": "crud-c-esign",
+      "count": 4
+    },
+    {
+      "name": "must_never_invariant",
+      "template": "X must never Y; verified by Z.",
+      "example": "Each signer must have at least one Signature field assigned to them. The document cannot be sent without this.",
+      "example_doc": "crud-c-esign",
+      "count": 3
+    },
+    {
+      "name": "bounded_window",
+      "template": "X is allowed within N units (e.g., days, requests).",
+      "example": "Helpful rate limits are in place (up to 3 detection requests per minute per IP) to prevent abuse.",
+      "example_doc": "crud-c-esign",
+      "count": 2
+    },
+    {
+      "name": "attribute_table",
+      "template": "A structured list: attribute name, type, and notes (for explicit schema documentation).",
+      "example": "number: string\ntitle: string\ngroup: object (group.name, ...)...",
+      "example_doc": "crud-f-helpdesk",
+      "count": 1
+    },
+    {
+      "name": "contextual_availability",
+      "template": "X is only available or visible when Y is true.",
+      "example": "Text modules can be tied to groups: if that's the case, they are only available once the ticket you're working on has been assigned to …",
+      "example_doc": "crud-f-helpdesk",
+      "count": 1
+    },
+    {
+      "name": "edge_case_fallback",
+      "template": "If X is not available, Y is used.",
+      "example": "If a language has no matching bundle, your translated survey content is still shown as usual, but these built-in interface strings fall back to English.",
+      "example_doc": "crud-b-surveys",
+      "count": 1
+    }
+  ],
+  "edge_case_patterns": [
+    {
+      "name": "access_restriction_on_notification",
+      "resolution": "Subscriptions and notifications for a record are only effective if user already has permission to access the record.",
+      "count": 1
+    },
+    {
+      "name": "attribute_fallback",
+      "resolution": "If an attribute-based operation (e.g., search by file type) fails, provide required alternate data (e.g., MIME type) to resolve.",
+      "count": 1
+    },
+    {
+      "name": "bounce_classification",
+      "resolution": "Bounces are classified by heuristics; if no match, a default category applies.",
+      "count": 1
+    },
+    {
+      "name": "cognitive_impairment",
+      "resolution": "Support features are offered to help navigation and comprehension for users with cognitive limitations.",
+      "count": 1
+    },
+    {
+      "name": "default_inheritance",
+      "resolution": "Team-level settings override organisation-level defaults explicitly.",
+      "count": 1
+    },
+    {
+      "name": "device_setup_by_non_technical_users",
+      "resolution": "Devices are pre-installed or easy to deploy, so setup is not required by users with low technical ability.",
+      "count": 1
+    },
+    {
+      "name": "duplicate_detection",
+      "resolution": "Existing recipients and duplicates are preserved and not re-added.",
+      "count": 1
+    },
+    {
+      "name": "duplicate_notification",
+      "resolution": "Multiple notifications for the same object are summarized and prioritized according to configured precedence rules.",
+      "count": 1
+    }
+  ]
+}

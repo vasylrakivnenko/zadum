@@ -1,0 +1,155 @@
+{
+  "version": "2026-08-24-1",
+  "archetype": "b2b-invoicing",
+  "mined_from": 6,
+  "docs": [
+    "invoicing-g-subscription-billing",
+    "invoicing-d-odoo-customer-invoices",
+    "invoicing-b-solid",
+    "invoicing-c-erp-accounts",
+    "invoicing-e-odoo-sales-invoicing",
+    "invoicing-h-event-tickets-invoicing"
+  ],
+  "section_patterns": [
+    {
+      "name": "accounting_impact",
+      "purpose": "Describes how actions affect ledgers and accounts to guarantee financial correctness and traceability.",
+      "count": 1
+    },
+    {
+      "name": "api_overview",
+      "purpose": "Clarifies categorization and purpose of available endpoints, preventing ambiguity in usage and integration.",
+      "count": 1
+    },
+    {
+      "name": "batch_operations",
+      "purpose": "Addresses requirements and prevents duplicate manual actions in multi-invoice processing.",
+      "count": 1
+    },
+    {
+      "name": "billing_address",
+      "purpose": "Ensures the invoice contains correct organizational address information.",
+      "count": 1
+    },
+    {
+      "name": "cash_discount_tax_reduction",
+      "purpose": "Prevents confusion about discount computation and tax reduction logic.",
+      "count": 1
+    },
+    {
+      "name": "cash_rounding_configuration",
+      "purpose": "Ensures compliance with local cash payment rounding laws.",
+      "count": 1
+    },
+    {
+      "name": "category_payment_method_disabling",
+      "purpose": "Covers options to disable payment methods per category, preventing misuse or confusion.",
+      "count": 1
+    },
+    {
+      "name": "company_creation_flow",
+      "purpose": "Ensures company setup is always accessible and reliable from multiple entry points.",
+      "count": 1
+    }
+  ],
+  "precision_idioms": [
+    {
+      "name": "bounded_window",
+      "template": "Within N days.",
+      "example": "ACH, which usually takes a couple of days for banks to acknowledge",
+      "example_doc": "invoicing-g-subscription-billing",
+      "count": 6
+    },
+    {
+      "name": "explicit_default",
+      "template": "Unless configured, X is Y.",
+      "example": "Note that by default you cannot delete the default payment method on an account",
+      "example_doc": "invoicing-g-subscription-billing",
+      "count": 6
+    },
+    {
+      "name": "state_transition_rule",
+      "template": "From state A to B only when C.",
+      "example": "If it does however, it will be most likely in a PENDING state.",
+      "example_doc": "invoicing-g-subscription-billing",
+      "count": 6
+    },
+    {
+      "name": "error_table",
+      "template": "Case → Expected behaviour.",
+      "example": "some gateways require specific response codes or headers to consider the notification processed and prevent retries.",
+      "example_doc": "invoicing-g-subscription-billing",
+      "count": 3
+    },
+    {
+      "name": "must_never_invariant",
+      "template": "X must never Y; verified by Z.",
+      "example": "By default, you cannot delete the default payment method on an account (because it is assumed to be used for recurring payments).",
+      "example_doc": "invoicing-g-subscription-billing",
+      "count": 3
+    },
+    {
+      "name": "permission_matrix",
+      "template": "If X, then Y permitted; otherwise Z applies.",
+      "example": "If you really want to delete it though, you can pass the query parameter deleteDefaultPmWithAutoPayOff=true to the previous call. This will delete it and set …",
+      "example_doc": "invoicing-g-subscription-billing",
+      "count": 3
+    },
+    {
+      "name": "exactly_once",
+      "template": "Action happens at most/exactly once per X (period, object, cycle).",
+      "example": "Reminders are sent once per invoice per stage — the same reminder is never sent twice for the same invoice.",
+      "example_doc": "invoicing-b-solid",
+      "count": 1
+    },
+    {
+      "name": "explicit_requirement",
+      "template": "Field X is required; error if omitted.",
+      "example": "Your Organization's VAT number - **Required**",
+      "example_doc": "invoicing-h-event-tickets-invoicing",
+      "count": 1
+    }
+  ],
+  "edge_case_patterns": [
+    {
+      "name": "duplicate_submission",
+      "resolution": "Batch sends are marked to prevent re-triggering the same manual process.",
+      "count": 2
+    },
+    {
+      "name": "partial_delivery",
+      "resolution": "Only invoice for what was actually delivered, supporting multiple invoices for partial deliveries/back orders.",
+      "count": 2
+    },
+    {
+      "name": "partial_payment",
+      "resolution": "Allows recording less-than-invoice amounts and resolves the difference using write-offs.",
+      "count": 2
+    },
+    {
+      "name": "abandoned_checkout",
+      "resolution": "Track abandoned purchases optionally by creating a PENDING payment at form creation, completed only if returned or notified.",
+      "count": 1
+    },
+    {
+      "name": "archived_invoice_visibility",
+      "resolution": "Archived invoices are excluded from active and outstanding calculations but remain viewable.",
+      "count": 1
+    },
+    {
+      "name": "backdated_entry",
+      "resolution": "Allows explicit configuration for editing posting date/time for backdated entries, ensuring proper documentation.",
+      "count": 1
+    },
+    {
+      "name": "cancelled_invoice_recovery",
+      "resolution": "Cancellation cannot be undone in UI; recovery requires cloning and re-issuing.",
+      "count": 1
+    },
+    {
+      "name": "category_specific_payment_exclusion",
+      "resolution": "Allows disabling payment methods for specific categories to prevent invalid combinations.",
+      "count": 1
+    }
+  ]
+}
