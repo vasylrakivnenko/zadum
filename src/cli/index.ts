@@ -259,6 +259,87 @@ program
   });
 
 program
+  .command("verify")
+  .description("story checks over the assumptions: each scenario bundles several assumed decisions at ~50/50 joint odds — confirm it or point at the wrong part")
+  .argument("<id>")
+  .option("--max <n>", "max scenarios per round", (v) => Number(v), 3)
+  .action(async (id: string, o: { max: number }) => {
+    const { engine, store } = await engineFromOpts();
+    const rl = createInterface({ input, output });
+    let rounds = 0;
+    outer: while (rounds++ < 8) {
+      const { probes } = await engine.getVerification(id, { maxProbes: o.max });
+      if (!probes.length) {
+        console.log("— Nothing left worth a story check: the assumptions are either confirmed or too settled to doubt.");
+        break;
+      }
+      for (const p of probes) {
+        console.log(`\n┌─ Story check (${Math.round(p.p_all_correct * 100)}% sure this is all right)`);
+        console.log(`│ ${p.scenario}`);
+        p.nodes.forEach((n, i) => console.log(`│  (${i + 1}) ${n.question} → ${n.answer_label}`));
+        const line = (await rl.question(`└─ y = that's right · 1-${p.nodes.length} = that part is wrong · s = skip · q = done > `)).trim().toLowerCase();
+        if (line === "q") break outer;
+        if (line === "s") continue;
+        if (line === "y") {
+          const r = await engine.answerVerification(id, { probe_id: p.id, ok: true });
+          console.log(`  ✓ confirmed ${r.confirmed.length} assumption(s)`);
+          continue;
+        }
+        const idx = Number(line);
+        if (Number.isInteger(idx) && idx >= 1 && idx <= p.nodes.length) {
+          const wrong = p.nodes[idx - 1]!;
+          const { sheet } = await engine.getState(id);
+          const d = sheet.decisions.find((x) => x.id === wrong.node_id)!;
+          d.options.forEach((opt, i) => console.log(`   [${i + 1}] ${opt.label}`));
+          const pick = Number((await rl.question(`   which is right? 1-${d.options.length} > `)).trim());
+          if (Number.isInteger(pick) && pick >= 1 && pick <= d.options.length) {
+            const r = await engine.answerVerification(id, { probe_id: p.id, ok: false, correction: { node_id: wrong.node_id, option_id: d.options[pick - 1]!.id } });
+            const also = [...r.implied.hard.map((h) => `${h.node}=${h.option}`), ...r.implied.soft.map((s) => `${s.node}≈${s.option}`)];
+            console.log(`  ✎ corrected${also.length ? ` · also decided: ${also.join(", ")}` : ""}`);
+            continue outer; // belief moved — recompose the remaining scenarios adaptively
+          }
+        }
+        console.log("  ? skipped");
+      }
+      break; // all probes of this round answered without a correction — done
+    }
+    rl.close();
+    console.log(`\nNext: npm run zadum -- accept ${id}   ·   or correct more: npm run zadum -- defaults ${id}`);
+    await store.close();
+  });
+
+program
+  .command("gaps")
+  .description("mine the compiled spec's own confessed guesses (⟨src: default⟩) into new decision cards — the loop that makes the next spec tighter")
+  .argument("<id>")
+  .option("--apply <n>", "add the top N candidates as open decisions and reopen the card loop", (v) => Number(v))
+  .action(async (id: string, o: { apply?: number }) => {
+    const { engine, store } = await engineFromOpts();
+    const r = await engine.mineSpecGaps(id, { apply: o.apply });
+    console.log(`→ ${r.gaps.length} guessed spot(s) in the spec; ${r.candidates.length} decision candidate(s):`);
+    for (const c of r.candidates) console.log(`  [c${c.consequence}] ${c.id}: ${c.question}  (${c.options.map((x) => x.label).join(" / ")}) — ${c.rationale}`);
+    if (r.applied.length) console.log(`\n  applied ${r.applied.length}: next → npm run zadum -- cards ${id}, then recompile`);
+    else if (r.candidates.length) console.log(`\n  add the top ones: npm run zadum -- gaps ${id} --apply 3`);
+    await store.close();
+  });
+
+program
+  .command("evidence")
+  .description("feed the belief a piece of evidence (a message, a pasted invoice/spreadsheet/email) — updates what we think is likely, never the Sheet itself")
+  .argument("<id>")
+  .argument("<text>")
+  .action(async (id: string, text: string) => {
+    const { engine, store } = await engineFromOpts();
+    const r = await engine.absorbEvidence(id, text);
+    if (!r.shifts.length) console.log("→ noted; nothing in the current picture changed materially");
+    else {
+      console.log(`→ this shifted ${r.shifts.length} thing(s) we were assuming:`);
+      for (const s of r.shifts.slice(0, 10)) console.log(`  ${s.node}: ${s.from === s.to ? `${s.to} (${Math.round(s.p_from * 100)}% → ${Math.round(s.p_to * 100)}%)` : `${s.from} → ${s.to}`}`);
+    }
+    await store.close();
+  });
+
+program
   .command("story")
   .description("correct something the story walkthrough got wrong (plain English; updates the Sheet, then recompile)")
   .argument("<id>")

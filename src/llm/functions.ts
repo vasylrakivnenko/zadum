@@ -4,6 +4,7 @@
  * arrays, strings, numbers) — rich validation happens in core code afterwards.
  */
 import { z } from "zod";
+import { StateMachinesIRSchema, type StateMachinesIR } from "../core/spec_ir.js";
 import type { LLM, LLMResponse } from "./client.js";
 import * as P from "./prompts.js";
 import type { Sheet, Decision } from "../core/sheet.js";
@@ -245,6 +246,17 @@ export const StoryOutSchema = z.object({
 });
 export type StoryOut = z.infer<typeof StoryOutSchema>;
 
+export const WorldLikelihoodsSchema = z.object({
+  likelihoods: z.array(z.object({ world_id: z.string(), fit: z.enum(["very_unlikely", "unlikely", "neutral", "likely", "very_likely"]) })),
+});
+export type WorldLikelihoodsOut = z.infer<typeof WorldLikelihoodsSchema>;
+
+export const VerifyScenarioSchema = z.object({
+  scenario: z.string(),
+  coverage: z.array(z.object({ node_id: z.string(), where: z.string() })),
+});
+export type VerifyScenarioOut = z.infer<typeof VerifyScenarioSchema>;
+
 export const SimAnswerSchema = z.object({
   kind: z.enum(["option", "you_decide", "other"]),
   option_id: z.string(),
@@ -320,11 +332,17 @@ export interface Fns {
   sampleWorlds(input: { sheet: Sheet; nodes: NodeDef[]; fixed: Record<string, string>; count: number; batch: number; batches: number; contrarian?: boolean }): Promise<LLMResponse<WorldsOut>>;
   card(input: { sheet: Sheet; node: NodeDef; options: { option_id: string; label: string; p: number }[]; also_sets: string[]; prior_answers: string[]; phrasing_style?: string }): Promise<LLMResponse<CardOut>>;
   patch(input: { sheet: Sheet; decisions: Decision[]; text: string }): Promise<LLMResponse<PatchOut>>;
-  compileSection(input: { sheet: Sheet; section: SectionId; decisions: Decision[]; prior_sections: string }): Promise<LLMResponse<SectionOut>>;
+  compileSection(input: { sheet: Sheet; section: SectionId; decisions: Decision[]; prior_sections: string; style_exemplars?: string }): Promise<LLMResponse<SectionOut>>;
+  /** IR-first pilot: lifecycles as typed data, mechanically checked (core/spec_ir.ts) then deterministically rendered. */
+  compileStateMachines(input: { sheet: Sheet; decisions: Decision[]; findings?: string }): Promise<LLMResponse<StateMachinesIR>>;
   critique(input: { spec: string; sheet: Sheet }): Promise<LLMResponse<CriticOut>>;
   reverse(input: { spec: string }): Promise<LLMResponse<ReverseOut>>;
   story(input: { spec: string; sheet: Sheet }): Promise<LLMResponse<StoryOut>>;
   simUser(input: { card: Card; persona: string; truth: string }): Promise<LLMResponse<SimAnswer>>;
+  /** LLM-as-likelihood-function: how well does each world fit a piece of user evidence? (core/evidence.ts) */
+  worldLikelihoods(input: { sheet: Sheet; worlds: { world_id: string; summary: string }[]; text: string }): Promise<LLMResponse<WorldLikelihoodsOut>>;
+  /** One verification scenario weaving the bundled decisions' assumed answers into a concrete story. */
+  verifyScenario(input: { sheet: Sheet; bundle: { node_id: string; question: string; answer_label: string }[] }): Promise<LLMResponse<VerifyScenarioOut>>;
   augmentRules(input: { sheet: Sheet; patterns: { id: string; pattern: string; frequency_estimate: number; example_phrasing: string }[] }): Promise<LLMResponse<AugmentRulesOut>>;
 }
 
@@ -411,7 +429,7 @@ export function makeFns(llm: LLM): Fns {
         temperature: 0,
       }),
 
-    compileSection: ({ sheet, section, decisions, prior_sections }) =>
+    compileSection: ({ sheet, section, decisions, prior_sections, style_exemplars }) =>
       llm.structured({
         fn: `compile_${section}`,
         tier: "strong",
@@ -420,11 +438,31 @@ export function makeFns(llm: LLM): Fns {
           `SECTION TO WRITE: ${section}`,
           `DESIGN SHEET:\n${sheetToText(sheet)}`,
           `DECISION LOG:\n${decisionsToText(decisions)}`,
+          // Mined from strong real specs of this archetype (catalogs/exemplars/): imitate their PRECISION —
+          // testable phrasing, edge tables, exactly-once language — never their content.
+          style_exemplars ? `PRECISION STYLE, mined from strong specifications of similar apps (follow the phrasing patterns; adapt everything to THIS app):\n${style_exemplars}` : "",
           prior_sections ? `SECTIONS ALREADY WRITTEN (for consistency; do not repeat):\n${prior_sections}` : "",
         ]
           .filter(Boolean)
           .join("\n\n"),
         schema: SectionOutSchema,
+        effort: "high",
+        maxTokens: 8000,
+      }),
+
+    compileStateMachines: ({ sheet, decisions, findings }) =>
+      llm.structured({
+        fn: "compile_state_machines_ir",
+        tier: "strong",
+        system: P.STATE_MACHINES_IR_SYSTEM,
+        user: [
+          `DESIGN SHEET:\n${sheetToText(sheet)}`,
+          `DECISION LOG:\n${decisionsToText(decisions)}`,
+          findings ? `YOUR PREVIOUS ATTEMPT HAD MECHANICAL DEFECTS — fix every one of them:\n${findings}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        schema: StateMachinesIRSchema,
         effort: "high",
         maxTokens: 8000,
       }),
@@ -460,6 +498,35 @@ export function makeFns(llm: LLM): Fns {
         schema: StoryOutSchema,
         effort: "medium",
         maxTokens: 3000,
+      }),
+
+    worldLikelihoods: ({ sheet, worlds, text }) =>
+      llm.structured({
+        fn: "world_likelihoods",
+        tier: "strong",
+        system: P.EVIDENCE_SYSTEM,
+        user: [
+          `THE APP (context):\n${sheetToText(sheet, { withIds: false })}`,
+          `EVIDENCE FROM THE OWNER:\n${text}`,
+          `CANDIDATE WORLDS (score EVERY one):\n${worlds.map((w) => `- ${w.world_id}: ${w.summary}`).join("\n")}`,
+        ].join("\n\n"),
+        schema: WorldLikelihoodsSchema,
+        effort: "low",
+        maxTokens: 1500,
+      }),
+
+    verifyScenario: ({ sheet, bundle }) =>
+      llm.structured({
+        fn: "verify_scenario",
+        tier: "fast",
+        system: P.VERIFY_SYSTEM,
+        user: [
+          `THE APP (context only):\n${sheetToText(sheet, { withIds: false })}`,
+          `DECISIONS TO WEAVE IN (node_id · the question · the currently-assumed answer):\n${bundle.map((b) => `- ${b.node_id} · ${b.question} · ${b.answer_label}`).join("\n")}`,
+        ].join("\n\n"),
+        schema: VerifyScenarioSchema,
+        maxTokens: 900,
+        temperature: 0.7,
       }),
 
     simUser: ({ card, persona, truth }) =>

@@ -733,3 +733,49 @@ produced the 0/16-asks silencing finding. Result:
 **Where this leaves the countermeasure stack**: the confirm-first protocol handles listed assumptions
 (<80%); cards shrink the list; the confidently-wrong tail needs calibrated beliefs; and task-time enforcement
 (MCP `check_task`) remains the delivery vehicle that does not depend on the agent reading preamble at all.
+
+### The spec-quality ruler: first live numbers, and the compiler A/B (2026-08-24, `npm run quality`)
+
+Three blind instruments (src/quality/, ADR-034): the **ambiguity adversary** (two independent implementer
+LLMs derive designs from the spec alone; a blind aligner locates material divergences → `spec_entropy` =
+consequence-weighted divergence share), **builder questions** (what an implementer would still ask), and a
+**pairwise tournament** (4 dimensions, position-randomized). Readers gpt-4.1, judge Sonnet 4.6, repeats 2.
+
+**Run 1 — us vs the baselines** (original invoicing bundle): zadum spec **0.08 entropy, 0 builder questions,
+32/32 pairwise dimension wins** vs Spec Kit 0.13 / 10 Qs and DLAI-SDD 0.22 / 11 Qs. Honest negative: the
+one-page Sheet ALONE measures MORE ambiguous (0.33) than the baselines' full specs — though what it covers it
+pins harder (forced-rate 76% vs 61%). The page buys conduct (the earlier program); the compiled spec buys
+implementation precision. Even our residual divergences share one theme (may a client trigger a payment?) —
+a real seam the ruler located, now a candidate card.
+
+**Run 2 — old compiler vs new compiler, same project** (c12 invoicing, only the pipeline changed: decision
+ledger appendix + IR-checked lifecycles + mined precision idioms):
+
+| | spec_entropy | divergence rate | forced | pairwise |
+|---|---|---|---|---|
+| zadum-new | **0.043** | **4.8%** | **87%** | 81% |
+| zadum-old | 0.057 | 8.8% | 79% | 69% |
+| spec-kit | 0.243 | 22.1% | 52% | 0% |
+
+**The night's pipeline changes cut ambiguity ~25% and material divergence ~45% on the same project.** The
+live IR path worked first try (critic 10/10; one medium `dead_end` finding survived the repair round — the
+mechanical checks catch what prose critics don't). Instrument nuance recorded honestly: builder-questions
+ROSE for both zadum arms in this run (15–16 vs spec-kit's 9.5) — the deterministic ledger makes assumptions
+visible and readers ask about what they can see, which is desired product behavior but penalized by the raw
+metric; the metric should exclude questions about items the spec itself already flags as assumptions. n=2
+per cell throughout — treat orderings as solid, exact values as ±wide.
+
+### Verification-mode elicitation, measured (mock, `npm run verify:eval`)
+
+Scenario probes bundle defaulted decisions to joint p(all correct) ≈ 0.5 (adaptive group testing). Composer
+hits its design point (mean p 0.47–0.57 across golds/regimes). **8 verification yes/no taps catch 27–33% of
+wrong defaults — matching the PERFECT depth-8 item-by-item review — and the rejection reweights alone flip
+~10 further wrong argmaxes** (invoicing c0), so a re-default pass after verification roughly doubles the
+catch for free. Engine + CLI (`zadum verify`) wired; sim is a mechanism ceiling (catch-prob 1, mock beliefs).
+
+### The gap loop, closed and probed (mock)
+
+compile → `zadum gaps --apply 2` → the two proposed xg_ decisions were DEALT as cards and resolved →
+recompile. Confirmed critique from the self-review, fixed before shipping: prior-only gap nodes score
+value1 ≈ c·H(prior) ≈ 5–8, far under θ=24, so without marking the reopened loop user-continued the engine
+converged instantly and never asked the questions the user had just requested.

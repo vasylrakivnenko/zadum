@@ -8,6 +8,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { Engine } from "./orchestrator.js";
 import { SECTIONS, type SectionId, type SectionOut, type CriticOut, type ReverseOut, type StoryOut } from "../llm/functions.js";
+import { checkStateMachines, formatIRFindings, renderStateMachines, type IRFinding } from "../core/spec_ir.js";
 import { parallelMap, type LLMUsage } from "../llm/client.js";
 import type { Sheet } from "../core/sheet.js";
 import { renderSheetMarkdown } from "../core/render.js";
@@ -24,6 +25,8 @@ export interface CompileOptions {
    *  them (default 0.8). The decision-probe eval showed a wrongly-defaulted decision silences the agent's own
    *  clarifying questions (asks 2/4 → 0/16) — this line is the countermeasure, priced in that same harness. */
   confirmBelow?: number;
+  /** directory of mined precision-idiom exemplars (default catalogs/exemplars); missing files are fine */
+  exemplarsDir?: string;
 }
 
 export interface RoundTripReport {
@@ -37,6 +40,8 @@ export interface CompileResult {
   sections: Record<string, { markdown: string; traces: SectionOut["traces"]; candidates: number; chosen_score: number | null }>;
   critic: CriticOut;
   critic_rounds: number;
+  /** mechanical findings that survived the IR repair round for the state_machines section (empty = clean) */
+  ir_findings: IRFinding[];
   roundtrip: RoundTripReport | null;
   story: StoryOut | null;
   bundle: { name: string; content: string }[];
@@ -82,15 +87,45 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
 
   await emit("compile_started", { candidates: N, sheet_version: sheet.version });
 
+  // Precision idioms mined from strong specs of this archetype (src/mining/idioms.ts) — style, never content.
+  const styleExemplars = await loadStyleExemplars(sheet.archetypes[0], opts.exemplarsDir);
+
   // ---- sections, in waves ----
   const sections: CompileResult["sections"] = {};
   let priorText = "";
   let fixHints = "";
+  let irFindings: IRFinding[] = [];
   const writeWave = async (wave: SectionId[]) => {
     const outs = await parallelMap(wave, 4, async (section) => {
       const ts = Date.now();
+      // IR-first pilot: lifecycles are emitted as typed data, mechanically checked, and deterministically
+      // rendered — best-of-N doesn't apply (the checker replaces the critic-pick; one repair round on
+      // high-severity findings, then keep the better attempt and record what remains).
+      if (section === "state_machines") {
+        const high = (fs2: IRFinding[]) => fs2.filter((f) => f.severity === "high").length;
+        const first = await engine.fns.compileStateMachines({ sheet, decisions: sheet.decisions });
+        add(first.usage);
+        let ir = first.data;
+        let findings = checkStateMachines(ir, sheet);
+        let irRounds = 1;
+        if (high(findings) > 0) {
+          const retry = await engine.fns.compileStateMachines({ sheet, decisions: sheet.decisions, findings: formatIRFindings(findings) });
+          add(retry.usage);
+          const f2 = checkStateMachines(retry.data, sheet);
+          if (high(f2) <= high(findings)) {
+            ir = retry.data;
+            findings = f2;
+          }
+          irRounds = 2;
+        }
+        irFindings = findings;
+        const markdown = renderStateMachines(ir) + (findings.length ? `\n\n> ⚠️ Mechanical lifecycle check: ${findings.length} finding(s) remain — see compile-report.json.` : "");
+        const traces = ir.machines.map((m) => ({ anchor: m.entity, sources: [...new Set(m.transitions.flatMap((t) => t.sources))] }));
+        await emit("compile_section", { section, candidates: 1, ir: true, ir_rounds: irRounds, ir_findings: findings.length, chosen_score: null, latency_ms: Date.now() - ts, chars: markdown.length });
+        return { section, out: { markdown, traces }, chosenScore: null };
+      }
       const cands = await parallelMap(Array.from({ length: N }, (_, i) => i), N, async (i) => {
-        const r = await engine.fns.compileSection({ sheet, section, decisions: sheet.decisions, prior_sections: [priorText, fixHints].filter(Boolean).join("\n\n") + (N > 1 ? `\n(candidate ${i + 1} of ${N}: vary structure and emphasis)` : "") });
+        const r = await engine.fns.compileSection({ sheet, section, decisions: sheet.decisions, prior_sections: [priorText, fixHints].filter(Boolean).join("\n\n") + (N > 1 ? `\n(candidate ${i + 1} of ${N}: vary structure and emphasis)` : ""), ...(styleExemplars ? { style_exemplars: styleExemplars } : {}) });
         add(r.usage);
         return r.data;
       });
@@ -164,7 +199,7 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   // loop (throwing away a minute of compute helps nobody), but a failing spec must be impossible to mistake
   // for a passing one — it is stamped as a draft, in the two files a coding agent actually reads.
   if (critic.verdict !== "pass") spec = withFailedCriticBanner(spec, critic);
-  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now(), opts.confirmBelow ?? 0.8);
+  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now(), opts.confirmBelow ?? 0.8, irFindings);
   for (const b of bundle) {
     const art: Artifact = { project_id: projectId, name: b.name, kind: kindOf(b.name), content: b.content, created_at: now(), meta: { sheet_version: sheet.version } };
     await engine.store.saveArtifact(art);
@@ -175,7 +210,7 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   }
   await emit("compile_done", { verdict: critic.verdict, score: critic.score, rounds, roundtrip_overall: roundtrip?.recall.overall ?? null, usage, latency_ms: Date.now() - t0, out_dir: opts.outDir ?? null });
   if (critic.verdict === "pass") await engine.markDone(projectId);
-  return { spec, sections, critic, critic_rounds: rounds, roundtrip, story, bundle, usage, latency_ms: Date.now() - t0, sheet_version: sheet.version };
+  return { spec, sections, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, story, bundle, usage, latency_ms: Date.now() - t0, sheet_version: sheet.version };
 }
 
 /** Loud, unmissable header for a spec the critic rejected — see Rule 6 in CLAUDE.md. */
@@ -204,7 +239,31 @@ function assemble(sheet: Sheet, sections: CompileResult["sections"]): string {
     if (!sec) continue;
     L.push("", `## ${TITLES[s]}`, "", sec.markdown.trim());
   }
+  L.push("", decisionLedger(sheet));
   return L.join("\n") + "\n";
+}
+
+/**
+ * The complete decision ledger, rendered deterministically into the spec itself. This is where "much more
+ * detailed" comes from honestly: every micro-decision the system settled — asked, implied, or assumed — is
+ * stated explicitly with its provenance and confidence, instead of living implicitly in prose an implementer
+ * would have to guess at. No LLM writes this table, so it cannot hallucinate a decision that was never made.
+ */
+export function decisionLedger(sheet: Sheet): string {
+  const label = (d: Sheet["decisions"][number]) => d.options.find((o) => o.id === d.chosen)?.label ?? d.chosen ?? "(open)";
+  const how = (d: Sheet["decisions"][number]) =>
+    d.status === "resolved" ? "answered" : d.status === "implied" ? `follows from ${d.implied_by ?? "logic"}` : d.status === "delegated" ? "delegated to us" : d.status === "defaulted" ? "assumed" : d.status;
+  const rows = [...sheet.decisions].sort((a, b) => (a.status === "open" ? 1 : 0) - (b.status === "open" ? 1 : 0) || b.consequence - a.consequence || a.id.localeCompare(b.id));
+  const L: string[] = [
+    "## Decision ledger (complete)",
+    "",
+    "_Every product decision this spec is built on. \"assumed\" rows carry the confidence of the assumption — an implementer should confirm low-confidence assumptions before building against them (see AGENTS.md)._",
+    "",
+    "| Decision | Answer | How settled | Confidence |",
+    "|---|---|---|---|",
+  ];
+  for (const d of rows) L.push(`| ${d.question} ⟨src: d:${d.id}⟩ | ${label(d)} | ${how(d)} | ${d.confidence !== undefined ? `${Math.round(d.confidence * 100)}%` : d.status === "open" ? "—" : "100%"} |`);
+  return L.join("\n");
 }
 
 export function roundTripReport(sheet: Sheet, rev: ReverseOut): RoundTripReport {
@@ -270,7 +329,7 @@ function tokens(s: string): string[] {
 }
 const STOP = new Set(["the", "and", "for", "that", "this", "with", "from", "never", "must", "can", "cannot", "not", "are", "its", "their", "they", "has", "have", "any", "only", "all"]);
 
-function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string, confirmBelow: number) {
+function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string, confirmBelow: number, irFindings: IRFinding[] = []) {
   const sheetMd = renderSheetMarkdown(sheet, { showIds: true, showDecisions: true, showOpenDecisions: true });
   // The conduct-critical handoff is the page + this protocol (sheet_only+AGENTS.md scored 91% vs the full
   // bundle's 86% at ~1/6 the context — docs/EVALS.md "The 9k-char handoff"), so the spec is presented as
@@ -316,7 +375,7 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
     "- `sheet-tests.ts` holds one named test stub per rule and action. Implement them as you build and KEEP the id-prefixed names — they are the Sheet's trace into the test suite. The spec's acceptance scenarios are the fuller test list.",
     "",
   ].join("\n");
-  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", generated_at: generatedAt };
+  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", generated_at: generatedAt };
   const storyMd = story ? [`# ${story.title}`, "", ...story.steps.map((s, i) => `${i + 1}. ${s}`), "", "## Please confirm", ...story.checks.map((c) => `- ${c}`), ""].join("\n") : "";
   const out = [
     { name: "spec.md", content: spec },
@@ -375,4 +434,26 @@ function kindOf(name: string): Artifact["kind"] {
 
 function zeroUsage(): LLMUsage {
   return { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
+}
+
+/** Tolerant loader for catalogs/exemplars/<archetype>.json — absent file or unknown shape = no style block. */
+async function loadStyleExemplars(archetype: string | undefined, dir = "catalogs/exemplars"): Promise<string | null> {
+  if (!archetype) return null;
+  try {
+    const raw = JSON.parse(await fs.readFile(path.join(dir, `${archetype}.json`), "utf8")) as Record<string, unknown>;
+    const str = (x: unknown, ...keys: string[]) => keys.map((k) => (x as Record<string, unknown>)[k]).find((v) => typeof v === "string") as string | undefined;
+    const list = (k: string) => (Array.isArray(raw[k]) ? (raw[k] as unknown[]) : []);
+    const idioms = list("precision_idioms")
+      .slice(0, 6)
+      .map((i) => `- ${str(i, "template", "pattern", "text") ?? ""}${str(i, "example", "example_phrasing") ? ` (e.g. "${str(i, "example", "example_phrasing")}")` : ""}`)
+      .filter((l) => l.length > 3);
+    const sections = list("section_patterns")
+      .slice(0, 6)
+      .map((s) => `- strong specs of this kind cover: ${str(s, "name") ?? ""} — ${str(s, "purpose", "description") ?? ""}`)
+      .filter((l) => l.length > 40);
+    const block = [...idioms, ...sections].join("\n").slice(0, 1600);
+    return block.trim() ? block : null;
+  } catch {
+    return null;
+  }
 }

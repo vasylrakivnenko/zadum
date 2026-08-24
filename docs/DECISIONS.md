@@ -484,3 +484,65 @@ file sets (mcp+drift / selector+DP / harness+learning / web), the conflict-heavy
 confidence-line effect was measured live the same night (see docs/EVALS.md). RB-mixture belief remains the
 top queued algorithmic item — deliberately NOT attempted overnight: it swaps the belief representation under
 everything above and deserves its own session with θ recalibration.
+
+## ADR-034 — Spec quality as the objective: the ruler, verification-mode elicitation, the fractal catalog, and IR-first compilation (2026-08-24)
+**Context.** The eval program proved the bundle beats public baselines on conduct and recovery; the founder
+raised the target: write MUCH better specs — more detail, more precision — while keeping the
+most-discriminative-question principle. The trap identified first: an LLM can pad unlimited plausible detail,
+and our own findings show agents TRUST confidently-written wrong text (0/16 asks). So "better" was defined as
+**more true, decision-relevant, grounded detail per unit of user effort**, and a ruler was built before any
+optimization. Four parallel agents (quality ruler / verify core+eval / spec IR / gap parser+idiom miner) on
+new-file-only lanes; all shared-file wiring done serially.
+
+**Decisions.**
+1. **The ruler before the work** (`src/quality/`, `npm run quality`): (a) the ambiguity adversary — two
+   independent implementer LLMs derive designs from the spec alone; a blind aligner locates material
+   divergences → `spec_entropy` (consequence-weighted divergence share; 0 = fully determined). Every material
+   divergence IS a located imprecision = a next discriminative question. (b) builder-questions — what an
+   implementer would still have to ask. (c) blind pairwise tournament on 4 dimensions. First live numbers
+   (gpt-4.1 readers, Sonnet judge, n=2): **zadum spec 0.08 entropy / 0 builder questions / 32-of-32 pairwise
+   wins vs Spec Kit 0.13 / 10 Qs and DLAI-SDD 0.22 / 11 Qs**; honest negative — the one-page Sheet ALONE is
+   more ambiguous (0.33) than the baselines' full specs, though what it covers it pins harder (forced-rate
+   76% vs 61%): the page buys conduct, the compiled spec buys implementation precision. Even zadum's two
+   residual divergences share one theme (can a client trigger a payment?) — a real seam, now visible.
+2. **Verification-mode elicitation** (`core/verify.ts`, engine `getVerification`/`answerVerification`, CLI
+   `verify`): when the belief is concentrated and mostly right, verification beats interrogation — scenario
+   probes bundle defaulted decisions to JOINT p(correct) ≈ 0.5 (adaptive group testing, the batched
+   generalization of binary search), rendered as one concrete story to confirm or correct. Accept = k weak
+   confirmations (ε 0.2, deliberately milder than a card answer's ε); reject = "at least one is wrong"
+   reweight + a Rule-1 resolution of the named decision. Mock eval (`npm run verify:eval`): probes land at
+   mean p 0.47–0.57; **8 verification taps catch 27–33% of wrong defaults — matching the PERFECT depth-8
+   review — and rejection reweights alone flip ~10 more wrong argmaxes** (a free re-default pass would
+   roughly double the catch). New commit source "verification"; events verification_shown/answered.
+3. **The fractal catalog** (schema `requires: [{node, options[]}]`, ALL-of entries, OR within one): child
+   nodes stay sampled + defaulted always, but become ASKABLE only when the parent is settled at user grade
+   (resolved/implied — details of an unconfirmed assumption are never asked before the assumption). Pilot: 6
+   invoicing children (link expiry/access, reminder schedule, late-fee basis, credit-note numbering,
+   recurring-failure handling), two multi-parent. Mock baseline deliberately regenerated (AUC 53%→56%);
+   live θ recalibration flagged. Edge-case closure: an 8-class taxonomy (deletion-with-dependents,
+   concurrency, idempotency, rounding, time boundaries, partial failure, permission escalation,
+   lifecycle-backwards) now feeds the planner's bespoke pass.
+4. **The spec carries a complete deterministic Decision ledger** (compile appendix): every decision with
+   answer, provenance, confidence — no LLM writes it, so stated detail cannot be hallucinated detail.
+5. **IR-first compilation pilot** (`core/spec_ir.ts`): lifecycles are emitted as typed data → 9 mechanical
+   checks (unknown actor/entity, dangling refs, unreachable states, terminal exits, dead ends, silent
+   nondeterminism…) → one findings-driven repair round → deterministic rendering. Best-of-N doesn't apply to
+   this section (the checker replaces the critic-pick). `ir_findings` land in compile-report.json.
+6. **Gap mining closes the loop** (`gap_parse.ts`, engine `mineSpecGaps`, CLI `gaps [--apply N]`): every
+   ⟨src: default⟩ the compiler confesses is parsed, clustered by one LLM call into candidate decisions
+   (xg_*), and `--apply` commits them open, joins them to the belief (prior-only, α-mix makes them askable),
+   and reopens the card loop: spec gaps → new discriminative questions → tighter spec.
+7. **Evidence absorption** (`core/evidence.ts`, `absorbEvidence`, CLI `evidence`, ZADUM_EVIDENCE=1 for
+   auto-on-context): LLM-as-likelihood-function — one utterance/artifact scores every world's fit
+   (quantized buckets, floor 0.25 keeps support) and reweights the whole belief, so cards are never spent on
+   what evidence already answered. Rule 1 untouched: evidence moves the belief, never the Sheet.
+8. **Precision idioms mined from strong corpus specs** (`mine:idioms`, catalogs/exemplars/): licence-vetted,
+   ≥2-doc patterns (bounded_window, explicit_default, state_transition_rule, must_never_invariant,
+   permission_matrix…) injected as a style block into every compile section — imitate the PRECISION, never
+   the content.
+
+**Consequences.** 363 root tests (was 280) + web 10; typecheck clean; mock demo green end-to-end through the
+IR path; regression gate regenerated once, deliberately, for the catalog change. Live before/after ruler A/B
+of the new compiler recorded in docs/EVALS.md. Queued next: per-section IR expansion (permissions matrix is
+the obvious second), verification in the web UI, a second reader family for builder-questions, and
+canonicalizing section/edge-case pattern names in the idiom miner.

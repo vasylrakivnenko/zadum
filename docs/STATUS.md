@@ -1,10 +1,10 @@
 # STATUS — resume here
 
-_Last updated: 2026-08-24 (session 1i, the overnight roadmap build — ADR-033, four parallel agents + core.
-See milestones 35–42 and the 1i session-log entry). Next session: start at "Next steps" below._
+_Last updated: 2026-08-24 (session 1j, the spec-quality build — ADR-034, four parallel agents + core. See
+milestones 43–49 and the 1j session-log entry). Next session: start at "Next steps" below._
 
 ## TL;DR
-Core workflow + architecture of Design Sheet is built and green: `npm test` → **280 tests / 27 files** (+10 web
+Core workflow + architecture of Design Sheet is built and green: `npm test` → **363 tests / 33 files** (+10 web
 smoke tests in `apps/web`, `npm test --prefix apps/web`) pass (incl. a
 Postgres round-trip when `DATABASE_URL` is set), `npm run typecheck` clean, `npm run zadum -- --mock demo` runs the
 whole flow without credentials, and **the live LLM path works end to end on Azure OpenAI gpt-4.1** (draft 47s,
@@ -21,6 +21,13 @@ and `risk` are switchable (`--scoring`), two-ply lookahead is available (`--look
 
 | # | Milestone | State |
 |---|-----------|-------|
+| 49 | **Compiler A/B under the ruler** (same project, only the pipeline changed): spec_entropy 0.057→**0.043** (−25%), material divergence 8.8%→**4.8%**, forced-rate 79%→87%; live IR path clean first try (1 medium finding survived, recorded). Run 1 vs baselines: zadum 0.08 / 0 builder Qs / 32-of-32 pairwise vs Spec Kit 0.13, DLAI 0.22; the one-pager alone measures 0.33 (honest negative) | ✅ run — EVALS "spec-quality ruler" |
+| 48 | **Spec-quality ruler** (`npm run quality`, src/quality/): ambiguity adversary (spec_entropy), builder questions, blind pairwise tournament — 15 tests, salt-randomized, offline re-scorable | ✅ built + 2 live runs |
+| 47 | **Verification-mode elicitation** (core/verify.ts + engine getVerification/answerVerification + CLI `verify` + `npm run verify:eval`): joint-p≈0.5 scenario probes (group testing); mock: 8 taps ≈ the perfect depth-8 review (27–33%), rejection reweights flip ~10 more argmaxes free | ✅ built + measured (mock) |
+| 46 | **Gap loop closed** (gap_parse.ts + engine mineSpecGaps + CLI `gaps [--apply N]`): ⟨src: default⟩ confessions → candidate decisions → applied nodes are dealt (user-continued semantics — confirmed fix) → recompile | ✅ end-to-end probe green |
+| 45 | **Fractal catalog** (requires-gating, ALL-of/OR-in-parent; 6 invoicing child nodes, 2 multi-parent) + edge-case taxonomy in the planner + complete deterministic Decision-ledger appendix in every spec | ✅ (baseline regenerated deliberately: mock AUC 53→56) |
+| 44 | **IR-first compilation pilot** (core/spec_ir.ts: 9 mechanical checks, deterministic render, repair round; ir_findings in compile-report) + **evidence absorption** (core/evidence.ts, `zadum evidence`, ZADUM_EVIDENCE=1) | ✅ (17 IR tests; live-exercised) |
+| 43 | **Precision idioms mined from the corpus** (`npm run mine:idioms`, catalogs/exemplars/ ×3 archetypes, licence-vetted, ≥2-doc patterns) injected as compile style | ✅ mined live (22 calls) + wired |
 | 42 | **Confirm-first protocol, live, 3 iterations** (EVALS "Confirm-before-building"): passive note = inert; imperative confirm-FIRST on the original 4-model matrix → flip-probe **asks 0% → 50%** at c0, stale defaults 63%→13%; cards buy down asks (50%→6% at c12); the 0.95-confidence blind spot untouched (as predicted — recalibration/RB territory) | ✅ run (126 live trials + 2×2 recompiles) |
 | 41 | **CI + selector regression gate**: `.github/workflows/ci.yml`; `npm run harness:check` compares the mock harness against a committed baseline (asked sequences + AUC, byte-exact); caught its first real drift within an hour | ✅ |
 | 40 | **EC² scoring arm** (`--scoring ec2`, θ UNCALIBRATED) + **exact subset-DP optimality bound** (`npm run dp:bound`): greedy = optimal at H=12 (100.0%) on mock invoicing; gap only at H=2–3 | ✅ built + run |
@@ -155,6 +162,21 @@ so the one selector-touching fix guards a degenerate case without shifting norma
 recalibration.** The contradiction reporting and the honest toast change what the user sees mid-session, so both
 are worth watching in the first live run.
 
+## Next steps (spec-quality follow-ups, 2026-08-24 s1j)
+
+S1. **Instrument refinements before quoting ruler numbers externally**: builder-questions must exclude
+    questions about items the spec already flags as assumptions (the ledger made them visible — desired
+    behavior, penalized by the raw count); a second reader family; repeats ≥4 (per-repeat entropy spread is
+    wide at n=2). Then re-run the compiler A/B.
+S2. **Feed the located divergences back**: the ambiguity adversary's material divergences (e.g. "may a client
+    trigger a payment?") are machine-found candidate decisions — wire them into the same apply path gap
+    mining uses. One evening.
+S3. **Verification in the web UI** (CLI exists); measure real users' accept/reject against the sim ceiling.
+S4. **Second IR section** (permissions matrix is the obvious next: actors × actions is already tabular), and
+    canonicalize section/edge-case pattern names in the idiom miner (its own honest gap).
+S5. **Live θ recalibration** after the catalog change (children shifted mock sequences; live sweep per
+    docs/EVALS.md "Calibrating θ"), and price ZADUM_EVIDENCE + contrarian in the same live sweep.
+
 ## Next steps (in order, refreshed 2026-08-24 after the overnight build)
 
 A. **First real users** — now genuinely unblocked: hosted deploy + minimal auth for `apps/web` (the only
@@ -261,6 +283,18 @@ E. Live A/Bs queued behind the harness: ZADUM_CONTRARIAN on/off (belief diversit
 - `harness-results/`, `out/`, `.zadum/` are git-ignored. Repo initialized but **nothing committed yet** (by request).
 
 ## Session log
+- 2026-08-24 s1j (the spec-quality build, unattended per explicit user request; ADR-034): the founder's
+  "write much better specs" directive implemented end to end in the approved order — ruler first, then the
+  loops that move it. Four parallel agents (quality ruler / verify core / spec IR / gap parser + idiom miner,
+  all new-file lanes) + serial core wiring. 280 → 363 root tests. Live: two ruler runs (zadum 0.08 entropy vs
+  baselines 0.13/0.22; new-vs-old compiler −25% entropy on the same project), live IR compile clean, idiom
+  mining over the licence-vetted corpus. Self-critique cycle, confirmed critiques fixed: (1) gap-applied
+  prior-only nodes could never clear θ — the loop closed on paper, never dealt a card (confirmed by
+  arithmetic + end-to-end probe; fixed via user-continued semantics on apply); (2) NodeDef.requires as a
+  required field broke five test files' literals (confirmed by typecheck; made optional-ungated);
+  (3) MemoryStore reference-aliasing produced a false-negative evidence test (confirmed by scripted repro;
+  test now captures scalars pre-call). Also recorded honestly: builder-questions penalizes the ledger's
+  visible assumptions (instrument refinement queued); one agent committed the exemplar data files (1ed4c88).
 - 2026-08-24 s1i (overnight, unattended per explicit user request): the whole strategic roadmap implemented in
   one pass — ADR-033 records every decision. Four parallel agents on disjoint file sets (MCP+drift / EC²+DP /
   harness+learning / web) + the conflict-heavy core (compile, orchestrator, prompts, CLI, CI) done serially.

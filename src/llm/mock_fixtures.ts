@@ -306,10 +306,70 @@ export const invoicingMockHandlers: Record<string, MockHandler> = {
   sampler: (req, i) => sampler(req, i),
   card: (req) => card(req),
   patcher: (req) => patcher(req),
+  // neutral likelihoods: evidence absorption becomes a no-op unless a test overrides this handler
+  world_likelihoods: (req) => ({
+    likelihoods: [...req.user.matchAll(/^- ([\w.]+): /gm)].map((m) => ({ world_id: m[1]!, fit: "neutral" as const })),
+  }),
+  verify_scenario: (req) => {
+    const bundle = [...req.user.matchAll(/^- ([\w.]+) · (.+?) · (.+)$/gm)];
+    return {
+      scenario: `It's Tuesday morning at the firm. ${bundle.map((m) => `${m[3]!.replace(/\.$/, "")}.`).join(" ")}`,
+      coverage: bundle.map((m) => ({ node_id: m[1]!, where: m[3]!.slice(0, 30) })),
+    };
+  },
   critic: (req) => critic(req),
   reverse: (req) => reverse(req),
   story: () => story(),
   sim_user: (req) => simUser(req),
+  // gap mining (engine/gap_parse.ts). Kept inline rather than importing gapMockHandlers: llm/ importing
+  // engine/ would close an ESM cycle through llm/functions — the exact deadlock class hit twice before.
+  gap_decisions: () => ({
+    candidates: [
+      {
+        id: "xg_reminder_tone",
+        topic: "payments",
+        question: "What tone do payment reminders take?",
+        options: [{ id: "friendly", label: "Friendly nudge" }, { id: "formal", label: "Formal notice" }],
+        consequence: 3,
+        rationale: "the spec defaulted the reminder wording",
+        section: "Key journeys",
+      },
+      {
+        id: "xg_export_format",
+        topic: "records",
+        question: "What format do exported records use?",
+        options: [{ id: "csv", label: "Spreadsheet (CSV)" }, { id: "pdf", label: "PDF report" }],
+        consequence: 2,
+        rationale: "the spec defaulted the export format",
+        section: "Data model",
+      },
+    ],
+  }),
+  // IR-first lifecycles pilot: a small valid machine built from the sheet's own first noun/actor, so the
+  // mechanical checks pass and the deterministic renderer exercises the real path in every mock compile.
+  compile_state_machines_ir: (req) => {
+    const pick = (label: string) => [...((req.user.split(`${label}:\n`)[1] ?? "").split(/\n[A-Z-]+[A-Z -]*:\n/)[0] ?? "").matchAll(/^- \[\w+\] ([^—(\n]+)/gm)].map((m) => m[1]!.trim());
+    const noun = pick("NOUNS")[0] ?? "Record";
+    const actor = pick("ACTORS")[0] ?? "system";
+    return {
+      machines: [
+        {
+          entity: noun,
+          states: [
+            { id: "draft", label: "Draft", description: "Being prepared" },
+            { id: "active", label: "Active", description: "In effect" },
+            { id: "closed", label: "Closed", description: "Finished" },
+          ],
+          initial: "draft",
+          terminal: ["closed"],
+          transitions: [
+            { from: "draft", to: "active", trigger: "it is issued", actor, guard: "", sources: [] },
+            { from: "active", to: "closed", trigger: "it completes", actor: "system", guard: "", sources: [] },
+          ],
+        },
+      ],
+    };
+  },
   compile_overview: (req) => section(req),
   compile_actors_permissions: (req) => section(req),
   compile_data_model: (req) => section(req),

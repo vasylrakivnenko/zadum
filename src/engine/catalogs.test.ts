@@ -97,7 +97,7 @@ describe("decision catalogs", () => {
     const { catalogs } = await loadCatalogs();
     const core = new Set(catalogs.find((c) => c.archetype === "core")!.nodes.map((n) => n.id));
     const expected: Record<string, [number, number]> = {
-      "b2b-invoicing": [15, 25], booking: [18, 22], marketplace: [18, 22], "e-commerce": [16, 20], "crud-saas": [12, 16],
+      "b2b-invoicing": [15, 30] /* +6 hierarchical child nodes, 2026-08-24 */, booking: [18, 22], marketplace: [18, 22], "e-commerce": [16, 20], "crud-saas": [12, 16],
     };
     for (const c of catalogs) {
       if (c.archetype === "core") continue;

@@ -65,6 +65,8 @@ export interface SessionState {
   /** the user chose "keep going" after a converged stop: θ is ignored for the rest of the loop (they re-priced
    *  their own tap at ~0); Rule 7's maxCards cap and no_open still bind */
   user_continued?: boolean;
+  /** verification scenarios awaiting the user's confirm/correct (group-testing elicitation, core/verify.ts) */
+  pending_verification?: { id: string; nodes: { id: string; option: string }[]; scenario: string; p_all_correct: number }[];
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +91,10 @@ export type EventType =
   | "roundtrip_result"
   | "compile_done"
   | "story_corrected"
+  | "verification_shown"
+  | "verification_answered"
+  | "evidence_absorbed"
+  | "gaps_proposed"
   | "llm_call"
   | "error";
 

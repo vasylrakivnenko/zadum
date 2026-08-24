@@ -30,6 +30,13 @@ export const CatalogNodeSchema = z.object({
   prior: z.record(z.string(), z.number().min(0)).optional(),
   /** archetype ids this node applies to; empty → all archetypes */
   applies_to: z.array(z.string()).default([]),
+  /**
+   * Hierarchical gating (the fractal decision tree): this node is ASKABLE only while every entry holds —
+   * entry = the named parent decision is settled to one of the listed options. Children are always sampled
+   * into worlds and always defaulted at finish; the gate controls only whether a card may be spent on them,
+   * so the ≤12-card budget descends into a subtree only after its parent is settled at user grade.
+   */
+  requires: z.array(z.object({ node: z.string(), options: z.array(z.string()).min(1) })).default([]),
   ask_hint: z.string().optional(),
   tags: z.array(z.string()).default([]),
 });
@@ -58,7 +65,26 @@ export interface NodeDef {
   bespoke: boolean;
   /** catalog the node came from: "core", an archetype id, or "bespoke" */
   archetype: string;
+  /** hierarchical gate — see CatalogNodeSchema.requires; absent/empty = never gated */
+  requires?: { node: string; options: string[] }[];
   ask_hint?: string;
+}
+
+/**
+ * Is a gated node currently askable? A requirement holds only when the parent is settled at USER grade
+ * (resolved or implied): asking a child of a merely-defaulted parent would interrogate an assumption's
+ * details before the assumption itself is confirmed. Children of defaulted parents stay gated, get
+ * defaulted from priors like everything else, and unlock in a later loop if the parent gets resolved
+ * (defaults-review override, gap loop, story correction).
+ */
+export function requirementsMet(
+  requires: { node: string; options: string[] }[],
+  decisions: { id: string; chosen?: string; status: string }[],
+): boolean {
+  return requires.every((r) => {
+    const d = decisions.find((x) => x.id === r.node);
+    return !!d && !!d.chosen && (d.status === "resolved" || d.status === "implied") && r.options.includes(d.chosen);
+  });
 }
 
 export function normalizePrior(options: { id: string }[], prior?: Record<string, number>): Record<string, number> {
@@ -92,6 +118,7 @@ export function toNodeDef(n: CatalogNode, archetype = "core"): NodeDef {
     sections: n.sections,
     bespoke: false,
     archetype,
+    requires: n.requires ?? [],
     ...(n.ask_hint ? { ask_hint: n.ask_hint } : {}),
   };
 }
@@ -111,6 +138,7 @@ export function nodeDefFromDecision(d: Decision, prior?: Record<string, number>)
     sections: [],
     bespoke: true,
     archetype: "bespoke",
+    requires: [],
   };
 }
 
@@ -152,6 +180,12 @@ export function mergeCatalogs(catalogs: Catalog[], archetypes: string[]): { node
         if (!t) errors.push(`${n.id}.${opt} implies unknown node ${e.node}`);
         else if (!t.options.some((o) => o.id === e.option)) errors.push(`${n.id}.${opt} implies unknown option ${e.node}.${e.option}`);
       }
+    }
+    for (const r of n.requires ?? []) {
+      const t = byId.get(r.node);
+      if (!t) errors.push(`${n.id} requires unknown node ${r.node}`);
+      else for (const o of r.options) if (!t.options.some((x) => x.id === o)) errors.push(`${n.id} requires unknown option ${r.node}.${o}`);
+      if (t?.requires?.some((rr) => rr.node === n.id)) errors.push(`${n.id} and ${r.node} require each other`);
     }
   }
   return { nodes: [...byId.values()], errors };

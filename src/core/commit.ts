@@ -15,6 +15,7 @@ export const CommitSourceKind = z.enum([
   "implication",
   "default",
   "defaults_review",
+  "verification", // scenario check accepted/corrected (group-testing elicitation)
   "story_correction",
   "system",
   "undo",

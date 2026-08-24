@@ -1,47 +1,47 @@
 {
-  "auc_0_12": 0.531451,
+  "auc_0_12": 0.560158,
   "golds": {
     "booking-salon": [
-      "user_accounts",
       "platform",
-      "client_portal_scope",
-      "audit_trail",
-      "recurring_scheduled",
       "notifications",
-      "invoice_delivery",
-      "invoicing_model",
-      "payments_in_app",
+      "payment_terms",
+      "user_accounts",
       "identity_provider",
-      "data_scale",
-      "late_fees"
+      "taxes",
+      "customization",
+      "invoice_delivery",
+      "external_access",
+      "record_views",
+      "invoice_po_reference",
+      "roles"
     ],
     "invoicing-bookkeeping": [
       "identity_provider",
-      "platform",
-      "payments_in_app",
+      "invoicing_model",
       "record_views",
       "notifications",
-      "client_portal_scope",
-      "external_access",
-      "customization",
-      "invoice_edit_after_send",
-      "integrations",
+      "user_accounts",
       "invoice_delivery",
-      "payment_recording"
+      "overdue_reminders",
+      "platform",
+      "attachments",
+      "client_portal_scope",
+      "payments_in_app",
+      "record_activity_feed"
     ],
     "marketplace-services": [
-      "invoice_delivery",
-      "client_portal_scope",
-      "record_views",
-      "external_access",
       "identity_provider",
-      "notifications",
       "platform",
-      "data_export",
-      "record_edit_rights",
-      "reporting",
-      "record_automation",
-      "customization"
+      "record_views",
+      "invoice_delivery",
+      "accounting_sync",
+      "payments_in_app",
+      "external_access",
+      "notifications",
+      "approval_workflow",
+      "record_search",
+      "audit_trail",
+      "localization"
     ]
   }
 }

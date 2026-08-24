@@ -13,10 +13,13 @@ import { KNOWN_ARCHETYPES, type LoadedCatalogs } from "./catalogs.js";
 import { emptySheet, type Sheet, type Decision } from "../core/sheet.js";
 import { makeCommit, revertOps, type Commit, type CommitSourceKind } from "../core/commit.js";
 import type { PatchOp } from "../core/patch.js";
-import { mergeCatalogs, nodeDefFromDecision, propagateHard, type NodeDef } from "../core/catalog.js";
+import { mergeCatalogs, nodeDefFromDecision, propagateHard, requirementsMet, type NodeDef } from "../core/catalog.js";
 import { conditionSoft, conditionHard, distribution, maxOption, topOptions, ess, repairAssignment, makeWorld, normalizeWeights, type Belief, type World } from "../core/worlds.js";
 import { decideNext, impliedByUpdate, settledness, rankOpen, mergeConfig, type SelectorConfig, type Ranked } from "../core/selector.js";
 import type { SessionState, Card, Answer, AnswerKind, ZEvent, EventType, ProjectRecord, Phase } from "../core/session.js";
+import { FIT_LIKELIHOOD, reweightByLikelihood, worldSummaries, beliefShift } from "../core/evidence.js";
+import { composeVerifyProbes, reweightOnVerify } from "../core/verify.js";
+import { parseSpecGaps, proposeGapDecisions, type SpecGap, type GapCandidate } from "./gap_parse.js";
 import { mixWithCatalog, type PopulationPriors } from "../learning/population_priors.js";
 import { mapFromSerialized, type SerializedRecalibration } from "../learning/recalibrate.js";
 import { loadRuleBank } from "./rule_bank.js";
@@ -36,6 +39,9 @@ export interface EngineOptions {
   arm?: string; // experiment arm tag
   log?: (line: string) => void;
   ruleBankDir?: string; // defaults to catalogs/rule-bank/ (src/engine/rule_bank.ts's DEFAULT_RULE_BANK_DIR)
+  /** Opt-in (ZADUM_EVIDENCE=1): absorb `extra_context` as belief evidence right after initial world sampling —
+   *  the selector then never spends a card on what a pasted artifact already answered. */
+  evidenceOnContext?: boolean;
   /** Opt-in (ZADUM_CONTRARIAN=1): the last sampler batch is prompted to stake out coherent minority positions,
    *  attacking the concentrated-belief blind spot (asked 1/5 deviating nodes — docs/EVALS.md decision probes).
    *  OFF by default: it shifts belief concentration, so θ and the mock baselines must be re-validated by a
@@ -258,9 +264,36 @@ export class Engine {
     await this.store.updateProject({ ...project, phase: "correcting", latest_version: sheet.version, updated_at: this.now() });
     await this.emit(session, "plan_created", { nodes: nodes.length, bespoke: bespokeDefs.length, not_applicable: [...notApplicable], fixed: plan.fixed_by_sheet.length, rejected: pl.rejected.length, usage: planRes.usage, latency_ms: planRes.latency_ms });
 
-    if (this.opts.eagerWorlds ?? true) await this.sampleWorlds(id, "initial");
+    if (this.opts.eagerWorlds ?? true) {
+      await this.sampleWorlds(id, "initial");
+      if (this.opts.evidenceOnContext && input.extra_context?.trim()) await this.absorbEvidence(id, input.extra_context);
+    }
     const fresh = await this.load(id);
     return { project: fresh.project, sheet: fresh.sheet, session: fresh.session, draft, rejected: d.rejected.length };
+  }
+
+  /**
+   * Evidence absorption (LLM-as-likelihood-function): one utterance or pasted artifact reweights the WHOLE
+   * particle belief — likelihood weighting via `worldLikelihoods` — so the selector stops asking what the
+   * evidence already answers. Far weaker than an answer (floor 0.25 keeps every world alive); never touches
+   * the Sheet (Rule 1: only patch ops do that; this changes only the belief).
+   */
+  async absorbEvidence(projectId: string, text: string): Promise<{ shifts: ReturnType<typeof beliefShift>; ess_before: number; ess_after: number }> {
+    return this.withLock(projectId, async () => {
+      const { sheet, session } = await this.load(projectId);
+      const before: Belief = { ...session.belief, worlds: session.belief.worlds };
+      const res = await this.fns.worldLikelihoods({ sheet, worlds: worldSummaries(session.belief), text });
+      const likes: Record<string, number> = {};
+      for (const l of res.data.likelihoods) likes[l.world_id] = FIT_LIKELIHOOD[l.fit] ?? 0.5;
+      const essBefore = ess(session.belief.worlds);
+      session.belief.worlds = reweightByLikelihood(session.belief.worlds, likes);
+      const shifts = beliefShift(before, session.belief);
+      session.precomputed = {}; // belief changed; speculative cards may be stale
+      session.updated_at = this.now();
+      await this.store.saveSession(session);
+      await this.emit(session, "evidence_absorbed", { text: text.slice(0, 300), shifts, ess_before: round(essBefore), ess_after: round(ess(session.belief.worlds)), latency_ms: res.latency_ms, usage: res.usage });
+      return { shifts, ess_before: essBefore, ess_after: ess(session.belief.worlds) };
+    });
   }
 
   // ---------- belief: worlds ----------
@@ -413,9 +446,17 @@ export class Engine {
     return this.dealResultFor(sheet, session, session.pending_card);
   }
 
+  /** Open AND askable: hierarchically gated nodes (NodeDef.requires) join only once their parent decisions
+   *  are settled at user grade — the card budget descends into a subtree only after its root is confirmed. */
   private openIds(sheet: Sheet, session: SessionState): string[] {
-    const nodeIds = new Set(session.belief.nodes.map((n) => n.id));
-    return sheet.decisions.filter((d) => d.status === "open" && nodeIds.has(d.id)).map((d) => d.id);
+    const byId = new Map(session.belief.nodes.map((n) => [n.id, n]));
+    return sheet.decisions
+      .filter((d) => {
+        if (d.status !== "open") return false;
+        const node = byId.get(d.id);
+        return !!node && (!node.requires?.length || requirementsMet(node.requires, sheet.decisions));
+      })
+      .map((d) => d.id);
   }
 
   private dealResultFor(sheet: Sheet, session: SessionState, card: Card): DealResult {
@@ -721,6 +762,135 @@ export class Engine {
       await this.emit(session, "card_answered", { card_id: snap.card_id, kind: "undo", version: r.sheet.version });
       return card ? this.dealResultFor(r.sheet, session, card) : null;
     });
+  }
+
+  // ---------- phase 3b: verification (group-testing elicitation over the defaults) ----------
+
+  /** Accepting a scenario is k simultaneous but WEAK confirmations (the user skims a story; they did not
+   *  answer k explicit questions), so disagreeing worlds keep far more mass than under a card answer's ε. */
+  private static readonly VERIFY_ACCEPT_EPSILON = 0.2;
+
+  /**
+   * Compose verification scenarios over the current defaults: each bundles several assumed decisions whose
+   * JOINT correctness probability ≈ 0.5 (maximum-information yes/no — the batched generalization of binary
+   * search; see core/verify.ts), rendered as one concrete story the owner confirms or corrects. Call after
+   * finishCards; call again after answers for adaptive recomposition.
+   */
+  async getVerification(projectId: string, opts: { maxProbes?: number } = {}): Promise<{ probes: { id: string; scenario: string; p_all_correct: number; nodes: { node_id: string; question: string; answer_label: string }[] }[] }> {
+    return this.withLock(projectId, async () => {
+      const { sheet, session } = await this.load(projectId);
+      const nodeIds = new Set(session.belief.nodes.map((n) => n.id));
+      const candidates = sheet.decisions.filter((d) => d.status === "defaulted" && d.chosen && nodeIds.has(d.id)).map((d) => d.id);
+      const probes = composeVerifyProbes(session.belief, candidates, { consequenceOverride: session.consequence_override, maxProbes: opts.maxProbes ?? 4 });
+      const out: NonNullable<SessionState["pending_verification"]> = [];
+      const rendered: { id: string; scenario: string; p_all_correct: number; nodes: { node_id: string; question: string; answer_label: string }[] }[] = [];
+      for (const p of probes) {
+        const bundle = p.nodes.map((n) => {
+          const d = sheet.decisions.find((x) => x.id === n.id)!;
+          return { node_id: n.id, question: d.question, answer_label: d.options.find((o) => o.id === n.option)?.label ?? n.option };
+        });
+        const res = await this.fns.verifyScenario({ sheet, bundle });
+        out.push({ id: p.id, nodes: p.nodes, scenario: res.data.scenario, p_all_correct: p.p_all_correct });
+        rendered.push({ id: p.id, scenario: res.data.scenario, p_all_correct: p.p_all_correct, nodes: bundle });
+      }
+      session.pending_verification = out;
+      session.updated_at = this.now();
+      await this.store.saveSession(session);
+      await this.emit(session, "verification_shown", { probes: out.map((p) => ({ id: p.id, nodes: p.nodes.map((n) => n.id), p_all_correct: round(p.p_all_correct) })) });
+      return { probes: rendered };
+    });
+  }
+
+  /**
+   * The user's verdict on one scenario. Accept: every bundled default gets a mild joint confirmation
+   * (reweightOnVerify) and its recorded confidence refreshed. Reject with a correction: the named decision is
+   * RESOLVED to the user's option (full Rule-1 commit + propagation) after the "at least one of these is
+   * wrong" reweight. Rejection without a correction just applies the reweight — the UI should then elicit
+   * which part read wrong (free text goes through the normal patch path with source "verification").
+   */
+  async answerVerification(projectId: string, input: { probe_id: string; ok: boolean; correction?: { node_id: string; option_id: string } }): Promise<{ implied: Implied; confirmed: string[]; sheet_version: number }> {
+    return this.withLock(projectId, async () => {
+      const { sheet, session } = await this.load(projectId);
+      const probe = session.pending_verification?.find((p) => p.id === input.probe_id);
+      if (!probe) throw new Error(`no pending verification probe ${input.probe_id}`);
+      let current = sheet;
+      let implied: Implied = { hard: [], soft: [], contradictions: [] };
+      const confirmed: string[] = [];
+      if (input.ok) {
+        session.belief.worlds = reweightOnVerify(session.belief.worlds, probe.nodes, true, Engine.VERIFY_ACCEPT_EPSILON);
+        const ops: PatchOp[] = [];
+        for (const n of probe.nodes) {
+          const d = current.decisions.find((x) => x.id === n.id);
+          if (!d || d.status !== "defaulted" || d.chosen !== n.option) continue;
+          const p = maxOption(distribution(session.belief, n.id));
+          if (p.option !== n.option) continue;
+          ops.push({ op: "set_decision", id: n.id, status: "defaulted", chosen: n.option, confidence: round(this.calibrate(p.p)), rationale: "confirmed in a story check" });
+          confirmed.push(n.id);
+        }
+        if (ops.length) {
+          const r = await this.commit(current, ops, { kind: "verification", ref: probe.id }, `Story check confirmed ${ops.length} assumption(s)`, `verify:${probe.id}`);
+          current = r.sheet;
+        }
+      } else {
+        session.belief.worlds = reweightOnVerify(session.belief.worlds, probe.nodes, false, session.config.epsilon);
+        if (input.correction) {
+          const r = await this.commit(current, [{ op: "resolve_decision", id: input.correction.node_id, chosen: input.correction.option_id, rationale: "corrected in a story check" }], { kind: "verification", ref: probe.id }, `Story check corrected ${input.correction.node_id}`, `verify:${probe.id}`);
+          if (!r.commit) throw new Error(r.rejected[0]?.error ?? "correction rejected");
+          const out = await this.propagateResolution(r.sheet, session, input.correction.node_id, input.correction.option_id, { kind: "verification", ref: probe.id });
+          current = out.sheet;
+          implied = { hard: out.hard, soft: out.soft, contradictions: out.contradictions };
+        }
+      }
+      session.pending_verification = (session.pending_verification ?? []).filter((p) => p.id !== probe.id);
+      session.precomputed = {};
+      session.updated_at = this.now();
+      await this.store.saveSession(session);
+      await this.emit(session, "verification_answered", { probe_id: probe.id, ok: input.ok, nodes: probe.nodes.map((n) => n.id), correction: input.correction ?? null, confirmed, p_all_correct: round(probe.p_all_correct) });
+      return { implied, confirmed, sheet_version: current.version };
+    });
+  }
+
+  // ---------- gap mining: the compiled spec's confessed guesses become the next discriminative questions ----------
+
+  /**
+   * Every ⟨src: default⟩ marker in the compiled spec is a place the compiler had to guess. Parse them from the
+   * latest compiled artifact, cluster into candidate DECISIONS (one LLM call), and return them ranked. With
+   * `apply`, the top candidates are committed as open decisions and joined to the belief (prior-only — the
+   * α-mix makes them askable immediately), and the phase returns to `cards` so the loop closes:
+   * spec gaps → new questions → tighter spec.
+   */
+  async mineSpecGaps(projectId: string, opts: { max?: number; apply?: number } = {}): Promise<{ gaps: SpecGap[]; candidates: GapCandidate[]; applied: string[] }> {
+    const { sheet } = await this.load(projectId);
+    const spec = (await this.store.listArtifacts(projectId)).find((a) => a.name === "spec.md");
+    if (!spec) throw new Error("no compiled spec.md artifact — compile first");
+    const gaps = parseSpecGaps(spec.content);
+    if (!gaps.length) return { gaps, candidates: [], applied: [] };
+    const res = await proposeGapDecisions(this.llm, sheet, gaps, { max: opts.max ?? 8 });
+    const applied: string[] = [];
+    if (opts.apply && res.candidates.length) {
+      await this.withLock(projectId, async () => {
+        const { sheet: current, session } = await this.load(projectId);
+        const chosen = res.candidates.slice(0, opts.apply);
+        const ops: PatchOp[] = chosen.map((c) => ({ op: "add_decision" as const, id: c.id, topic: c.topic, question: c.question, options: c.options, consequence: c.consequence }));
+        const r = await this.commit(current, ops, { kind: "plan" }, `Gap mining: ${chosen.length} decision(s) proposed from the spec's own defaults`, "gap_mining");
+        for (const c of chosen) {
+          const d = r.sheet.decisions.find((x) => x.id === c.id);
+          if (d) {
+            session.belief.nodes = [...session.belief.nodes, nodeDefFromDecision(d)];
+            applied.push(c.id);
+          }
+        }
+        // Applying gaps IS the user re-pricing these taps: a prior-only node's value1 ≈ c·H(prior) sits far
+        // below the calibrated θ (≈5-8 vs 24), so without this the reopened loop would converge instantly and
+        // never deal the very questions the user just asked for. Rule 7's cap still binds.
+        if (applied.length) session.user_continued = true;
+        session.updated_at = this.now();
+        await this.store.saveSession(session);
+        if (applied.length) await this.setPhase(session, "cards");
+      });
+    }
+    await this.emit({ project_id: projectId, phase: "compiling" }, "gaps_proposed", { gaps: gaps.length, candidates: res.candidates.map((c) => ({ id: c.id, consequence: c.consequence })), applied, usage: res.usage });
+    return { gaps, candidates: res.candidates, applied };
   }
 
   // ---------- phase 4: defaults review ----------

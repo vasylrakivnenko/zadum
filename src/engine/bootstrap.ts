@@ -48,6 +48,7 @@ export async function buildEngine(opts: BootstrapOptions = {}): Promise<{ engine
     ...(priors && !opts.engine?.populationPriors ? { populationPriors: priors as never } : {}),
     ...(recal && !opts.engine?.recalibration ? { recalibration: recal as never } : {}),
     ...(process.env.ZADUM_CONTRARIAN === "1" && opts.engine?.contrarianSampling === undefined ? { contrarianSampling: true } : {}),
+    ...(process.env.ZADUM_EVIDENCE === "1" && opts.engine?.evidenceOnContext === undefined ? { evidenceOnContext: true } : {}),
   });
   return { engine, store, llm };
 }

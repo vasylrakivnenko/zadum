@@ -387,6 +387,100 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect(mappedDefaults.map((d) => d.id).sort()).toEqual(plainDefaults.map((d) => d.id).sort());
   });
 
+  it("absorbEvidence reweights the whole belief toward evidence-fitting worlds without touching the Sheet", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p14" });
+    const s0 = (await store.getSession("p14"))!;
+    // pick a node where worlds genuinely disagree, and a world holding its minority option
+    const disagreeing = s0.belief.nodes.find((n) => new Set(s0.belief.worlds.map((w) => w.assignment[n.id])).size > 1)!;
+    const counts = new Map<string, number>();
+    for (const w of s0.belief.worlds) counts.set(w.assignment[disagreeing.id]!, (counts.get(w.assignment[disagreeing.id]!) ?? 0) + 1);
+    const minority = [...counts.entries()].sort((a, b) => a[1] - b[1])[0]![0];
+    const champion = s0.belief.worlds.find((w) => w.assignment[disagreeing.id] === minority)!;
+    const custom = {
+      ...invoicingMockHandlers,
+      world_likelihoods: (req: { user: string }) => ({
+        likelihoods: [...req.user.matchAll(/^- ([\w.]+): /gm)].map((m) => ({ world_id: m[1]!, fit: m[1] === champion.id ? ("very_likely" as const) : ("very_unlikely" as const) })),
+      }),
+    };
+    const engine2 = new Engine(engine.store, new MockLLM(custom as never), engine.catalogs, { precompute: false, ruleBankDir: emptyRuleBankDir });
+    // capture the scalar BEFORE the call: MemoryStore returns live references and the engine updates in place
+    const pMinorityBefore = distribution(s0.belief, disagreeing.id)[minority]!;
+    const sheetBefore = JSON.stringify((await engine2.getState("p14")).sheet);
+    const r = await engine2.absorbEvidence("p14", "we are exactly the kind of shop that wants the unusual setup");
+    const s1 = (await store.getSession("p14"))!;
+    const pMinority = distribution(s1.belief, disagreeing.id)[minority]!;
+    expect(pMinority).toBeGreaterThan(pMinorityBefore); // shifted toward the evidence
+    expect(r.ess_after).toBeLessThan(r.ess_before); // concentration increased
+    expect(s1.belief.worlds.every((w) => w.weight > 0)).toBe(true); // floor kept support
+    expect(JSON.stringify((await engine2.getState("p14")).sheet)).toBe(sheetBefore); // Rule 1: belief only, never the Sheet
+    expect((await store.listEvents("p14")).map((e) => e.type)).toContain("evidence_absorbed");
+  });
+
+  it("hierarchically gated child nodes unlock only when their parent is settled at user grade", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p15" });
+    const { sheet, session } = await engine.getState("p15");
+    const child = session.belief.nodes.find((n) => n.id === "link_expiry");
+    expect(child?.requires?.[0]?.node).toBe("invoice_delivery"); // pilot child present in the belief
+    expect(sheet.decisions.some((d) => d.id === "link_expiry")).toBe(true); // and on the Sheet
+    // children are sampled into every world from the start
+    expect(session.belief.worlds.every((w) => w.assignment.link_expiry !== undefined)).toBe(true);
+    // gated while the parent is open…
+    const deal0 = await engine.startCards("p15");
+    if (deal0.kind === "card") expect(deal0.card.node_id).not.toBe("link_expiry");
+    // …unlocked once the parent is RESOLVED to a qualifying option
+    await engine.overrideDefault("p15", "invoice_delivery", "hosted_link");
+    const open = (await engine.getState("p15")).sheet.decisions.filter((d) => d.status === "open").map((d) => d.id);
+    expect(open).toContain("link_expiry"); // still open on the Sheet, and now askable — verified via a fresh deal ranking
+    // a defaulted (assumption-grade) parent must NOT unlock children: check the other pilot child stays gated
+    const gated = (await engine.getState("p15")).sheet.decisions.find((d) => d.id === "late_fee_basis");
+    expect(gated?.status).toBe("open"); // open on the Sheet…
+    // …but never dealt while late_fees is merely open/defaulted (no card for it in a full auto loop)
+    let res = await engine.currentCard("p15") ?? deal0;
+    const asked: string[] = [];
+    let guard = 0;
+    while (res.kind === "card" && guard++ < 20) {
+      asked.push(res.card.node_id);
+      res = (await engine.answerCard("p15", { kind: "option", option_id: res.card.options[0]!.option_id })).next;
+    }
+    expect(asked).not.toContain("late_fee_basis");
+    await engine.finishCards("p15");
+    // gated children still get honestly defaulted at finish
+    expect((await engine.getState("p15")).sheet.decisions.find((d) => d.id === "late_fee_basis")?.status).toBe("defaulted");
+  });
+
+  it("verification: scenarios bundle mid-probability defaults; accept confirms, reject+correction resolves", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p16" });
+    await engine.finishCards("p16"); // 0 cards → pure-defaults regime, the verification sweet spot
+    const v1 = await engine.getVerification("p16", { maxProbes: 3 });
+    expect(v1.probes.length).toBeGreaterThan(0);
+    const probe = v1.probes[0]!;
+    expect(probe.scenario.length).toBeGreaterThan(20);
+    expect(probe.nodes.length).toBeGreaterThanOrEqual(1);
+    expect(probe.p_all_correct).toBeGreaterThan(0.2); // the composer targets ~0.5
+    expect(probe.p_all_correct).toBeLessThan(0.8);
+    // accept: bundled defaults get confirmed (confidence refreshed, still defaulted), event emitted
+    const acc = await engine.answerVerification("p16", { probe_id: probe.id, ok: true });
+    expect(acc.confirmed.length).toBeGreaterThan(0);
+    const afterAccept = (await engine.getState("p16")).sheet;
+    for (const id of acc.confirmed) expect(afterAccept.decisions.find((d) => d.id === id)?.rationale).toBe("confirmed in a story check");
+    // reject with a correction: the named decision becomes RESOLVED via the Rule-1 path
+    const v2 = await engine.getVerification("p16", { maxProbes: 3 });
+    const p2 = v2.probes[0]!;
+    const wrong = p2.nodes[0]!;
+    const d = (await engine.getState("p16")).sheet.decisions.find((x) => x.id === wrong.node_id)!;
+    const other = d.options.find((o) => o.id !== d.chosen)!;
+    await engine.answerVerification("p16", { probe_id: p2.id, ok: false, correction: { node_id: wrong.node_id, option_id: other.id } });
+    expect((await engine.getState("p16")).sheet.decisions.find((x) => x.id === wrong.node_id)).toMatchObject({ status: "resolved", chosen: other.id });
+    const types = (await store.listEvents("p16")).map((e) => e.type);
+    expect(types.filter((t) => t === "verification_shown").length).toBe(2);
+    expect(types.filter((t) => t === "verification_answered").length).toBe(2);
+    const commits = await store.listCommits("p16");
+    expect(commits.map((c) => c.source.kind)).toContain("verification");
+  });
+
   it("stops immediately when theta is huge and asks more when theta is tiny (bounded by 12)", async () => {
     const big = await makeEngine({ config: { theta: 1e6 } as never });
     await big.engine.createProject("an invoicing app for small bookkeeping firms", { id: "p5" });

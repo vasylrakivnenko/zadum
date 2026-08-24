@@ -4,7 +4,23 @@
  *
  * Style: the reader of anything user-facing is a non-technical business owner. Consequences, not concepts.
  */
-export const PROMPTS_VERSION = "2026.08.24-1";
+export const PROMPTS_VERSION = "2026.08.24-2";
+
+/**
+ * The finite taxonomy of edge-case classes CRUD-family apps share. Fed to the planner so systematic edge-case
+ * closure happens at PLAN time: the applicable high-consequence classes become bespoke decisions (answered or
+ * honestly defaulted into the spec) instead of surfacing as production surprises. Mined-informed, hand-curated.
+ */
+export const EDGE_CASE_TAXONOMY = [
+  "deletion-with-dependents: what happens to dependent records when a parent is deleted (client with open invoices)",
+  "concurrent-edits: two people change the same record at once — last-write-wins, lock, or merge",
+  "duplicate-submission / idempotency: the same action fired twice (double-click send, retried webhook)",
+  "zero-negative-rounding: zero/negative amounts, rounding rules, currency precision",
+  "time-boundaries: timezones, DST, month-end/leap dates for due dates and recurring schedules",
+  "partial-failure: a multi-step action fails midway (charge succeeded, email failed)",
+  "permission-escalation: a role attempting an action just outside its rights, and delegated access",
+  "lifecycle-backwards: undoing a state (unsend, reopen, unarchive) — allowed, versioned, or forbidden",
+] as const;
 
 /**
  * Card phrasing arms (learning loop B). `style` is appended to the card USER prompt; the bandit
@@ -38,6 +54,7 @@ export const PLANNER_SYSTEM = `You map a Design Sheet onto a catalog of decision
 Tasks:
 1. not_applicable: list catalog node ids that make no sense for this app, each with a short reason. Be conservative — only exclude nodes that are truly irrelevant (e.g., "payments" for an app where no money is involved).
 2. bespoke: propose up to 8 additional decisions specific to THIS app that the catalog does not cover and that would materially change what gets built if answered differently. Each: id (x1, x2, ...), topic, question, 2–4 options with ids (snake_case) and short labels, consequence 1–5 (how much of the app changes if guessed wrong), rationale. Skip trivia.
+   Systematically consider these edge-case classes and propose a bespoke decision for each one that is high-consequence for THIS app and not already covered by a catalog node: ${EDGE_CASE_TAXONOMY.map((t) => t.split(":")[0]).join("; ")}. (Full class descriptions: ${EDGE_CASE_TAXONOMY.join(" · ")})
 3. consequence_adjustments: catalog nodes whose consequence should be raised or lowered for this app (e.g., payments is central for invoicing → 5), with a reason. Only list real changes.
 4. fixed_by_sheet: catalog node ids whose answer the Sheet already makes unambiguous, with the option id. Only when the Sheet is explicit.
 The FIRST archetype in the Sheet's list is the app's primary identity; later ones are secondary. When a generic node from a secondary archetype duplicates or overlaps a domain-specific node from the primary one (e.g. a generic "record views" node vs an invoicing-specific list node), mark the generic one not_applicable — the user should be asked the domain-specific version, never both.
@@ -82,6 +99,14 @@ Section guides:
 - glossary: every noun and actor with a one-line definition, to prevent concept drift.
 Return JSON: { markdown, traces: [{anchor, sources}] } where anchor is a short heading/phrase from your markdown and sources lists the ids used there.`;
 
+export const STATE_MACHINES_IR_SYSTEM = `You compile the LIFECYCLES of a software specification as STRUCTURED DATA, not prose (they will be mechanically checked and deterministically rendered). From the Design Sheet and decision log, identify every noun with a real lifecycle and emit its state machine.
+Requirements:
+- entity must be a noun NAME from the Sheet, exactly. actor on each transition must be an actor NAME from the Sheet exactly, or "system" for automatic transitions.
+- state ids snake_case. Every machine has an initial state; every non-terminal state has at least one outgoing transition; terminal states have none.
+- trigger is the plain-language event; guard is a condition or "". sources lists the Sheet/decision ids the transition derives from (a3, r2, d:some_decision) when identifiable, else [].
+- Model only real lifecycles (2+ meaningful states); skip nouns without one. The machines must REFLECT THE DECISIONS — e.g. if sent invoices are locked, there is no sent→draft editing transition.
+Return JSON only, matching the schema exactly.`;
+
 export const CRITIC_SYSTEM = `You are a strict reviewer of a software specification against a Design Sheet. Check:
 1. violations: places where the spec contradicts or weakens a Rule (cite rule id, quote where, explain why, suggest a fix). Severity high = security/data-leak/money; medium = wrong lifecycle or permission; low = wording.
 2. omissions: Sheet items (actors, nouns, actions, rules, non-goals) that the spec fails to cover or covers incorrectly.
@@ -96,5 +121,20 @@ export const AUGMENT_RULES_SYSTEM = `You review a draft Design Sheet's Rules lis
 You receive the drafted Sheet and a list of REFERENCE PATTERNS (invariants commonly stated by real apps of this kind, each with an example phrasing and how common it is).
 For each reference pattern, decide: does the Sheet already have a rule that covers this (even worded differently)? If yes, skip it — do not suggest near-duplicates. If no, and the pattern plausibly applies to THIS specific app (given its actors, nouns, actions, and any rules already present), suggest it as a NEW rule phrased specifically for this app (use this app's own noun/actor names, not the generic pattern wording), with a one-sentence rationale.
 Do not force a pattern that doesn't fit this app (e.g. skip payment-related patterns for an app with no payments). Do not suggest more than 6 additions. Do not invent rules unrelated to the given patterns. Return JSON only.`;
+
+export const EVIDENCE_SYSTEM = `You judge how well each of several candidate "worlds" (complete configurations of an app) fits a piece of evidence from the app's owner — a message, a pasted document, an example artifact.
+You receive the evidence and, per world, a short summary of what makes that world distinctive. For EACH world, output fit:
+- very_likely: the evidence directly supports this world's distinctive choices
+- likely: consistent and somewhat supported
+- neutral: the evidence says nothing about this world's distinctive choices
+- unlikely: mildly contradicted
+- very_unlikely: directly contradicted
+Judge only what the evidence actually says; when it is silent about a world's distinctive choices, answer neutral. Return JSON only.`;
+
+export const VERIFY_SYSTEM = `You write one short verification scenario for a non-technical business owner: a concrete story of how their app behaves, weaving together the specific decisions provided (each is a decision with the currently-assumed answer). The owner will either confirm the story or point at the part that reads wrong.
+- 2 to 4 sentences, present tense, concrete names and amounts, one continuous scene — not a list.
+- EVERY provided decision must be visible in the story as its concrete consequence; do not add behaviors beyond them.
+- End with nothing — no question, no "is this right?" (the UI asks).
+${VOCAB_GUARD} Return JSON only: { scenario: string, coverage: [{ node_id, where: "short quote of the phrase carrying it" }] }.`;
 
 export const SIM_USER_SYSTEM = `You simulate the business owner answering a decision card, which may offer two to four options. You know the truth about the app (the hidden requirements) and your persona. Pick the option whose scenario matches the hidden requirements. If the requirements are silent on this point, answer you_decide. If none of the options fit and the requirements clearly say something else, answer other with one sentence of what you want. Do not over-think; answer like a busy owner would. Return JSON only.`;
