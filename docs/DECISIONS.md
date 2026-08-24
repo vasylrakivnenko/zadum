@@ -427,3 +427,60 @@ link to downstream conduct was assumed, not measured.
 hiccups contained, zero runs lost). Split-tier fast model (`ZADUM_FAST_MODEL`, ADR-031's registry reused)
 built and latency-measured by a parallel agent — gpt-4o serves cards under 2s warm, pending a quality check.
 
+
+## ADR-033 — The overnight build: contract layer, soft stop, review instrumentation, and four parallel teams (2026-08-24)
+**Context.** The eval program (ADR-032, milestones 28–34) had outrun the product: the conduct-critical handoff
+was proven to be ~9k chars, a wrongly-defaulted decision was proven to silence downstream agents (asks 2/4 →
+0/16), and the flywheel's top-ranked signal (post-session edits through a hosted Sheet, LEARNING.md #1) had no
+transport. This pass implemented the whole approved roadmap in one night — four parallel agents on disjoint
+file sets (mcp+drift / selector+DP / harness+learning / web), the conflict-heavy core done serially.
+
+**Decisions.**
+1. **AGENTS.md is the protocol; spec.md is REFERENCE** (the 9k-handoff finding shipped): agents read the page
+   in full and consult the spec as needed. AGENTS.md now also lists, riskiest-first, every defaulted decision
+   below a confidence threshold (`CompileOptions.confirmBelow`, default 0.8) with the instruction to CONFIRM
+   before building against them — the direct countermeasure to the silencing finding, measurable in
+   `run_decisions.ts`. The threshold's known blind spot is recorded honestly: concentrated-wrong beliefs
+   default at 0.95 (payment_recording did) and sail past any threshold — that is the recalibration/RB-mixture
+   work's job, not the line's.
+2. **Rules → runnable test stubs** (`sheet-tests.ts` in every bundle): deterministic generation, `it.todo`
+   per rule (+ negative stubs for access rules) and per action, names prefixed with stable Sheet ids. No LLM:
+   exactness of ids beats fluency. SPEC §7's "flagship v2" gets its v0 shape as a bundle artifact.
+3. **Soft stop**: `converged` is a recommendation, not a guillotine. `Engine.continueCards` sets a persisted
+   `user_continued` flag — θ ignored for the REST of the loop (the user re-priced their own tap), Rule 7's cap
+   and `no_open` untouched. CLI and web both offer it; the web adds the settledness meter + coarse per-card
+   share bars (deliberately quantized — 12 particles don't support a smooth line).
+4. **Story correction wired** (`Engine.applyStoryCorrection`, CLI `story`, web story page): same Rule-1 patch
+   path as user edits, own commit source + `story_corrected` event so learning can attribute what the
+   walkthrough catches that the lists missed.
+5. **MCP server** (`npm run mcp`, zero-dep JSON-RPC/stdio): get_sheet (page + ledger with confidences),
+   check_task (one structured critic call), propose_amendment (= applyUserEdit — Rule 1 extends to coding
+   agents), record_event (append-only artifact, not a mislabeled typed event). Inbound only; Rule 8 intact.
+   Drift check (`npm run drift`): reverse-compile given docs, diff vs the Sheet via roundTripReport, nonzero
+   exit under `--min` recall — the CI-shaped answer to Sheet staleness.
+6. **Review instrumentation, simulated and real**: the harness gained `--review [depth] --catch-prob p`
+   (simulated defaults reviewer, seeded) + `--noise p` (mis-tap stress) + `--with-context` (extra-context A/B
+   with a real invoice artifact in the invoicing gold); `default_overridden` events now carry
+   `review_position`. First mock numbers: net catch 31% at depth 8 even with a PERFECT reviewer, because
+   **81/110 wrong defaults sat below the fold** — riskiest-first ordering does not surface them when
+   confidences are miscalibrated. Instrument-ready; the live number is the one that matters.
+7. **Loop B wired behind flags, selector untouched**: ZADUM_PRIORS_FILE (mixWithCatalog at createProject),
+   ZADUM_RECALIBRATION_FILE (PAV-isotonic reliability map from `npm run learn`, applied to REPORTED
+   confidences only — defaults, soft implications, you_decide; τ/θ application deliberately deferred to its
+   own harness gate), ZADUM_CONTRARIAN (last sampler batch prompted to coherent minority worlds — OFF until a
+   live A/B, because the mock baseline proved even its prompt text reshuffles sequences via the mock's
+   prompt-hash seeding). Phrasing arms live: `Card.phrasing_arm` set deterministically per (project, node)
+   over PHRASING_ARMS ("base", "moment"), so the bandit finally has >1 arm.
+8. **CI + a selector regression gate** (`.github/workflows/ci.yml`, `npm run harness:check`): the mock harness
+   must reproduce a committed baseline (asked sequences + AUC) byte-identically; deliberate changes regenerate
+   it via `npm run harness:baseline` with rationale. The gate caught its first real drift within an hour of
+   existing (the contrarian prompt, → decision 7's OFF default).
+9. **EC² scoring arm + exact subset-DP bound** (survey items 4): `--scoring ec2` (decision-region edge-cutting,
+   consequence ≥3 regions, θ=0.05 loudly UNCALIBRATED) and `npm run dp:bound` — exact optimum over particle
+   subsets. Headline: **greedy = optimal at H=12 (100.0%) on the mock invoicing belief** (gap only at H=2-3);
+   the "should we search deeper" question now has a proof-shaped answer, not a recurring sweep.
+
+**Consequences.** 280 root + 10 web tests green; mock demo, typecheck, and the new gate all pass; the
+confidence-line effect was measured live the same night (see docs/EVALS.md). RB-mixture belief remains the
+top queued algorithmic item — deliberately NOT attempted overnight: it swaps the belief representation under
+everything above and deserves its own session with θ recalibration.

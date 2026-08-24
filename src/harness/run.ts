@@ -11,6 +11,11 @@
  *
  * CLI: npm run harness -- [--mock] [--gold <dir|file>] [--sweep] [--variants N] [--flips N]
  *                         [--scoring s] [--theta n] [--lookahead 1|2] [--budget N] [--out dir]
+ *                         [--review [depth]] [--catch-prob p] [--noise p] [--with-context]
+ *   --review [depth]  simulate the defaults review (examine top `depth` items, default 8 ≈ one screen)
+ *   --catch-prob p    P(an examined wrong default is caught), default 1.0 (attentive ceiling; try 0.5)
+ *   --noise p         per-card P(the sim user mis-taps a random different option), default 0
+ *   --with-context    A/B: run each gold with vs without its `extra_context` artifact and compare
  */
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -22,7 +27,7 @@ import type { SessionState } from "../core/session.js";
 import { distribution, maxOption } from "../core/worlds.js";
 import { normName } from "../core/ids.js";
 import type { Scoring } from "../core/selector.js";
-import { makeVariants } from "./perturb.js";
+import { makeVariants, rng } from "./perturb.js";
 
 export const GoldSchema = z.object({
   id: z.string(),
@@ -35,6 +40,8 @@ export const GoldSchema = z.object({
   one_liner_variants: z.array(z.string()).optional(),
   /** alternative users wanting the same app (answer style, not truth) */
   persona_variants: z.array(z.string()).optional(),
+  /** a pasted artifact (e.g. an example invoice) consistent with the truth — for the --with-context A/B */
+  extra_context: z.string().optional(),
   sheet: z
     .object({
       actors: z.array(z.string()).default([]),
@@ -63,6 +70,17 @@ export interface SessionMetrics {
   asked_nodes: string[];
   /** LLM-judge semantic recall (src/harness/judge.ts), same draft stage as draft_recall — opt-in via runGold's `judge` flag, since it costs 4 extra LLM calls per gold. See ADR-024/EVALS.md for why lexical draft_recall alone is not trustworthy for rules. */
   semantic_draft_recall?: { actors: number; nouns: number; rules: number; non_goals: number };
+  // ---- simulated defaults review (opt-in via runGold's `review` option; absent otherwise) ----
+  /** defaulted/implied decisions that mismatch the gold truth, counted on the riskiest-first list finishCards returns */
+  wrong_defaults_before?: number;
+  /** same count re-taken after the simulated review (corrected defaults become resolved and drop out) */
+  wrong_defaults_after?: number;
+  /** (before − after) / before — omitted when wrong_defaults_before is 0 */
+  review_catch_rate?: number;
+  /** 1-based positions of ALL wrong defaults in the riskiest-first review order (measures whether the ordering surfaces them) */
+  review_positions?: number[];
+  /** simulated mis-taps: option answers replaced by a random different option (opt-in via `noise`) */
+  noise_events?: number;
 }
 
 export interface Summary {
@@ -78,6 +96,18 @@ export interface Summary {
   render_ms_p90: number;
   you_decide_rate: number;
   other_rate: number;
+  /** present only when sessions ran with the simulated defaults review */
+  review?: {
+    sessions: number;
+    mean_wrong_before: number;
+    mean_wrong_after: number;
+    /** pooled net catch: Σ(before − after) / Σbefore over sessions with wrong defaults */
+    catch_rate: number;
+    /** review-order position (1-based) → how many wrong defaults sat there, pooled over sessions */
+    position_histogram: Record<number, number>;
+  };
+  /** total simulated mis-taps, present only when sessions ran with answer noise */
+  noise_events?: number;
 }
 
 /** Consequence-weighted share of gold decisions the session currently gets right (settled value or argmax belief). */
@@ -116,9 +146,36 @@ export function draftRecall(sheet: Sheet, gold: Gold): SessionMetrics["draft_rec
   };
 }
 
-export async function runGold(engine: Engine, gold: Gold, opts: { idPrefix?: string; judge?: boolean } = {}): Promise<SessionMetrics> {
+export interface ReviewOptions {
+  /** how many items from the top of the riskiest-first list the reviewer examines (≈ one screen) */
+  depth?: number;
+  /** P(an examined wrong default is caught): 1.0 = attentive ceiling, 0.5 = realistic mid */
+  catchProb?: number;
+  seed?: number;
+}
+
+export interface NoiseOptions {
+  /** per-card probability that an option answer is replaced by a uniformly random DIFFERENT option (a mis-tap) */
+  p: number;
+  seed?: number;
+}
+
+/** Deterministic per-gold seed component so seeded behaviours differ across golds but replay identically. */
+function hashSeed(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+export async function runGold(
+  engine: Engine,
+  gold: Gold,
+  opts: { idPrefix?: string; judge?: boolean; review?: ReviewOptions; noise?: NoiseOptions; withContext?: boolean } = {},
+): Promise<SessionMetrics> {
   const id = `${opts.idPrefix ?? "h"}_${gold.id.replace(/[^a-z0-9]+/gi, "-")}_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
-  const created = await engine.createProject(gold.one_liner, { id });
+  const created = await engine.createProject(gold.one_liner, { id, ...(opts.withContext && gold.extra_context ? { extra_context: gold.extra_context } : {}) });
+  const noiseR = opts.noise && opts.noise.p > 0 ? rng(((opts.noise.seed ?? 7) * 2654435761) ^ hashSeed(gold.id)) : null;
+  let noiseEvents = 0;
   const semanticPromise = opts.judge
     ? (async () => {
         const { semanticRecall } = await import("./judge.js");
@@ -134,7 +191,16 @@ export async function runGold(engine: Engine, gold: Gold, opts: { idPrefix?: str
     const card = res.card;
     asked.push(card.node_id);
     const sim = await engine.fns.simUser({ card, persona: gold.persona, truth: truthText(gold) });
-    const a = sim.data;
+    let a = sim.data;
+    // simulated mis-tap (survey §7): the real user sometimes taps the wrong option; the mock sim never does
+    if (noiseR && a.kind === "option" && noiseR() < opts.noise!.p) {
+      const chosen = a.option_id;
+      const others = card.options.filter((o) => o.option_id !== chosen);
+      if (others.length) {
+        a = { ...a, option_id: others[Math.floor(noiseR() * others.length)]!.option_id };
+        noiseEvents++;
+      }
+    }
     let ans;
     if (a.kind === "option" && card.options.some((o) => o.option_id === a.option_id)) ans = await engine.answerCard(id, { kind: "option", option_id: a.option_id, think_ms: 1000 });
     else if (a.kind === "other" && a.text) ans = await engine.answerCard(id, { kind: "other", text: a.text, think_ms: 1500 });
@@ -144,7 +210,33 @@ export async function runGold(engine: Engine, gold: Gold, opts: { idPrefix?: str
     curve.push(recovery(st.sheet, st.session, gold));
     res = ans.next;
   }
-  await engine.finishCards(id);
+  const defaultsList = await engine.finishCards(id); // riskiest-first: consequence × (1 − confidence)
+  let review: Pick<SessionMetrics, "wrong_defaults_before" | "wrong_defaults_after" | "review_catch_rate" | "review_positions"> | null = null;
+  if (opts.review) {
+    const depth = opts.review.depth ?? 8;
+    const catchProb = opts.review.catchProb ?? 1;
+    const r = rng(((opts.review.seed ?? 7) * 2654435761) ^ hashSeed(gold.id));
+    const isWrong = (it: { id: string; chosen: string }) => gold.decisions[it.id] !== undefined && it.chosen !== gold.decisions[it.id];
+    const wrong = defaultsList.map((it, i) => ({ it, pos: i + 1 })).filter((x) => isWrong(x.it));
+    for (const { it, pos } of wrong) {
+      if (pos > depth) continue; // below the fold: the reviewer never sees it
+      if (r() >= catchProb) continue; // seen but not caught
+      const truth = gold.decisions[it.id]!;
+      if (!it.options.some((o) => o.id === truth)) continue; // gold truth is not an option of this node
+      try {
+        await engine.overrideDefault(id, it.id, truth);
+      } catch {
+        /* override rejected (e.g. hard-edge contradiction) — counts as not caught */
+      }
+    }
+    const after = (await engine.getDefaults(id)).filter(isWrong).length;
+    review = {
+      wrong_defaults_before: wrong.length,
+      wrong_defaults_after: after,
+      review_positions: wrong.map((x) => x.pos),
+      ...(wrong.length ? { review_catch_rate: (wrong.length - after) / wrong.length } : {}),
+    };
+  }
   const st = await engine.getState(id);
   const events = await engine.store.listEvents(id);
   const calibration = st.sheet.decisions
@@ -166,6 +258,8 @@ export async function runGold(engine: Engine, gold: Gold, opts: { idPrefix?: str
     card_value1: events.filter((e) => e.type === "card_shown").map((e) => Number(e.payload.value1 ?? e.payload.value ?? 0)),
     asked_nodes: asked,
     ...(semantic_draft_recall ? { semantic_draft_recall } : {}),
+    ...(review ?? {}),
+    ...(noiseR ? { noise_events: noiseEvents } : {}),
   };
 }
 
@@ -231,6 +325,22 @@ export function aggregate(ms: SessionMetrics[]): Summary {
   });
   const renders = ms.flatMap((m) => m.card_render_ms).sort((a, b) => a - b);
   const allAnswers = ms.flatMap((m) => m.answers);
+  const rev = ms.filter((m) => m.wrong_defaults_before !== undefined);
+  let review: Summary["review"];
+  if (rev.length) {
+    const position_histogram: Record<number, number> = {};
+    for (const m of rev) for (const p of m.review_positions ?? []) position_histogram[p] = (position_histogram[p] ?? 0) + 1;
+    const before = rev.reduce((a, m) => a + (m.wrong_defaults_before ?? 0), 0);
+    const after = rev.reduce((a, m) => a + (m.wrong_defaults_after ?? 0), 0);
+    review = {
+      sessions: rev.length,
+      mean_wrong_before: before / rev.length,
+      mean_wrong_after: after / rev.length,
+      catch_rate: before ? (before - after) / before : 1,
+      position_histogram,
+    };
+  }
+  const noised = ms.filter((m) => m.noise_events !== undefined);
   return {
     n: ms.length,
     mean_cards: mean(ms.map((m) => m.cards)),
@@ -248,6 +358,8 @@ export function aggregate(ms: SessionMetrics[]): Summary {
     render_ms_p90: renders.length ? renders[Math.min(renders.length - 1, Math.floor(renders.length * 0.9))]! : 0,
     you_decide_rate: allAnswers.length ? allAnswers.filter((a) => a.kind === "you_decide").length / allAnswers.length : 0,
     other_rate: allAnswers.length ? allAnswers.filter((a) => a.kind === "other").length / allAnswers.length : 0,
+    ...(review ? { review } : {}),
+    ...(noised.length ? { noise_events: noised.reduce((a, m) => a + (m.noise_events ?? 0), 0) } : {}),
   };
 }
 
@@ -263,6 +375,7 @@ export const DEFAULT_ARMS: Arm[] = [
   { label: "weighted_entropy", scoring: "weighted_entropy", lookahead: 1 },
   { label: "joint_entropy", scoring: "joint_entropy", lookahead: 1 },
   { label: "risk", scoring: "risk", lookahead: 1 },
+  { label: "ec2", scoring: "ec2", lookahead: 1 },
   { label: "weighted_entropy+2ply", scoring: "weighted_entropy", lookahead: 2 },
 ];
 
@@ -374,6 +487,11 @@ if (isMain) {
   const variants = Number(flag("--variants") ?? 0);
   const flips = Number(flag("--flips") ?? 3);
   const budget = Number(flag("--budget") ?? 12);
+  const reviewIdx = args.indexOf("--review");
+  const reviewDepthArg = reviewIdx >= 0 ? args[reviewIdx + 1] : undefined;
+  const review = reviewIdx >= 0 ? { depth: reviewDepthArg && /^\d+$/.test(reviewDepthArg) ? Number(reviewDepthArg) : 8, catchProb: Number(flag("--catch-prob") ?? 1) } : undefined;
+  const noiseP = Number(flag("--noise") ?? 0);
+  const withContext = args.includes("--with-context");
 
   const { buildEngine } = await import("../engine/bootstrap.js");
   const { MemoryStore } = await import("../store/file_store.js");
@@ -422,18 +540,66 @@ if (isMain) {
     console.log(`\nwritten ${file}`);
   } else {
     const engine = await makeEngine({ scoring: scoring ?? "weighted_entropy", lookahead, maxCards: 12, ...(theta ? { theta: Number(theta) } : {}) });
-    const results: SessionMetrics[] = [];
-    for (const g of golds) {
-      const m = await runGold(engine, g, { judge });
-      results.push(m);
+    const runOpts = { judge, ...(review ? { review } : {}), ...(noiseP > 0 ? { noise: { p: noiseP } } : {}) };
+    const logGold = (g: Gold, m: SessionMetrics, tag = "") => {
       const sem = m.semantic_draft_recall ? `  ·  JUDGE n${pc(m.semantic_draft_recall.nouns)} r${pc(m.semantic_draft_recall.rules)}` : "";
-      console.log(`${g.id.padEnd(30)} cards ${String(m.cards).padStart(2)}  recovery ${pc(m.recovery_curve[0]!)} → ${pc(m.final_recovery)}  stop ${m.stop_reason}  draft recall n${pc(m.draft_recall.nouns)} r${pc(m.draft_recall.rules)}${sem}  asked: ${m.asked_nodes.join(",")}`);
+      const rev = m.wrong_defaults_before !== undefined ? `  wrong defaults ${m.wrong_defaults_before}→${m.wrong_defaults_after} @pos [${(m.review_positions ?? []).join(",")}]` : "";
+      const noi = m.noise_events !== undefined ? `  mis-taps ${m.noise_events}` : "";
+      console.log(`${(g.id + tag).padEnd(30)} cards ${String(m.cards).padStart(2)}  recovery ${pc(m.recovery_curve[0]!)} → ${pc(m.final_recovery)}  stop ${m.stop_reason}  draft recall n${pc(m.draft_recall.nouns)} r${pc(m.draft_recall.rules)}${sem}${rev}${noi}  asked: ${m.asked_nodes.join(",")}`);
+    };
+    const logSummary = (summary: Summary) => {
+      console.log(`\nSUMMARY n=${summary.n} · mean cards ${summary.mean_cards.toFixed(1)} · recovery ${pc(summary.mean_initial_recovery)} → ${pc(summary.mean_final_recovery)} · ${REPORT_K.map((k) => `r@${k} ${pc(summary.recovery_at[k] ?? 0)}`).join(" · ")} · AUC ${pc(summary.auc_0_12)} · render p90 ${summary.render_ms_p90}ms · you-decide ${pc(summary.you_decide_rate)} · other ${pc(summary.other_rate)}`);
+      console.log(`calibration: ${summary.calibration_bins.map((b) => `${b.bin}: n=${b.n} acc=${pc(b.accuracy)}`).join(" | ")}`);
+      if (summary.review) {
+        const r = summary.review;
+        console.log(`DEFAULTS REVIEW (depth ${review?.depth ?? 8}, catch-prob ${review?.catchProb ?? 1}): wrong defaults/session ${r.mean_wrong_before.toFixed(1)} → ${r.mean_wrong_after.toFixed(1)} · net catch ${pc(r.catch_rate)}`);
+        const positions = Object.keys(r.position_histogram).map(Number).sort((a, b) => a - b);
+        console.log(`  wrong-default positions in review order (1 = riskiest): ${positions.map((p) => `${p}:${r.position_histogram[p]}`).join(" ")}${positions.some((p) => p > (review?.depth ?? 8)) ? `  ← ${positions.filter((p) => p > (review?.depth ?? 8)).reduce((a, p) => a + r.position_histogram[p]!, 0)} wrong default(s) BELOW the review fold (depth ${review?.depth ?? 8})` : ""}`);
+      }
+      if (summary.noise_events !== undefined) console.log(`answer noise: ${summary.noise_events} simulated mis-tap(s)`);
+    };
+    if (withContext) {
+      // A/B: evidence in, not just answers in — same golds, with vs without the pasted artifact
+      const withCtx = golds.filter((g) => g.extra_context).length;
+      console.log(`extra_context A/B over ${golds.length} gold(s) (${withCtx} carry extra_context; the rest are identical in both arms)\n`);
+      const armA: SessionMetrics[] = [];
+      const armB: SessionMetrics[] = [];
+      // fresh engine per session: the MockLLM's call counter is per-instance state, so a shared engine would
+      // make paired arms differ even on golds with no extra_context (stream position, not context, would differ)
+      const fresh = () => makeEngine({ scoring: scoring ?? "weighted_entropy", lookahead, maxCards: 12, ...(theta ? { theta: Number(theta) } : {}) });
+      for (const g of golds) {
+        const a = await runGold(await fresh(), g, { ...runOpts, idPrefix: "noctx" });
+        logGold(g, a, " [no-ctx]");
+        armA.push(a);
+        const b = await runGold(await fresh(), g, { ...runOpts, idPrefix: "ctx", withContext: true });
+        logGold(g, b, " [ctx]");
+        armB.push(b);
+      }
+      const sa = aggregate(armA);
+      const sb = aggregate(armB);
+      console.log(`\nEXTRA-CONTEXT A/B (per gold: initial → final recovery · draft recall nouns/rules)`);
+      console.log(`  ${"gold".padEnd(30)} ${"without".padStart(24)} ${"with".padStart(24)}`);
+      for (let i = 0; i < golds.length; i++) {
+        const fmt = (m: SessionMetrics) => `${pc(m.recovery_curve[0]!)}→${pc(m.final_recovery)} n${pc(m.draft_recall.nouns)} r${pc(m.draft_recall.rules)}`;
+        console.log(`  ${golds[i]!.id.padEnd(30)} ${fmt(armA[i]!).padStart(24)} ${fmt(armB[i]!).padStart(24)}${golds[i]!.extra_context ? "" : "  (no extra_context)"}`);
+      }
+      console.log(`  ${"MEAN".padEnd(30)} ${`${pc(sa.mean_initial_recovery)}→${pc(sa.mean_final_recovery)} n${pc(sa.draft_recall.nouns)} r${pc(sa.draft_recall.rules)}`.padStart(24)} ${`${pc(sb.mean_initial_recovery)}→${pc(sb.mean_final_recovery)} n${pc(sb.draft_recall.nouns)} r${pc(sb.draft_recall.rules)}`.padStart(24)}`);
+      logSummary(sb);
+      const file = path.join(outDir, `${stamp}${mock ? "-mock" : ""}-context-ab.json`);
+      await fs.writeFile(file, JSON.stringify({ arms: { without: { summary: sa, results: armA }, with: { summary: sb, results: armB } }, config: { scoring, theta, lookahead, review, noise: noiseP }, mock, catalog: catalogs.version }, null, 2));
+      console.log(`written ${file}`);
+    } else {
+      const results: SessionMetrics[] = [];
+      for (const g of golds) {
+        const m = await runGold(engine, g, runOpts);
+        results.push(m);
+        logGold(g, m);
+      }
+      const summary = aggregate(results);
+      logSummary(summary);
+      const file = path.join(outDir, `${stamp}${mock ? "-mock" : ""}.json`);
+      await fs.writeFile(file, JSON.stringify({ summary, results, config: { scoring, theta, lookahead, ...(review ? { review } : {}), ...(noiseP ? { noise: noiseP } : {}) }, mock, catalog: catalogs.version }, null, 2));
+      console.log(`written ${file}`);
     }
-    const summary = aggregate(results);
-    console.log(`\nSUMMARY n=${summary.n} · mean cards ${summary.mean_cards.toFixed(1)} · recovery ${pc(summary.mean_initial_recovery)} → ${pc(summary.mean_final_recovery)} · ${REPORT_K.map((k) => `r@${k} ${pc(summary.recovery_at[k] ?? 0)}`).join(" · ")} · AUC ${pc(summary.auc_0_12)} · render p90 ${summary.render_ms_p90}ms · you-decide ${pc(summary.you_decide_rate)} · other ${pc(summary.other_rate)}`);
-    console.log(`calibration: ${summary.calibration_bins.map((b) => `${b.bin}: n=${b.n} acc=${pc(b.accuracy)}`).join(" | ")}`);
-    const file = path.join(outDir, `${stamp}${mock ? "-mock" : ""}.json`);
-    await fs.writeFile(file, JSON.stringify({ summary, results, config: { scoring, theta, lookahead }, mock, catalog: catalogs.version }, null, 2));
-    console.log(`written ${file}`);
   }
 }

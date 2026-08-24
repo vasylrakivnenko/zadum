@@ -11,7 +11,8 @@ import type { Store } from "../store/store.js";
 import type { LoadedCatalogs } from "../engine/catalogs.js";
 import { mergeCatalogs, type NodeDef } from "../core/catalog.js";
 import { collectObservations, populationPriors, topNodesByN, type Observation, type PopulationPriors } from "./population_priors.js";
-import { calibrationReport, formatCalibration, type CalibrationReport } from "./calibration.js";
+import { calibrationReport, formatCalibration, cardSamples, defaultSamples, type CalibrationReport, type CalSample } from "./calibration.js";
+import { fitRecalibration, formatRecalibration, writeRecalibration, type Recalibration } from "./recalibrate.js";
 import { collectTraces, thetaGrid, thetaTable, formatThetaTable, type ThetaPoint } from "./theta_replay.js";
 import { rewardFromEvents, updateAll, formatBandit, type BanditState, type RewardSample } from "./phrasing_bandit.js";
 
@@ -21,6 +22,8 @@ export interface LearningReport {
   observations: Observation[];
   priors: PopulationPriors;
   calibration: CalibrationReport;
+  /** isotonic reliability map fitted on cards + defaults samples (the Loop-B fix for the overconcentrated belief) */
+  recalibration: Recalibration;
   theta: ThetaPoint[];
   bandit: { state: BanditState; samples: number };
 }
@@ -40,13 +43,17 @@ export async function runLearning(store: Store, catalogs: LoadedCatalogs, opts: 
   const theta = thetaTable(traces, opts.thetas ?? thetaGrid(traces));
   // bandit: arms live on session cards, so look them up per project
   const samples: RewardSample[] = [];
+  // recalibration is fitted on both sample kinds that predict "belief argmax is right": card answers + defaults
+  const calSamples: CalSample[] = [];
   for (const id of ids) {
-    const [events, session] = await Promise.all([store.listEvents(id), store.getSession(id)]);
+    const [events, session, sheet] = await Promise.all([store.listEvents(id), store.getSession(id), store.getLatestSheet(id)]);
     const armByCard = new Map((session?.cards ?? []).map((c) => [c.id, c.phrasing_arm]));
     samples.push(...rewardFromEvents(events, { armOf: (cardId) => armByCard.get(cardId) }));
+    calSamples.push(...cardSamples(id, events), ...defaultSamples(id, events, sheet));
   }
+  const recalibration = fitRecalibration(calSamples);
   const state = updateAll({}, samples);
-  return { projects: ids.length, catalog: catalogs.version, observations, priors, calibration, theta, bandit: { state, samples: samples.length } };
+  return { projects: ids.length, catalog: catalogs.version, observations, priors, calibration, recalibration, theta, bandit: { state, samples: samples.length } };
 }
 
 function fmtPrior(p: Record<string, number>): string {
@@ -72,7 +79,7 @@ export function formatPriors(r: LearningReport, limit = 10): string {
 }
 
 export function formatReport(r: LearningReport): string {
-  return [`LEARNING REPORT · ${r.projects} project(s) · catalog ${r.catalog}`, "", formatPriors(r), "", formatCalibration(r.calibration), "", formatThetaTable(r.theta), "", formatBandit(r.bandit.state)].join("\n");
+  return [`LEARNING REPORT · ${r.projects} project(s) · catalog ${r.catalog}`, "", formatPriors(r), "", formatCalibration(r.calibration), "", formatRecalibration(r.recalibration), "", formatThetaTable(r.theta), "", formatBandit(r.bandit.state)].join("\n");
 }
 
 export async function writeReport(r: LearningReport, outDir: string): Promise<string[]> {
@@ -90,6 +97,7 @@ export async function writeReport(r: LearningReport, outDir: string): Promise<st
     await fs.writeFile(file, JSON.stringify(data, null, 2));
     written.push(file);
   }
+  written.push(await writeRecalibration(r.recalibration, outDir)); // recalibration.json — the engine loads this behind a flag
   return written;
 }
 

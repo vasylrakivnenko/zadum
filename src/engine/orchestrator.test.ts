@@ -197,8 +197,16 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect(c.critic.verdict).toBe("pass");
     expect(c.roundtrip!.recall.nouns).toBeGreaterThan(0.9);
     expect(c.roundtrip!.recall.rules).toBeGreaterThan(0.9);
-    expect(c.bundle.map((b) => b.name)).toEqual(["spec.md", "design-sheet.md", "design-sheet.json", "AGENTS.md", "compile-report.json", "story.md"]);
-    expect((await store.listArtifacts("p3")).length).toBe(6);
+    expect(c.bundle.map((b) => b.name)).toEqual(["spec.md", "design-sheet.md", "design-sheet.json", "AGENTS.md", "sheet-tests.ts", "compile-report.json", "story.md"]);
+    expect((await store.listArtifacts("p3")).length).toBe(7);
+    // the 9k-handoff protocol: spec is reference, low-confidence decisions are flagged for confirmation
+    const agentsMd = c.bundle.find((b) => b.name === "AGENTS.md")!.content;
+    expect(agentsMd).toMatch(/as REFERENCE/);
+    expect(agentsMd).toMatch(/Confirm-first protocol/);
+    expect(agentsMd).toMatch(/confidence under 80%/);
+    const stubs = c.bundle.find((b) => b.name === "sheet-tests.ts")!.content;
+    for (const r of (await engine.getState("p3")).sheet.rules) expect(stubs).toContain(`${r.id} (`);
+    expect(stubs).toContain("it.todo(");
     expect((await engine.getState("p3")).session.phase).toBe("done");
     const types = (await store.listEvents("p3")).map((e) => e.type);
     expect(types).toContain("card_loop_stopped");
@@ -320,6 +328,63 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect(node.prior.api_only).toBeGreaterThan(0);
     // the belief distribution now knows the option exists
     expect(Object.keys(distribution(session.belief, "external_access"))).toContain("api_only");
+  });
+
+  it("continueCards overrides a converged stop for the REST of the loop, still capped by Rule 7", async () => {
+    const big = await makeEngine({ config: { theta: 1e6 } as never });
+    await big.engine.createProject("an invoicing app for small bookkeeping firms", { id: "p11" });
+    const stopped = await big.engine.startCards("p11");
+    expect(stopped.kind).toBe("stop");
+    if (stopped.kind !== "stop") return;
+    expect(stopped.reason).toBe("converged");
+    // the user says "keep going": θ is re-priced at ~0 for the whole rest of the loop, not one card
+    let res = await big.engine.continueCards("p11");
+    expect(res.kind).toBe("card");
+    let n = 0;
+    while (res.kind === "card" && n < 30) {
+      n++;
+      expect(res.card.phrasing_arm).toBeDefined(); // loop B: every card carries its arm
+      res = (await big.engine.answerCard("p11", { kind: "option", option_id: res.card.options[0]!.option_id })).next;
+    }
+    expect(n).toBeGreaterThan(1); // it kept dealing without another continueCards call
+    expect(n).toBeLessThanOrEqual(12); // Rule 7 still binds
+    if (res.kind === "stop") expect(["max_cards", "no_open"]).toContain(res.reason); // never "converged" again
+  });
+
+  it("story corrections ride the Rule-1 patch path with their own commit source and event", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p12" });
+    const r = await engine.applyStoryCorrection("p12", "we need recurring invoices every month");
+    expect(r.applied.map((o) => o.op)).toEqual(["resolve_decision"]);
+    const { sheet } = await engine.getState("p12");
+    expect(sheet.decisions.find((d) => d.id === "recurring_invoices")).toMatchObject({ status: "resolved", chosen: "yes" });
+    const commits = await store.listCommits("p12");
+    expect(commits.map((c) => c.source.kind)).toContain("story_correction");
+    expect((await store.listEvents("p12")).map((e) => e.type)).toContain("story_corrected");
+  });
+
+  it("a recalibration map tempers reported default confidences without touching the selector", async () => {
+    // A one-knot map ("whatever the belief claims, observed accuracy is 60%"): defaults must REPORT 0.6, while
+    // the asked-node sequence (selector behavior) stays exactly the un-mapped engine's. An identity-flagged
+    // map (not enough data) must leave every confidence untouched — a bin-level reader once coarsened them.
+    const oneKnot = { version: 1 as const, total_n: 100, min_n: 30, identity: false, knots: [{ x: 0.5, y: 0.6 }], bins: [] };
+    const identity = { version: 1 as const, total_n: 3, min_n: 30, identity: true, knots: [], bins: [] };
+    const plain = await makeEngine();
+    const mapped = await makeEngine({ recalibration: oneKnot });
+    const untouched = await makeEngine({ recalibration: identity });
+    for (const { engine } of [plain, mapped, untouched]) {
+      await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p13" });
+      await engine.finishCards("p13");
+    }
+    const [plainDefaults, mappedDefaults, untouchedDefaults] = await Promise.all([plain.engine.getDefaults("p13"), mapped.engine.getDefaults("p13"), untouched.engine.getDefaults("p13")]);
+    // only belief-derived confidences go through the map; the planner's fixed_by_sheet 0.95 is a policy
+    // constant the reliability curve was never fitted on, so it stays as-is
+    const fromBelief = (ds: typeof plainDefaults) => ds.filter((d) => d.status === "defaulted" && d.why.includes("defaulted from belief"));
+    expect(fromBelief(mappedDefaults).length).toBeGreaterThan(3);
+    expect(fromBelief(mappedDefaults).every((d) => d.confidence === 0.6)).toBe(true);
+    expect(fromBelief(plainDefaults).some((d) => d.confidence !== 0.6)).toBe(true);
+    expect(untouchedDefaults.map((d) => [d.id, d.confidence])).toEqual(plainDefaults.map((d) => [d.id, d.confidence]));
+    expect(mappedDefaults.map((d) => d.id).sort()).toEqual(plainDefaults.map((d) => d.id).sort());
   });
 
   it("stops immediately when theta is huge and asks more when theta is tiny (bounded by 12)", async () => {

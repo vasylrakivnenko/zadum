@@ -20,6 +20,10 @@ export interface CompileOptions {
   roundTrip?: boolean; // default true
   story?: boolean; // default true
   outDir?: string; // also write the bundle to this directory
+  /** AGENTS.md tells coding agents to CONFIRM decisions whose confidence is below this before building against
+   *  them (default 0.8). The decision-probe eval showed a wrongly-defaulted decision silences the agent's own
+   *  clarifying questions (asks 2/4 → 0/16) — this line is the countermeasure, priced in that same harness. */
+  confirmBelow?: number;
 }
 
 export interface RoundTripReport {
@@ -160,7 +164,7 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   // loop (throwing away a minute of compute helps nobody), but a failing spec must be impossible to mistake
   // for a passing one — it is stamped as a draft, in the two files a coding agent actually reads.
   if (critic.verdict !== "pass") spec = withFailedCriticBanner(spec, critic);
-  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now());
+  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now(), opts.confirmBelow ?? 0.8);
   for (const b of bundle) {
     const art: Artifact = { project_id: projectId, name: b.name, kind: kindOf(b.name), content: b.content, created_at: now(), meta: { sheet_version: sheet.version } };
     await engine.store.saveArtifact(art);
@@ -266,8 +270,19 @@ function tokens(s: string): string[] {
 }
 const STOP = new Set(["the", "and", "for", "that", "this", "with", "from", "never", "must", "can", "cannot", "not", "are", "its", "their", "they", "has", "have", "any", "only", "all"]);
 
-function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string) {
+function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string, confirmBelow: number) {
   const sheetMd = renderSheetMarkdown(sheet, { showIds: true, showDecisions: true, showOpenDecisions: true });
+  // The conduct-critical handoff is the page + this protocol (sheet_only+AGENTS.md scored 91% vs the full
+  // bundle's 86% at ~1/6 the context — docs/EVALS.md "The 9k-char handoff"), so the spec is presented as
+  // REFERENCE, not required preamble: it carries implementation detail, not the rules that govern conduct.
+  // Complete, not curated: a capped list silently dropped a 36%-confidence auth decision on the first live
+  // bundle (its consequence score sank it below the fold — the same failure mode the defaults-review
+  // measurement found). The agent needs EVERY assumption below the bar; ~15 short lines cost ~600 chars
+  // against the 45k the spec-as-reference change just removed from the required preamble.
+  const lowConfidence = sheet.decisions
+    .filter((d) => d.status === "defaulted" && d.chosen && (d.confidence ?? 0) < confirmBelow)
+    .sort((a, b) => b.consequence * (1 - (b.confidence ?? 0)) - a.consequence * (1 - (a.confidence ?? 0)));
+  const pct = `${Math.round(confirmBelow * 100)}%`;
   const agents = [
     `# Working on: ${sheet.one_liner}`,
     "",
@@ -277,18 +292,28 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
           "",
         ]
       : []),
-    "This project has a Design Sheet (`design-sheet.md`) and a compiled specification (`spec.md`).",
+    "This project has a one-page Design Sheet (`design-sheet.md`) — the source of truth — and a compiled specification (`spec.md`) for implementation detail.",
     "",
     "Before any task:",
-    "1. Read `design-sheet.md` in full. It is the source of truth: People, Nouns, Actions, Rules, Not-yet, Decisions.",
-    "2. Read the relevant sections of `spec.md`.",
+    "1. Read `design-sheet.md` in full. It is one page and it is the contract: People, Nouns, Actions, Rules, Not-yet, Decisions.",
+    "2. Consult `spec.md` as REFERENCE when you need implementation detail (data model, lifecycles, acceptance scenarios, journeys). You do not need it in full before starting.",
     "",
     "While working:",
     "- Rules in the Sheet are inviolable. If a requested change would violate a rule, stop, cite the rule id, and ask.",
+    // Imperative, first-action phrasing: the first live measurement showed a passive "confirm before building
+    // against it" note changes nothing — gpt-4.1 built straight on a 37%-confidence auth assumption it had
+    // just been shown. Models act on protocols, not disclaimers (same finding as AGENTS.md vs sheet_only).
+    `- **Confirm-first protocol.** The decisions listed below are ASSUMPTIONS (confidence under ${pct}), not facts. If a requested task depends on one of them, your FIRST reply must be one short question confirming that decision with the owner — do not design or build on it until they answer. If the task touches none of them, proceed normally.`,
+    ...(lowConfidence.length
+      ? [
+          `  Assumptions requiring confirmation (riskiest first):`,
+          ...lowConfidence.map((d) => `  - ${d.id}: currently assumed "${d.options.find((o) => o.id === d.chosen)?.label ?? d.chosen}" (${Math.round((d.confidence ?? 0) * 100)}% confidence)`),
+        ]
+      : []),
     "- Use the Glossary names exactly; never rename a concept.",
     "- Respect the Not-yet list: do not build out-of-scope features unless the Sheet changes first.",
     "- If a task changes the design (a new noun/action/rule/decision), update `design-sheet.md` FIRST (add a dated line under Decisions), then implement.",
-    "- Prefer the spec's acceptance scenarios as the test list.",
+    "- `sheet-tests.ts` holds one named test stub per rule and action. Implement them as you build and KEEP the id-prefixed names — they are the Sheet's trace into the test suite. The spec's acceptance scenarios are the fuller test list.",
     "",
   ].join("\n");
   const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", generated_at: generatedAt };
@@ -298,10 +323,44 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
     { name: "design-sheet.md", content: sheetMd },
     { name: "design-sheet.json", content: JSON.stringify(sheet, null, 2) },
     { name: "AGENTS.md", content: agents },
+    { name: "sheet-tests.ts", content: buildSheetTests(sheet) },
     { name: "compile-report.json", content: JSON.stringify(report, null, 2) },
   ];
   if (story) out.push({ name: "story.md", content: storyMd });
   return out;
+}
+
+/**
+ * Rules → runnable test stubs (SPEC.md's "flagship v2", v0 shape): `it.todo` stubs are executable immediately
+ * under vitest/jest, show up as pending, and coding agents complete named tests. Deterministic — generated from
+ * the Sheet alone, no LLM — so the rule/action ids in test names are exact and stable across recompiles.
+ */
+export function buildSheetTests(sheet: Sheet): string {
+  const actorName = (id: string) => sheet.actors.find((a) => a.id === id)?.name ?? id;
+  const nounName = (id: string) => sheet.nouns.find((n) => n.id === id)?.name ?? id;
+  const L: string[] = [
+    `// Generated from Design Sheet v${sheet.version} (${sheet.one_liner}).`,
+    `// Do not rename tests: the "r…:"/"a…:" prefixes are the Sheet's stable rule/action ids — they are how`,
+    `// reviews trace test coverage back to the Sheet. Implement each todo against the real app; a rule test`,
+    `// must FAIL if the rule can be violated.`,
+    `import { describe, it } from "vitest";`,
+    ``,
+    `describe("Design Sheet rules (inviolable)", () => {`,
+    ...sheet.rules.map((r) => `  it.todo(${JSON.stringify(`${r.id} (${r.kind}): ${r.text}`)});`),
+    ...sheet.rules
+      .filter((r) => r.kind === "access")
+      .map((r) => `  it.todo(${JSON.stringify(`${r.id} negative: the forbidden path is actually blocked — attempt it and assert denial`)});`),
+    `});`,
+    ``,
+    `describe("Actions (happy paths)", () => {`,
+    ...sheet.actions.map((a) => `  it.todo(${JSON.stringify(`${a.id}: ${actorName(a.actor)} ${a.verb} ${nounName(a.object)}${a.example ? ` — e.g. ${a.example}` : ""}`)});`),
+    `});`,
+    ``,
+    `// Not-yet (scope guard) — these features must NOT exist; a test asserting their absence is optional but welcome:`,
+    ...sheet.non_goals.map((g) => `//   ${g.id}: ${g.text}`),
+    ``,
+  ];
+  return L.join("\n");
 }
 
 function kindOf(name: string): Artifact["kind"] {

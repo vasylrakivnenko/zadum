@@ -38,10 +38,10 @@ export default function Home() {
         <form onSubmit={submit} className="stack">
           <input type="text" value={oneLiner} onChange={(e) => setOneLiner(e.target.value)} placeholder="an invoicing app for small bookkeeping firms" autoFocus disabled={busy} />
           {showExtra ? (
-            <textarea value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Paste anything you have — a doc, an email, a spreadsheet export, notes…" rows={6} disabled={busy} />
+            <textarea value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Paste anything you have — an example invoice, a spreadsheet, an email, notes… It helps the first draft get your business right." rows={6} disabled={busy} />
           ) : (
             <button type="button" className="btn ghost" onClick={() => setShowExtra(true)} style={{ alignSelf: "flex-start" }}>
-              + paste anything you have (optional)
+              + Paste anything you have (an example invoice, a spreadsheet, an email — optional)
             </button>
           )}
           <div className="row">

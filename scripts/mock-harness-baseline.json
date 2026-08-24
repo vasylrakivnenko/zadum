@@ -1,0 +1,47 @@
+{
+  "auc_0_12": 0.531451,
+  "golds": {
+    "booking-salon": [
+      "user_accounts",
+      "platform",
+      "client_portal_scope",
+      "audit_trail",
+      "recurring_scheduled",
+      "notifications",
+      "invoice_delivery",
+      "invoicing_model",
+      "payments_in_app",
+      "identity_provider",
+      "data_scale",
+      "late_fees"
+    ],
+    "invoicing-bookkeeping": [
+      "identity_provider",
+      "platform",
+      "payments_in_app",
+      "record_views",
+      "notifications",
+      "client_portal_scope",
+      "external_access",
+      "customization",
+      "invoice_edit_after_send",
+      "integrations",
+      "invoice_delivery",
+      "payment_recording"
+    ],
+    "marketplace-services": [
+      "invoice_delivery",
+      "client_portal_scope",
+      "record_views",
+      "external_access",
+      "identity_provider",
+      "notifications",
+      "platform",
+      "data_export",
+      "record_edit_rights",
+      "reporting",
+      "record_automation",
+      "customization"
+    ]
+  }
+}

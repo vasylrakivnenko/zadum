@@ -1,0 +1,1183 @@
+{
+  "gold": "invoicing-bookkeeping-perturbed",
+  "budgets": [
+    "c0v3",
+    "c12v3"
+  ],
+  "repeats": 2,
+  "agent_models": [
+    "gpt-4.1"
+  ],
+  "judge_model": "gpt-4.1",
+  "arms": [
+    {
+      "id": "none",
+      "context_chars": 0,
+      "resolved": []
+    },
+    {
+      "id": "c0v3",
+      "context_chars": 65323,
+      "resolved": []
+    },
+    {
+      "id": "c12v3",
+      "context_chars": 65644,
+      "resolved": [
+        "data_import",
+        "reporting",
+        "invoice_delivery",
+        "accounting_sync",
+        "invoice_discounts",
+        "record_pipeline",
+        "record_assignment",
+        "record_activity_feed",
+        "record_views",
+        "record_automation",
+        "record_search",
+        "record_watchers"
+      ]
+    }
+  ],
+  "trials": [
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "To set up how your staff sign in, I'll implement a staff authentication system. We'll start with basic email and password sign-in, with an option to expand to Google or Microsoft in the future for convenience. I'll also include role management so only authorized staff can view or edit invoices.",
+        "plan": [
+          "Design a 'Staff' table in the database with fields for email, hashed password, name, and role (e.g., admin, user)",
+          "Create front-end screens: a login page for staff and password reset functionality",
+          "Build backend APIs for staff sign-up, sign-in (authentication), and password reset",
+          "Integrate session management so users stay signed in until they log out",
+          "Restrict access to invoice viewing/editing based on staff roles",
+          "Set up an admin feature for you to add or remove staff accounts"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer proposes staff sign-in using email and password managed by the app (including sign-up, password storage, reset-password flow), which exactly matches the distinguishing points of the FIRST candidate. The mention of 'option to expand to Google or Microsoft in the future' is not an implementation of the second design, so the actual design matches only the first candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "When you hit 'Send' on a finished invoice, the app should email the invoice PDF to your client and update the invoice's status. Here’s what I’ll do:",
+        "plan": [
+          "Add a 'Send Invoice' button to the invoice detail screen (visible when the invoice is complete/approved).",
+          "Trigger backend logic to generate a PDF of the invoice (if not generated already).",
+          "Send the PDF with a customizable email to the client’s email address on file (ensure the email is logged).",
+          "Update the invoice’s status from 'Draft' or 'Ready' to 'Sent'.",
+          "Show a confirmation message to the user (success or failure, with the reason for failure).",
+          "Handle edge cases: missing client email, email not deliverable, multiple sends, client replies."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design specifies that upon sending, the client receives an email with the invoice PDF attached. This matches the SECOND candidate, whose distinguishing feature is sending the invoice PDF as an email attachment. There is no mention of a secure link or omitting the PDF as an attachment, so it does not match the FIRST candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Here's how we'll enable you to correct mistakes on sent invoices, like typos in the address. Invoicing often has strict audit and legal requirements, so the safest/best practice is to let you issue a 'Corrected Invoice' rather than directly editing records. I'll make it an easy workflow you can access from any sent invoice.\n\nWe'll clearly show both original and corrected versions for full transparency.",
+        "plan": [
+          "Add a \"Correct Invoice\" button on the invoice view screen (visible only on sent invoices).",
+          "When clicked, show a form copied from the original invoice but allow editing fields like address, contact info, etc.",
+          "Require a reason for correction to be entered (for audit trail).",
+          "On submission, create a new invoice record, linked to the original, flagged as a 'Corrected Invoice'.",
+          "Mark the previous invoice as 'Superseded'.",
+          "Send the corrected invoice PDF to recipient, with a note that it replaces the prior one.",
+          "Update reports and invoice lists to show superseded/corrected statuses and give easy navigation between versions.",
+          "Test with edge cases: resending multiple corrections, handling invoices with payments already attached, etc."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer locks sent invoices, does not allow direct edits, and instead implements a process for issuing a corrected replacement while preserving the original, as described in the second candidate. The design does not match the first candidate because there is no direct editing of the sent invoice; all corrections produce a new, linked 'Corrected Invoice.'"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll add automated email reminders for both upcoming and overdue invoices to help clients pay on time. We'll make reminders customizable by the bookkeeping firms, allowing them to set how many days before or after the due date reminders go out.",
+        "plan": [
+          "Update the data model to store reminder schedule (e.g., how many days before/after due date, last reminder sent) for each invoice or globally per firm.",
+          "Update the admin/settings screen to let firms configure default reminder timing.",
+          "Add email template management for reminders (custom subject and message).",
+          "Implement a scheduled job (e.g., cron or background worker) to identify invoices that need reminders sent based on the schedule.",
+          "Update notification logic to avoid duplicate reminders (e.g., by tracking last sent date).",
+          "Send reminder emails to clients with a link to the invoice and payment options.",
+          "Record sent reminders in the invoice history for tracking.",
+          "Test edge cases: payments recorded just before reminder runs, multiple reminders per invoice, client opt-out, handling email failures."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design specifies sending reminders by email, with no mention of SMS or any alternative communication channels. All steps described (data model, settings, templates, logic, and tracking) focus solely on email. Therefore, it matches the first candidate (email only) and does not include the distinguishing choice of the second candidate (sending SMS as well)."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Absolutely. We'll add the ability to record when and how a client pays an invoice. This will make it easy to track which invoices are paid, partially paid, or unpaid.",
+        "plan": [
+          "Update data model: Add a 'payments' table or entity. Fields: payment_id, invoice_id, amount, date, payment_method, reference_number, notes.",
+          "Modify invoice view: Add a section or button to \"Record Payment\" on each invoice screen.",
+          "Payment entry screen: A simple form (Amount, Date, Payment Method, Reference) for users to log new payments for an invoice.",
+          "Link payments to invoices: Ensure payments are related to the correct invoice. Support partial payments by allowing multiple payments per invoice.",
+          "Invoice status logic: Automatically update invoice status based on total payments (e.g., Unpaid, Partially Paid, Paid).",
+          "Payment history: Show a history of all payments received for each invoice.",
+          "Edge cases: Handle overpayment (warn user if paid amount exceeds invoiced amount), editing/deleting payments (with proper audit logs), and handling refunds if needed in the future."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design describes manual entry of payments via a form for users to log payments (amount, date, payment method, etc.), matching the second candidate, which has bookkeepers entering each payment by hand. There is no mention of automatic online payment collection as described in the first candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll add automatic invoice number generation so you don't have to enter it manually. I'll make sure each invoice gets a unique, sequential number as soon as you create it.",
+        "plan": [
+          "Update the Invoice data model to optionally remove manual entry of the 'number' field, or make it auto-generated.",
+          "Implement logic in the backend to fetch the last used invoice number and increment it for new invoices.",
+          "Adjust the invoice creation screen to remove the number input field or show it as read-only with the generated value.",
+          "Handle edge cases such as simultaneous invoice creation to avoid duplicate numbers (use database transactions or unique constraints).",
+          "Test the workflow to ensure numbers are sequential, unique, and work with draft or deleted invoices if applicable."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer specifies that each invoice gets a unique, sequential number as soon as you create it, with backend logic to fetch the last used invoice number and increment it. They also mention testing for sequence, uniqueness, and concurrency issues, all matching the second candidate's strict sequential numbering. There is no mention of free-form or per-client prefixes as in the first candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Thanks for clarifying this feature. We want to ensure entering and displaying monetary amounts is both user-friendly and prevents errors. Here’s how I would address it:",
+        "plan": [
+          "Decide on a money format: We'll use two decimal places, comma as thousand separator (e.g., 1,234.56), and a currency symbol based on locale.",
+          "Update the data model to store money as a numeric type (decimal) in the database to avoid rounding issues.",
+          "On the invoice entry screen, use a masked input for amounts so users can't enter invalid characters, and numbers are formatted as they type.",
+          "Ensure the display on invoices (PDF/download/email preview) always uses the chosen format (e.g., $1,234.56) for clarity and consistency.",
+          "Add back-end validation to block any invalid or negative amounts where not appropriate (e.g., line items, totals).",
+          "Review all places where amounts appear (dashboard, reports, historical invoices) and update the display formatting for consistency.",
+          "Identify and handle any edge cases: very large amounts, currencies without decimals, and future multi-currency support if needed."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design mentions that the display uses a currency symbol 'based on locale' and refers to 'future multi-currency support if needed', but does not specify handling each invoice in a different currency, nor does it describe a currency selector or per-invoice currency formatting. The design matches the 'second' candidate, which uses one single currency everywhere, with no currency selector."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Great, I'll set up the user sign-in process for your staff (Bookkeepers and Admins). The app uses email + password sign-in, as per the Sheet. Bookkeepers and Admins will each have a user account.\n\nSteps I'll take:",
+        "plan": [
+          "1. Confirm requirements for sign-in: Email + password, and roles (Bookkeeper/Admin).",
+          "2. Implement Bookkeeper User record creation—each with unique email, role field, password hash, and status (active/suspended).",
+          "3. Build staff invite flow: Admin can invite a Bookkeeper via email; Bookkeeper receives invite link to set password and sign in.",
+          "4. Add login screen for email + password; ensure only Bookkeepers/Admins can log in.",
+          "5. Back-end: Password hashing, authentication, and role assignment/checks.",
+          "6. Test access control: Only Bookkeepers/Admins can log in; Clients access only secure invoice links (no app account).",
+          "7. Add audit logging for sign-in events, per compliance.",
+          "8. Update Sheet-tests to cover sign-in, user invite, and access controls."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design calls for an email and password sign-in system, handling user registration, password hashing, a password set/invite flow, and login screen—all matching the FIRST candidate design, which uses app-managed passwords. No mention is made of Google/Microsoft SSO or the exclusion of passwords, as in the SECOND candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "When you hit 'Send' on a finished invoice, the invoice transitions from 'Draft' to 'Sent', a unique sequential invoice number is assigned (if not done earlier), and a secure email is sent to the client's primary contact. The email includes a PDF of the invoice and a secure link allowing the client to view/pay online. Status cannot revert to Draft, audit fields are updated, and the system logs the action. Here's how I will implement this:",
+        "plan": [
+          "Update the Invoice lifecycle state machine to move invoice from 'Draft' to 'Sent'.",
+          "Assign the next sequential invoice number if not already set (per firm numbering rules).",
+          "Check that all required Invoice fields are completed before allowing 'Send' (client link, amounts, dates, etc).",
+          "Generate the PDF version of the invoice with firm branding, all service and payment details, client info, PO reference, and terms.",
+          "Create a secure, one-time access link (tokenized) pointing to the client-facing invoice view.",
+          "Trigger email to the client's primary contact: include PDF and secure link; log email delivery for audit.",
+          "Update audit fields ('updated_by', 'updated_at') and log that the Bookkeeper performed this action.",
+          "Prevent any status reversal from 'Sent' back to 'Draft' (enforce lifecycle rule).",
+          "(If implemented) Write/update sheet-tests.ts with a test stub for this action and all relevant rule checks."
+        ]
+      },
+      "judge": {
+        "match": "both",
+        "evidence": "The engineer's design specifies that the email to the client includes both a PDF of the invoice (matching the second candidate) and a secure link to view/pay online (matching the first candidate). Both candidate distinguishing behaviours simultaneously exist in the engineer's plan."
+      },
+      "picked": "both"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Per rule r9 and r5, invoice status can only progress forward (irreversible); invoices sent cannot revert to draft or be edited directly. Corrections require creating a credit note and/or issuing a new invoice. Here's how to handle address mistakes:\n\n1. The Bookkeeper creates a new Invoice for the correct client address.\n2. The Bookkeeper issues a Credit Note (against the original invoice) to nullify/correct the mistaken invoice.\n3. The client receives both: the credit note (canceling the old invoice) and the new invoice.\n\nBoth flows maintain audit, compliance, and status integrity. The screens:\n- \"Issue Credit Note\" option on sent invoices.\n- Form to create Credit Note (references original invoice).\n- Bookkeeper can re-create the invoice with correct info.\n- Both original and corrected items show in client/account history.\n\nEdge cases:\n- Only Bookkeepers can issue credit notes (Admin/Client cannot).\n- Credit note must reference existing invoice.\n- Audit trail records all actions.\n\nIf you want, I can show a wireframe or run through example steps.",
+        "plan": [
+          "Add 'Issue Credit Note' action to Sent and Paid invoice screens (Bookkeeper-only).",
+          "When Bookkeeper clicks, open a form: reference original invoice, allow notes on correction, auto-fill invoice data.",
+          "Credit Note record created (linked to original invoice). Audit fields auto-populate.",
+          "Bookkeeper creates new invoice with correct client address (sequential number as normal).",
+          "Client receives emails: credit note for old invoice, new invoice with fixed address.",
+          "Ensure all actions are logged in audit trail and both credit note/new invoice are visible in account history.",
+          "Update tests: sheet-tests.ts for r9 (status progression), r5 (Paid only after payment), r11 (audit trail on corrections)."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design explicitly states that 'invoices sent cannot revert to draft or be edited directly,' and corrections require creating a credit note and/or issuing a new invoice. This matches the second candidate design where sent invoices are locked and corrections are handled by voiding/crediting the original and issuing a replacement. There is no indication that sent invoices can be edited directly, which distinguishes it from the first candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Great, I’ll build automated email reminders for upcoming and overdue invoices as described. Here’s exactly what I’ll do:",
+        "plan": [
+          "1. Add reminder scheduling: For each invoice in Sent or Partial Paid, automatically schedule an email reminder before the due date (e.g., 3 days prior) and on/after overdue (e.g., on due date, then every 7 days until Paid/Archived).",
+          "2. Email template: Create branded reminder emails with firm name/logo, invoice details, due date, and secure payment link. Use the same email mechanism as invoice delivery (see decision: notifications/email_only).",
+          "3. Trigger logic: Integrate reminder check in backend/job. Review all open invoices daily; send reminders accordingly (ensure reminders stop when invoice is Paid or Archived).",
+          "4. Record audit/logs: Log reminder sends in the invoice audit trail for compliance. ",
+          "5. UI: Show reminder schedule/status/history inside the invoice detail for Bookkeepers/Admins. Optionally allow Bookkeepers to resend manually. ",
+          "6. Sheet+spec update: Add a dated line in the Decisions section of design-sheet.md under \"Automatic reminders for upcoming and overdue invoices.\"",
+          "7. Test coverage: Create/expand sheet-tests.ts for the reminder-sending rules (scheduled, triggered, and stopped on payment/archive)."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design explicitly specifies 'automated email reminders' and refers to an email-only notification mechanism. There is no mention of SMS text messages in the plan, and the cited internal decision is 'notifications/email_only.' Thus, the design matches the FIRST candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Here’s how a client’s payment for an invoice enters the system:\n\n1. The Bookkeeper sends the invoice to the client. The client receives an email with a secure link.\n2. The client clicks the link, sees the invoice, and submits an ACH payment via the web form.\n3. The app creates a Payment record (amount, date, method, payer) and links it to the relevant Invoice.\n4. The Invoice’s status updates automatically based on total payments (e.g., Partial Paid, Paid). Bookkeeper is notified via email.\n\nEdge cases:\n- Payment must reference an existing Invoice and not exceed remaining balance.\n- Only ACH payments; the UI and API block other methods.\n- Bookkeeper/admin cannot manually record payment as ‘Client’ — only Bookkeeper, and only for existing invoices.\n- Data integrity enforced: no double payment, no orphaned records.\n\nUI:\n- Clients see/pay via secure link—no login/account.\n- Form validates amount (≤ balance), method (ACH).\n\nAudit:\n- Payment is recorded with audit fields.\n\nI’ll now lay out the technical plan and implementation steps.",
+        "plan": [
+          "Review and update ‘Payment’ handling in spec to clarify client-initiated payments via secure link per acceptance scenarios (Scenario 9).",
+          "Implement secure client link landing screen (Invoice view), showing ‘Pay Invoice’ button if balance > 0.",
+          "Build ACH-only payment form; validate amount ≤ remaining due; include payer contact details.",
+          "On payment submit: create Payment record linked to Invoice; populate amount, date, method (ACH), received_from; audit fields auto-populated.",
+          "Update Invoice status logic: sum payments, set Partial Paid/Paid as appropriate.",
+          "Send email notification to Bookkeeper when payment recorded.",
+          "Test: Add/extend sheet-tests for Payment rules (r3, r5, r10), negative cases (overpayment, invalid invoice), and audit trail preservation.",
+          "Ensure Admins cannot view payment details per r4.",
+          "Deploy updated flows; monitor for corner cases (duplicate payments, link misuse)."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer describes clients paying online through a secure link and the system recording the payment automatically against the invoice, which is the distinguishing feature of the 'first' candidate. While there are some references to manual entry permissions, the system's core design is focused on online client-initiated payments and automatic recording. The 'second' candidate, which is only by manual entry and has no online payment, is clearly not matched."
+      },
+      "picked": "true"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Sure, I'll make invoice number assignment automatic on creation. The number will increment sequentially and be unique per firm, following the app's numbering rules.\n\nHere’s how I’ll do it:",
+        "plan": [
+          "Update design-sheet.md under Decisions if clarification needed (already covered by r8; no update required).",
+          "Backend: On Invoice creation, implement logic to fetch the highest existing invoice_number for the firm (including archived), increment by one, and assign to new Invoice.",
+          "Prevent race conditions: Use a transactional operation or database sequence to guarantee uniqueness/ordering under concurrent requests. Ensure checks cover soft-deleted (archived) invoices as well.",
+          "On UI: Remove editable invoice number fields when creating an invoice; display the assigned invoice_number after save in confirmation or edit view.",
+          "Cover edge case: If all invoices are archived/restored, still continue sequence without gaps (never reuse numbers).",
+          "Implement/update sheet-tests.ts: Confirm sequential numbering, uniqueness, and race condition scenario tests for rule r8.",
+          "Verify in spec.md that implementation matches spec's sequential/unique logic and covers concurrency safeguards."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer specifies that invoice numbers will increment sequentially and be unique per firm, with new invoices getting the next highest number, including consideration for archived invoices and avoidance of gaps. Editable invoice number fields are removed, and numbers are never reused, matching 'strictly sequential per business with no gaps'. This distinguishes it from the free-form usage in the first candidate and matches the second candidate's design."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "To address money entry and display, I’ll ensure all monetary fields are formatted and validated as currency throughout the app. This applies to Invoice creation/editing, Payment recording, Service entry, and all relevant displays. Users will always input amounts as decimals (e.g., 1200.00), and all listings and PDFs will show amounts with 2 decimal places, prefixed by the firm’s currency symbol (e.g., $1,200.00).\n\nSteps:\n1. Update input fields across Invoice, Payment, and Service forms to use a standard currency format (decimal validation, auto-formatting, currency symbol shown).\n2. Apply consistent currency formatting in invoice PDFs, preview, and all listing/table screens.\n3. Ensure amounts are stored as Decimal in the database (per spec) and always round to 2 decimal places on input/display.\n4. Add front-end and back-end validation to reject invalid formats (like letters or more than 2 decimals).\n5. Confirm currency symbol matches firm settings (currently single USD—extendable for future localization).\n6. Test edge cases: large numbers, partial cents, negative values (reject), and ensure correct sum/total display in payments and invoice totals.\n\nNo data model changes are required; this is UI/validation/display work.",
+        "plan": [
+          "Update UI input fields for money on Invoice, Service, Payment forms to auto-format and validate as currency.",
+          "Add currency formatting ($, 2 decimals, thousand separators) to all displays (tables, PDFs, invoice preview).",
+          "Implement server + client validation for decimal format – reject invalid/negative input.",
+          "Ensure all sums/totals are correctly rounded and displayed consistently.",
+          "Test edge cases (very large, partial cent, negative values, concurrent edits) so display/validation works everywhere."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design states 'currency symbol matches firm settings (currently single USD—extendable for future localization)' and makes no mention of invoice-level currency selection or per-invoice formatting. All formatting is based on the single firm currency, matching the distinguishing choice of the second candidate: a single currency everywhere, with no selector."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "We'll set up sign-in for your staff as Firm Users (Bookkeeper or Owner), using email and password as the authentication method. This aligns with your requirements: users log in with email/password, are invited by an admin, and every action is scoped to your firm.\n\nHere are the steps I’ll take:",
+        "plan": [
+          "Update design-sheet.md if needed (but email+password login plus admin invitation are already decided).",
+          "Set up the Firm User model with required fields: name, role (Bookkeeper or Firm Owner), email (unique), password hash, audit fields, and is_archived flag.",
+          "Implement the invite flow: the Owner or Bookkeeper can invite a new staff user by entering their email and role; an invitation email is sent with a secure registration link.",
+          "Implement sign-up (registration) flow: invited staff set their password and complete their profile via the link.",
+          "Build login screen: allows Firm Users to log in via email/password. Enforce uniqueness of email addresses.",
+          "Implement authentication backend: securely hash passwords, validate credentials, and enforce sessions.",
+          "Add password reset flow: Firm Users can request a reset link by email if they forget their password.",
+          "Enforce permissions: All actions by a Firm User are scoped to their firm and role as per the Design Sheet.",
+          "Add audit trail entries for all sign-in, invite, and registration actions.",
+          "Write/complete sheet-tests.ts stubs for user invitation, registration, login, and permissions."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer explicitly states that users log in with email/password, sets up password management (hashing, reset flow), and does not mention Google/Microsoft SSO. This matches the distinguishing feature of the second candidate and not the first."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": true,
+      "agent": {
+        "reply": "When you hit Send on a finished invoice, the app transitions the invoice from Draft to Sent. It becomes immutable (cannot be edited), gets a unique/sequential invoice number, and triggers an email to the client with a link to view the invoice in their portal. Here’s what I’ll do:",
+        "plan": [
+          "Update the UI and API logic so clicking Send changes the invoice status from Draft to Sent, enforcing all state restrictions (immutable fields per r6 and r9).",
+          "Generate a unique, sequential invoice number for this invoice (per r7).",
+          "Lock edits to service line items, amounts, and client for this invoice after sending.",
+          "Trigger an email to the client’s contact_email with a secure link to their portal to view the invoice (per a3).",
+          "Update audit log/activity feed with the send event.",
+          "Update tests in sheet-tests.ts for actions a3, r6, r9, r7.",
+          "Ensure the client can see this invoice in their portal, but cannot edit it.",
+          "Display the immutable status and invoice number in the UI for both firm users and client."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer describes that when Send is clicked, an email is triggered to the client containing a secure link to their portal to view the invoice. This matches the second candidate, which specifies that the client receives an email with a secure link to view the invoice online, and no PDF is attached. There's no mention of generating or emailing a PDF, so it does not match the first candidate. The description matches only the second design's distinguishing feature."
+      },
+      "picked": "true"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "To enable corrections for sent invoices, we will use the existing Credit Note flow + new invoice issuance as specified. This is required because sent invoices are immutable (rule r6). Here’s how we'll handle mistakes: you’ll issue a Credit Note referencing the erroneous invoice, optionally resend a corrected invoice, and the audit log will clearly show the correction trail. The client's record (e.g., address, contact email) can be edited directly; the invoice itself cannot be changed after sending.\n\nThe UI will support this flow step-by-step, ensuring compliance and traceability.",
+        "plan": [
+          "Surface a clear 'Correct Invoice' action on sent invoices, visible to Firm Users, with a prompt explaining that corrections require a Credit Note and new invoice.",
+          "When clicked, provide a guided process:",
+          "Step 1: Create a Credit Note (auto-reference the original invoice, specify error reason, e.g., \"Address typo\").",
+          "Step 2: Allow editing the client record to correct their address (if needed).",
+          "Step 3: Optionally pre-fill a new Draft invoice matching the original, but with corrected details; allow edits before sending.",
+          "Step 4: Upon sending, link new invoice to original via audit trail; notify client with new invoice and credit note.",
+          "Update activity log and audit fields to reflect every step and reason for correction.",
+          "Update 'design-sheet.md' under Decisions: Add dated entry documenting the 'Correction Workflow for Sent Invoice' (credit note + new invoice flow); confirm it matches rule r6 and existing correction policy.",
+          "Add/complete test stubs in 'sheet-tests.ts' for: r6 (immutability), credit note flows, audit trail coverage."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design states 'sent invoices are immutable (rule r6)' and uses a Credit Note + new invoice issuance flow for corrections, matching the first candidate's distinguishing choice. It explicitly rejects direct editing of sent invoices, which is the second candidate's approach."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Got it. I’ll build the automatic email reminders for both upcoming due dates and overdue invoices. Here’s how I’ll proceed:",
+        "plan": [
+          "1. Update design-sheet.md: Under Decisions, formally add: 'Automatic system reminders go out for upcoming invoice due dates (e.g. 7 days and 1 day prior) and again when overdue.' dated for this change.",
+          "2. Extend the backend scheduler/automation: Add a daily job that checks all invoices with upcoming due dates (e.g., due within 7 days or 1 day), and all currently overdue (past due, not fully paid).",
+          "3. For each invoice found, generate personalized email reminder, including invoice number, client name, amount due, and due date.",
+          "4. Ensure email is sent to the client's contact email; log sending events in the record activity feed and audit trail.",
+          "5. Add UI toggle under firm settings to configure reminder schedule (can be defaulted to 7 days, 1 day, overdue).",
+          "6. Update sheet-tests.ts: Implement test stubs and coverage for 'reminder-upcoming', 'reminder-overdue', 'audit-reminder-sent'.",
+          "7. Edge cases: Reminders should not be sent for paid or voided invoices; only sent for Sent/Viewed/Partial/Overdue statuses; do not trigger client reminder if invoice is in Draft.",
+          "8. Confirm email wording with you before Go Live."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design specifies that reminders are sent via email only and does not mention SMS text messages at all. All plans and implementation steps refer exclusively to emails: generating personalized email reminders and ensuring emails are sent to clients. No mention or plan for SMS reminders is provided, clearly matching the second candidate design."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "To build how a client’s payment for an invoice gets into the app, I’ll follow the process where a Bookkeeper (or Firm Owner) records a new Payment against a specific Invoice. This is strictly an internal, manual workflow — clients do not directly add payments.\n\nSteps:\n1. Add a 'Record Payment' action/button on each invoice (visible to Bookkeeper and Firm Owner).\n2. Payment form pops up: fields for Amount, Date Received, Payment Method. Validate that Amount does not cause total payments to exceed invoice's Amount Due (r3).\n3. On save, create a Payment record (audit trail, unique internal ID), and update the invoice status (Partial or Paid, as per rules r4/r10).\n4. Restrict Payment deletion to invoices in Draft state (r12).\n5. Activity log records the event, and client sees updated status/payment history in their portal (notifies via email if needed).\n\nKey screens: Invoice Detail (add payment), Payment Form, updated Payment/Invoice views. Edge cases: Overpayment attempt (block), payments after invoice marked Paid (block), payment for deleted/archived invoice (block).\n\nThis strictly follows the design sheet rules for payment lifecycle, access control, and audit logging.",
+        "plan": [
+          "Add 'Record Payment' button/action for Bookkeeper/Firm Owner on Invoice Detail screen.",
+          "Implement payment form with fields: amount, date received, payment method; validate inputs (no overpayment).",
+          "On form submission, create Payment record with audit fields, link to invoice, and update invoice status (Partial/Paid).",
+          "Restrict payment deletion: editable only for invoices in Draft.",
+          "Update activity log with payment event; client portal shows updated status/history.",
+          "Handle edge cases: block overpayments, payments after Paid, payment against archived invoices."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design describes a system where payments are manually entered by internal users (Bookkeeper or Firm Owner) and explicitly states that clients do not directly add payments (no online payment collection). It matches the distinguishing choice of the FIRST candidate: manual entry only, no client direct/online payments. It does not implement or mention an option for online client-initiated payments as in the second candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I will update the app so that new invoices are automatically assigned a unique, sequential invoice number when created (not manually entered by the user). This will enforce Rule r7 and keep invoice numbering reliable and compliant.",
+        "plan": [
+          "Review the invoice creation flow and remove the manual invoice number input.",
+          "On invoice creation (Draft), generate and assign the next sequential invoice number for the firm. Use a database-level mechanism to prevent gaps or duplicates.",
+          "Update the Invoice data model and API to always set invoice_number automatically, making it read-only for users.",
+          "Update invoice list and detail screens so invoice_number is always shown but can't be edited.",
+          "Add tests in sheet-tests.ts for r7 (numbering logic), including simultaneous creation for collision handling.",
+          "Update the activity log to record invoice number assignment.",
+          "Deploy and verify creation/edit screens and dashboard show automatic numbering."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer proposes that invoice numbers are assigned automatically in a strictly sequential manner without gaps or duplicates, and cannot be manually entered or edited by the user. This matches the distinguishing feature of the FIRST candidate, which enforces sequential numbering. The SECOND candidate, which allows free-form and manually entered numbers, is not matched by the engineer's design."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Understood. I’ll clarify and implement how monetary amounts are entered and displayed throughout the app, ensuring consistency and clarity for Bookkeepers, Firm Owners, and Clients. This will cover entry fields for amounts (including currency formatting, decimals), display standards on invoices and lists, and integration with the existing single-currency rule.",
+        "plan": [
+          "Confirm that the currency is fixed for all invoices and payments (per spec; e.g., USD).",
+          "Standardize monetary fields in the data model (decimal type, two decimal places).",
+          "Update screens and forms:",
+          "- Invoice creation/edit: Amount due, unit price, line item totals use currency input controls; always show in 'USD' format (e.g., $123.45).",
+          "- Payment record: Amount entry also uses currency controls; display as '$123.45'.",
+          "- Client and Owner views: Invoice summaries, line item breakdowns, and payment lists all use consistent currency formatting.",
+          "Invoice print and portal:",
+          "- All amounts formatted as '$X,XXX.XX' (including totals, partials, discounts).",
+          "- Labels confirm currency (e.g., \"Amount Due (USD)\").",
+          "Edge cases: Round cents properly, reject invalid formats on entry, prevent negative values except for credit notes.",
+          "Update acceptance tests in sheet-tests.ts for amount formatting and validation."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer explicitly confirms that the currency is fixed for all invoices and payments (per spec; e.g., USD), matches only the FIRST candidate which specifies one single currency everywhere and no currency selector. The design standardizes formatting around a single (USD) currency and does not mention allowing invoices in different currencies or any currency selection, as the SECOND candidate requires."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "To set up staff sign-in, I'll implement a secure authentication system so your employees can access the app with unique accounts.",
+        "plan": [
+          "Choose an authentication method: Email & Password (with future option for Google/Microsoft sign-in).",
+          "Update the database to include a Staff table with fields for name, email, password hash, role (e.g., admin/staff), and status (active/inactive).",
+          "Build a Sign Up/Invite Staff screen for admins to send email invites to staff (or add them directly).",
+          "Implement the Sign In page where staff enter their credentials to access the app.",
+          "Add password reset functionality for staff to recover accounts.",
+          "Test user flows: sign-up, first login, wrong password, inactive staff member, and password reset.",
+          "Document simple instructions for admin users to add and manage staff."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The design describes implementing an email & password authentication system, including password reset functionality, storing password hashes, and not exclusively using Google/Microsoft SSO. This substantively matches the distinguishing choice of the SECOND candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "When you hit 'Send' on a finished invoice, I'll make sure the system sends the invoice to the client and updates its status to 'Sent.' In addition, the app will track delivery (if possible) and let you know if there’s a problem (like an invalid client email).\n\nHere’s the plan to implement this:",
+        "plan": [
+          "1. Add a 'Send Invoice' action/button on the invoice review screen if not already present.",
+          "2. When 'Send' is clicked, check that the invoice is complete and has a valid client email address; show errors if missing data.",
+          "3. Generate a PDF or formatted version of the invoice (if not already done).",
+          "4. Email the invoice to the client's email address, using a standard template, with the invoice attached or linked.",
+          "5. Update the invoice’s status in the database to 'Sent,' including a timestamp for when it was sent.",
+          "6. Record the send event in an 'Audit log' for tracking purposes.",
+          "7. Show feedback to the user (success or error message).",
+          "8. (Optional) Track delivery status: if our email service provider supports it, note if the email bounced or was delivered."
+        ]
+      },
+      "judge": {
+        "match": "both",
+        "evidence": "The engineer's design mentions emailing the invoice to the client's email address, 'with the invoice attached or linked.' This directly includes both candidates' distinguishing behaviours: sending a PDF attachment (first) and sending a secure link (second). The design does not commit exclusively to one, and instead proposes supporting both as options."
+      },
+      "picked": "both"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "We can add a flow that lets users correct mistakes on sent invoices. Because invoices are legal/financial documents, we need to preserve the original version for audit purposes, but allow for corrections via a 'Correct Invoice' option. I'll outline the steps below.",
+        "plan": [
+          "Add a \"Correct Invoice\" button to the sent invoice's details page.",
+          "When clicked, create a new invoice copy with all fields editable except invoice number (we'll use a suffix or correction indicator, e.g., INV-0101-1).",
+          "Let user edit relevant fields (e.g., address) and require an explanation/reason for correction.",
+          "On save, mark the new invoice as a 'Correction', link to the original, and keep both in the database.",
+          "Send the corrected invoice to the client, with a note that it replaces a previous version.",
+          "Update reporting to reflect both the original and corrected invoice, with notes for auditors.",
+          "Optionally, display a warning to users when correcting sent invoices about legal/audit considerations."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design locks sent invoices by preserving the original and creating a new replacement that is explicitly linked and marked as a correction. The original invoice is retained for audit, and a new invoice is issued with an updated address and correction indicator. This matches the first candidate's approach of voiding or replacing the original rather than direct editing, and does not support direct editing of the sent invoice as in the second candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll add an automated reminder system so clients receive emails before an invoice is due and when it's overdue. This will help prevent missed payments and reduce manual follow-up.",
+        "plan": [
+          "Add new fields to the Invoice model: 'reminder_sent' (date) and 'overdue_notice_sent' (date) to track last notifications.",
+          "Set up a scheduled background job (e.g., daily) to scan for invoices due in X days (configurable, e.g., 3 days) and invoices past due.",
+          "For upcoming invoices: If not already sent, send an 'upcoming due' reminder email to the client and update the 'reminder_sent' field.",
+          "For overdue invoices: If not already sent after due date, send an 'overdue' email and update 'overdue_notice_sent'.",
+          "Update the admin UI to show reminder and overdue notification status per invoice.",
+          "Edge cases: Ensure reminders aren't sent multiple times, handle invoices with updated/delayed due dates, and exclude fully paid/cancelled invoices from notifications."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design specifies sending reminder emails for upcoming and overdue invoices, with no mention of SMS text messages. This substantiates the behaviour of the second candidate: 'Reminders are sent by email only.'"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "To record a client's payment for an invoice, I'll add a process that links payment records to invoices and tracks payment details.",
+        "plan": [
+          "1. Update the data model: Add a Payment table (Payment ID, Invoice ID, Amount, Date, Payment Method, Notes).",
+          "2. On the Invoice detail screen, add a 'Record Payment' button that opens a payment form.",
+          "3. Payment form will let users select payment method (cash, check, bank transfer, etc.), enter the amount (default to outstanding balance), and payment date.",
+          "4. Save the payment and update the Invoice status (e.g., to 'Paid' if balance is zero, or 'Partially Paid').",
+          "5. Edge cases: Prevent overpayments, handle partial payments, validate payment date (can’t be before invoice date), and allow notes for specific payment details.",
+          "6. Show all payments linked to the invoice on the detail screen for full transparency."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design describes a manual entry process for recording a payment (steps for the bookkeeper/user to use a form, enter the details, select payment method, etc.), matching the first candidate. There are no indications of support for online client payments or automated payment recording as described in the second candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll automate invoice numbering for new invoices. Currently, it sounds like the invoice number is either entered manually or isn't present. For automation, the system will assign each new invoice a unique, sequential number when it's created.\n\nHere’s how I’ll proceed:",
+        "plan": [
+          "Update the data model to ensure invoices have a required, unique 'invoice_number' field.",
+          "Write backend logic to generate the next invoice number (e.g., increment the highest existing number).",
+          "Update the invoice creation API/process so the number is assigned automatically, not by user input.",
+          "Update the 'add new invoice' screen to display the number (read-only) instead of asking for it.",
+          "Check for and handle edge cases, such as invoices deleted or concurrent creation (to avoid duplicate numbers).",
+          "Test the feature to ensure the numbering sequence is correct and there are no gaps or duplicates."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer specifies that invoice numbers will be unique, sequential, and automatically assigned when creating a new invoice, with backend logic to increment the highest existing number and avoid gaps or duplicates. This directly matches the distinguishing feature of the FIRST candidate—strictly sequential numbers with no gaps, and contrasts with the SECOND candidate which allows free-form and user-input numbering. There is no mention of supporting flexible formats or manual entry."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "none",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll make sure money amounts are entered and displayed consistently and correctly on invoices.\n\nHere's what I'll do:",
+        "plan": [
+          "Update the data model to ensure that all invoice amount fields use a proper decimal type (not float) for accuracy (e.g., Decimal or Money type).",
+          "Update input screens so users enter amounts using a currency field with appropriate formatting (e.g., two decimal places, currency symbol, and thousand separators).",
+          "Add real-time validation to entry fields to prevent invalid entries (e.g., letters or negative numbers if not allowed).",
+          "Update display components on invoices so all money figures appear with the correct currency symbol and formatting (e.g., $1,234.56).",
+          "Check that calculations (subtotals, tax, totals) are also displayed using this formatting.",
+          "Allow setting a default currency in settings (if multi-currency is a future concern).",
+          "Test edge cases: large numbers, amounts right at rounding boundaries, empty or zero values, and localization for decimal separator (if multi-language is a concern)."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer includes a 'currency field with appropriate formatting' on input, specifies displaying amounts with the correct currency symbol, and mentions setting a default currency in settings ('if multi-currency is a future concern'). These indicate support for selecting per-invoice currency and formatting, matching the second candidate design. The first candidate's key feature—single currency, no selector—is not present."
+      },
+      "picked": "true"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll set up the staff (Bookkeeper and Admin) login system using email + password, per the default protocol in the Design Sheet (identity_provider: email_password). Here’s how I’ll proceed:",
+        "plan": [
+          "Provision the authentication flow: staff (Bookkeeper User, Admin) sign up and sign in using their email address and a secure password.",
+          "Create Admin invitation: Only Admin can invite new staff/Bookkeeper Users; new users receive an invite email (accepts, sets password, enters full name).",
+          "Enforce role and firm association: Ensure users are assigned either Bookkeeper or Admin role, and attached to your single firm instance.",
+          "Add UI screens: Login page, password reset, invitation acceptance, user profile (full name, email, role, status).",
+          "Update Sheet if needed: If you want alternate login methods (e.g., SSO), I'll update the Design Sheet Decisions first as required."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer explicitly implements an email + password authentication system (signup, login, password reset, invitation flow). This matches the distinguishing choice of the second candidate (email/password managed by the app). There is no indication that sign-in will be exclusively through Google or Microsoft accounts; third-party SSO is only mentioned as a possible option if requested, not as part of the current design."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "When you click 'Send' on a finished invoice, the system must permanently move the invoice from 'Draft' to 'Sent', assign it a sequential invoice number, and deliver an email to the client's primary contact with both a PDF copy and a secure link to view/pay online. The action is irreversible—once sent, it cannot revert to draft.\n\nI'll ensure all required fields are present and enforce business rules. Here's how I will implement it:",
+        "plan": [
+          "UI: Add/enable 'Send Invoice' button (visible to Bookkeepers, only on 'Draft' invoices with all mandatory fields filled).",
+          "Backend: On Send, validate invoice fields (client, date, services, amount, etc.), check uniqueness/sequencing for invoice_number.",
+          "Assign next invoice_number in strict sequence (guarded for concurrency).",
+          "Change invoice status to 'Sent' (cannot go back to Draft; update audit trail).",
+          "Generate PDF of invoice, attach branding/template as per Firm Settings.",
+          "Create a secure, single-use link for the client to view/pay the invoice online (no app login required).",
+          "Dispatch email to the client (their primary_contact email), including PDF and secure link, per the delivery rule.",
+          "Log the action for audit: who sent, when.",
+          "UI/API: Hide 'Send Invoice' if invoice already sent, or if fields missing. Display irreversible status change."
+        ]
+      },
+      "judge": {
+        "match": "both",
+        "evidence": "The engineer's design explicitly includes both a PDF attachment and a secure link in the invoice email sent to the client, thereby implementing both distinguishing choices from the candidate designs. The first candidate specifies sending a PDF, while the second specifies a secure online link; the engineer's plan does both."
+      },
+      "picked": "both"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "We can't allow edits to Sent invoices (r9 and invoice_edit_after_send), but corrections go through credit notes or new invoices. For address/contact info errors, we can let Bookkeepers edit the Client Account, so future invoices and any ongoing displays have the correct info. The original sent invoice PDF/record stays unchanged for compliance (audit/history).\n\nHere's how we'll handle it: Bookkeeper edits the Client Account address; all new invoices use the updated info; archived/corrected record is preserved.\n\nIf a new invoice needs to be sent (for substantive mistakes), Bookkeeper can void the old invoice (using a Credit Note) and issue a corrected one. I'll build the flow for updating Client Account info and outline the Credit Note/Resend workflow for invoice correction.",
+        "plan": [
+          "1. Add 'Edit Client Account' action to the Client Account detail page for Bookkeepers (address, contact info, etc).",
+          "2. When Client Account info is edited, update the data and audit trail—but previously sent invoices (PDF/link) remain historically accurate.",
+          "3. Add a 'Correct mistake' workflow to the invoice detail: Bookkeeper is guided to either edit the Client Account, or issue a Credit Note and resend a corrected invoice if the invoice content is wrong.",
+          "4. In test suite (sheet-tests.ts): Add scenarios for editing Client Account, ensure previous invoices keep original info, and verify new invoices reflect the corrected address.",
+          "5. Screen changes: On the Invoice detail, show both the info used at time of sending (locked on the invoice), and current active Client Account info for future actions.",
+          "6. Document these decisions in design-sheet.md under Decisions with today’s date."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The design explicitly states that sent invoices cannot be edited and must be corrected via credit notes or replacement invoices, keeping the original record unchanged for compliance, which matches the distinguishing behavior of the first candidate. It does not describe direct editing of sent invoices, which rules out the second candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I’ll build automated email reminders for clients when invoices are upcoming due and overdue. These will trigger based on the invoice’s due date and current status. No rules are violated, and the Sheet confirms this is in scope (see d:overdue_reminders, r:r10).\n\nHere’s how I’ll approach it:",
+        "plan": [
+          "Add dated line to Decisions in design-sheet.md: ‘Automated email reminders for upcoming due (3 days before), and overdue invoices (every 7 days until paid).’",
+          "Extend the Invoice data model if needed to track reminder history per invoice (e.g., last reminder sent).",
+          "In backend: implement scheduled job to scan invoices daily for ‘Sent’/‘Partial Paid’ states. If due_date is approaching (e.g., 3 days before), send ‘Upcoming Due’ email. If overdue, send ‘Overdue’ email (repeat every 7 days until fully paid).",
+          "Emails use the client’s primary contact info and include PDF and secure link as per current delivery.",
+          "UI: In Bookkeeper view, show reminder history/timestamps per invoice.",
+          "Update tests in sheet-tests.ts to cover: reminder triggers, email audit, repeated overdue reminders, and edge cases (e.g., archived/restored invoice does not send duplicate reminders)."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design details automated email reminders and specifies their behavior but makes no mention of SMS or any delivery method besides email. This matches the second candidate, which uses only email for reminders."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Here's what happens when a client pays an invoice:\n\nA client uses a secure link from their invoice email. On the payment page, they provide payment details (ACH only, per design). When payment is submitted, a Payment record is created and linked to the Invoice. The Invoice status updates automatically based on the payment amount (Partial Paid/Paid/Overdue). Bookkeepers get notified by email.\n\nConcrete Steps:\n1. Client receives an invoice email (Sent status) with a secure link.\n2. Client clicks the link, lands on the Invoice payment page.\n3. Client fills in payment details (amount, payer name, required fields) and submits.\n4. System validates payment:\n   - Amount must not exceed remaining invoice balance (r3).\n   - Payment method is ACH (x2).\n5. Create new Payment record linked to Invoice.\n6. Update Invoice status:\n   - If payment < total, set Partial Paid.\n   - If payment = total, set Paid.\n   - If overdue and not paid in full, set Overdue.\n7. Bookkeeper notified by email.\n\nEdge cases:\n- Overpayment attempts: Blocked with error (r3).\n- Invalid invoice link: Access denied (r7).\n\nData Model:\n- Payment fields: amount_received, date_received, payment_method [ACH], invoice_id, received_from.\n\nScreen:\n- Payment form: amount, payer name, submit button, error handling.",
+        "plan": [
+          "Update/check client payment form flow for secure email link access (read-only, no login).",
+          "Implement payment form with amount, payer name, ACH as only option.",
+          "On submit: validate against invoice balance (block overpayments; r3).",
+          "Create Payment record, link to Invoice.",
+          "Update Invoice status automatically: Partial Paid, Paid, or Overdue.",
+          "Send payment notification to Bookkeeper via email.",
+          "Handle errors: invalid link, wrong amount, missing fields."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design describes an online payment system where clients can pay invoices through a secure email link, and payment records are created automatically and linked to invoices. This matches the second candidate, which includes online payment and automated recording. There is no mention of only manual entry, so it does not match the first candidate."
+      },
+      "picked": "true"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Understood. We'll enable automatic assignment of the invoice number whenever a Bookkeeper creates a new invoice, as required by rules r8 and r2 in the Design Sheet. The invoice number must be unique and strictly sequential within the firm, with no gaps. I'll build this according to the specification.",
+        "plan": [
+          "Ensure all relevant data is present before creating an invoice (Bookkeeper, Client Account, required fields).",
+          "On invoice creation, query the highest invoice_number currently used by the firm, then increment by one (guard sequence against concurrency).",
+          "Assign invoice_number automatically on creation (Bookkeepers cannot manually change).",
+          "Enforce uniqueness and sequencing in both UI and backend: any manual attempts or race conditions are blocked.",
+          "Update invoice creation screen/form so 'Invoice Number' is read-only, displaying the assigned value after save.",
+          "Write backend tests for sequential numbering (including concurrency/collision edge cases).",
+          "Update sheet-tests.ts to include tests for r8: invoice number assignment, uniqueness, and sequencing.",
+          "Ship the change for review."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design specifies that invoice numbers are automatically assigned, strictly sequential within the firm, with no gaps, and that Bookkeepers cannot manually alter them. This matches the distinguishing choice of the FIRST candidate: strictly sequential numbers with no gaps. The SECOND candidate (free-form numbers) is explicitly excluded by the engineer's 'read-only' approach and enforced sequencing."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c0v3",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I will establish clear money amount entry and display rules across the app, so Bookkeepers and Clients have a consistent experience. This includes validation, formatting, and logic for tax/discount/total fields (since the app uses a single currency).\n\nSteps:\n1. Confirm currency: Since only one is allowed, we'll use the default (e.g., USD, but confirm if needed in Firm Settings).\n2. Update all money entry fields (Invoice, Payment, Service) to use a decimal input with two places. Enforce validation: must be non-negative, cannot exceed rules (e.g., payment cannot exceed invoice total).\n3. Display all money amounts in the UI using standard currency formatting (e.g., \"$1,200.00\" or \"US$1,200.00\" consistently; add thousands separators).\n4. On invoices, show subtotal, discount, tax (if present), amount due, and amount paid with proper labels and formatted values.\n5. Update PDF/email templates to match (same formatting and layout).\n6. Add acceptance tests for: money input validation (negative/invalid), rounding, display formatting, and edge cases (large, small, partial payments).\n7. Document currency rules in the Design Sheet and specification if they aren't clear yet.\n\nIf you need a specific currency (other than USD), let me know now.",
+        "plan": [
+          "Confirm default currency and document in Firm Settings if needed.",
+          "Update all money fields (Invoice, Payment, Service) to use decimal input; validate on entry.",
+          "Apply consistent currency formatting for all displays (UI, PDFs, emails).",
+          "On Invoice screens and PDFs, display subtotal, discount, tax, amount due, amount paid, clearly labeled and formatted.",
+          "Adjust backend data model validation to prevent negative/invalid values and overpayments (already in Sheet/spec).",
+          "Add acceptance tests covering input, formatting, and edge cases.",
+          "Update Design Sheet and spec to document formatting and currency rules."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer's design specifies that the app uses a single currency everywhere (\"since the app uses a single currency\" and \"only one is allowed\"). It confirms a default currency to be used across all features without any mention of per-invoice currency selection or handling multiple currencies. This directly matches Candidate Design (FIRST), which specifies a single currency and no currency selector."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I’ll set up the sign-in process for your staff (Bookkeepers and Firm Owners) based on the design. Staff accounts use email + password, and only admins can invite others.\n\nHere’s what I’ll do:",
+        "plan": [
+          "1. Confirm that only Bookkeepers and Firm Owners use email/password sign-in (clients use portal/accounts separately).",
+          "2. Implement the Firm User registration and invitation process: admin chooses 'Invite User', enters staff email/name/role; the app sends an invitation email with a sign-up link.",
+          "3. Develop the sign-in screen and backend logic: user enters email and password; credentials are checked against Firm User accounts; on success, user is logged in and access is scoped to the firm.",
+          "4. Enforce uniqueness of email addresses for Firm User accounts; prevent duplicate staff invites.",
+          "5. Set up password reset flows (‘Forgot password’ link, email verification).",
+          "6. Log all sign-in attempts for audit/compliance.",
+          "7. Update the test suite (sheet-tests.ts) for login/invite access and signup flows."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer explicitly specifies an email and password sign-in flow for staff users, including registration, password storage, and a password reset flow. This directly matches the distinguishing behaviors of the FIRST candidate. There is no mention of OAuth/SSO, Google/Microsoft sign-in, or a password-free approach as per the SECOND candidate."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": true,
+      "agent": {
+        "reply": "Absolutely, I'll outline what happens in the app when a Bookkeeper clicks 'Send' on a finished invoice. Here’s the concrete workflow:\n\n1. Validate the invoice (fields, reference valid client, complete line items).\n2. Assign a unique sequential invoice number.\n3. Change invoice status from 'Draft' to 'Sent'.\n4. Lock down invoice fields (amount, line items, client) — they become read-only per rule r6.\n5. Email the client (using their contact_email) a link to their invoice portal page.\n6. Log this event in the audit trail (including who/when).\n7. Update all active views (dashboard, client portal, invoice list) to reflect the new status.\n\nKey edge cases: If the client is missing or deleted, block the action and show an error (rule r2). If the invoice doesn’t pass validation, highlight errors and prevent sending.\n\nThis flow will be implemented both at the API and UI layers, and I’ll add or update the relevant test stub in sheet-tests.ts for ‘a:a3 Bookkeeper sends Invoice’.",
+        "plan": [
+          "Step 1: Validate invoice fields (client reference, totals, required fields, line items).",
+          "Step 2: Assign next available sequential invoice number to invoice.",
+          "Step 3: Update invoice status from 'Draft' to 'Sent'.",
+          "Step 4: Lock invoice fields (amount, line items, client) for editing as per rule r6.",
+          "Step 5: Send email to client's contact_email with link to online invoice page (client portal).",
+          "Step 6: Record audit log: who sent, when, and full event details.",
+          "Step 7: Refresh invoice view/status in dashboard and client portal.",
+          "Step 8: Add/update corresponding test stub in sheet-tests.ts for action a:a3 (Bookkeeper sends Invoice)."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The engineer specifies that the client receives an email with a link to their online invoice portal page, and makes no mention of generating or attaching a PDF of the invoice. This matches the distinguishing choice in the FIRST candidate, which is to send a secure link to view the invoice online (and not attach a PDF)."
+      },
+      "picked": "true"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll implement the correction flow for mistakes in invoices after they've been sent, using a credit note and issuing a replacement invoice. This follows rule r6: 'Once sent, invoice amounts cannot be edited; changes require a new invoice or credit note.'\n\nHere's what I'll do next:",
+        "plan": [
+          "Update the Design Sheet (‘design-sheet.md’) under Decisions, noting: ‘[2024-06-XX] Corrections after sending—must use credit note plus replacement invoice for address or client detail changes.’",
+          "UI: Add a ‘Correct Invoice’ button beside immutable invoices for firm users. Clicking starts a guided flow.",
+          "Flow: On clicking ‘Correct Invoice’, prompt user to select correction type (client info, service details, etc.). For address fixes, clone the invoice as a new Draft, reference the original, and warn user to edit corrected client details as needed.",
+          "System: Generate a credit note record referencing the original invoice (if amount changes; for purely info changes, log correction in audit trail without affecting financials).",
+          "UI: Mark original invoice as ‘Void’ if full replacement is issued with new invoice number. Audit log shows the void/correction + the new invoice link.",
+          "Maintain audit trail: All events (credit note, correction, new invoice created, original voided) recorded for compliance and traceability.",
+          "Tests: Update sheet-tests.ts with scenarios for post-send corrections—ensure no edits allowed on original, but replacements trace original and credit note links."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design specifies that once an invoice is sent, it cannot be edited directly; instead, a credit note and/or a replacement invoice must be issued for corrections — matching the second candidate's approach of locking sent invoices and replacing or voiding them for corrections."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll build automatic email reminders for clients when invoices are nearing due date and after they're overdue. The reminders will apply to all invoices with status Sent, Viewed, Partial, or Overdue, based on due_date and payment status. Only clients with active portal accounts will be emailed, respecting visibility rules.\n\nSteps:\n1. Update design-sheet.md (Decisions) to record implementation of reminders.\n2. Implement a scheduled jobs service to run daily.\n3. For each active invoice, check:\n   - If due_date is X days away (configurable, defaults to 3), send 'Upcoming due' reminder.\n   - If overdue and not Paid/Void, send 'Overdue' reminder and set invoice status to Overdue if not already.\n4. Generate reminder email content (subject/body with invoice number, amount, due date, payment details; use company branding).\n5. Send emails to the relevant client's contact_email and record each sent reminder in audit/activity feed.\n6. Add notices in the client portal showing reminder history and status ('e.g., reminder sent June 15').\n7. Update sheet-tests.ts to verify reminder triggers and audit trail entries.\n\nEdge cases:\n- Only send reminders for invoices not marked Paid or Void.\n- No reminders for archived/deleted/invalid client accounts.\n- Emails not sent more than once per day per invoice.\n- No reminders for invoices past 'Void' state or for deleted clients.",
+        "plan": [
+          "Update design-sheet.md under Decisions: record 'Automatic reminders for upcoming/overdue invoices (emails to clients)' as implemented with today’s date.",
+          "Add scheduled job/service (cron or cloud function) to scan invoices daily.",
+          "For each invoice with status Sent, Viewed, Partial, or Overdue: check if due_date is within X days or overdue.",
+          "Send reminder email (upcoming/overdue template) to client’s contact_email if not Paid/Void; log in activity feed.",
+          "Update client portal screen to show reminder history/status (e.g. 'Last reminder sent June 15').",
+          "Update sheet-tests.ts: add/implement tests for reminder triggers and audit log recording.",
+          "Edge case handling: filter out archived/deleted clients/invoices; do not send multiple reminders per day; skip Paid/Void invoices."
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "The design describes only email reminders being sent (implementation, audit, templates, etc.) and makes no mention of SMS or any second delivery channel. This matches the FIRST candidate, which sends reminders by email only."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll implement the workflow for recording a client's payment (Bookkeeper action). This covers the UI, backend, data integrity, and rules for linking the Payment to the Invoice, updating invoice status, enforcing not overpaying, and ensuring proper audit logging.\n\nHere’s how this works practically:",
+        "plan": [
+          "Update UI: On each invoice details page (for firm users), add a 'Record Payment' button. When clicked, show a form with amount, date received, payment method (ACH/check/etc).",
+          "Backend/API: Implement a POST endpoint to create Payment. Validate that payment amount (plus all previous payments) does not exceed the invoice's amount_due (Rules r3, r4).",
+          "Data model: Payment record includes invoice_id (foreign key), amount, date_received, payment_method. Ensure UUID for payment_id; audit fields (created_at, created_by).",
+          "Status logic: Once a payment is recorded, recalculate the sum of payments for the invoice. If sum < amount_due, status is Partial; if sum == amount_due, status = Paid (Rules r10, r4).",
+          "Edge cases: Reject if payment would cause overpayment. Block change if invoice is Void/Lost. Audit trail: log who recorded the payment, when, for which invoice.",
+          "Test coverage: Implement/extend sheet-tests.ts for payment recording invariants (rules r3, r4, r10)."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design focuses on a bookkeeper workflow for entering payments: a UI for recording payments manually, backend logic for linking payments to invoices, and audit-logging who made the entry. There is no mention of online auto-recording of client payments. This matches the 'second' candidate, where the bookkeeper enters payments by hand when money arrives, and does not match the 'first', which hinges on automatic online payment collection and recording."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "We will make the app generate the invoice number automatically when a new invoice is created. The invoice number will be unique and sequential for each bookkeeping firm, as required by the rules. This means users don’t need to enter or choose the number themselves; the system will handle numbering and prevent duplicates/gaps.\n\nHere’s how I’ll deliver this:",
+        "plan": [
+          "Update the invoice creation logic in the backend to automatically generate the next sequential invoice number for the firm. (Check existing invoices to find the last number used, increment, and apply.)",
+          "Add a database constraint to enforce unique/sequential invoice numbering. If two users create invoices simultaneously, handle race conditions to prevent gaps/duplicates.",
+          "On the invoice creation screen, remove or disable manual entry for invoice number. It will be displayed after save as a read-only field.",
+          "Update tests (sheet-tests.ts) for rule r7 to confirm sequential/unique numbering.",
+          "Update audit log to record each auto-assigned invoice number.",
+          "Ensure error handling for edge cases: if numbering breaks, display a clear message and block saving until resolved."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design specifies that invoice numbers are strictly sequential and unique per firm, generated automatically, with no manual entry and no gaps allowed, and race conditions are handled to prevent gaps/duplicates—these details match the distinguishing characteristics of the second candidate. The first candidate's free-form/manual approach is explicitly ruled out by disabling manual entry and enforcing sequential numbering."
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "gpt-4.1",
+      "arm": "c12v3",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 1,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "I'll set up the handling of currency amounts so they're entered and shown accurately everywhere invoices are created, edited, and displayed. This includes clear input fields for all monetary values (including Service Line Items, Invoice totals, Payments, and Discounts), formatting to two decimal places, and displaying the system's single supported currency (e.g., US dollars).\n\nHere's how I'll approach this:",
+        "plan": [
+          "Update input fields for Service Line Item (Unit Price), Invoice (Amount Due, Discount), and Payment (Amount) to accept decimal values and restrict to two decimal places.",
+          "Ensure all displayed monetary values are formatted consistently (e.g., $450.00) throughout invoice lists, invoice detail pages, client portal, and email templates.",
+          "Show the currency symbol (e.g., $) where values are displayed, and clarify the currency in the invoice footer/heading.",
+          "Set backend validation to enforce decimal precision and prevent entry of invalid (non-numeric, negative for non-credit scenarios) values.",
+          "Add acceptance tests confirming monetary inputs and displays, and audit for edge cases: re-calculation, rounding, partial payments, and display for large/small values."
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "The engineer's design specifies that amounts are displayed in a single supported currency (e.g., US dollars), with no mention of a currency selector or per-invoice currency choice. This matches the second candidate, which describes a system using one single currency everywhere. The design thus matches 'second', not 'first'."
+      },
+      "picked": "default"
+    }
+  ]
+}

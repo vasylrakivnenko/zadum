@@ -4,7 +4,20 @@
  *
  * Style: the reader of anything user-facing is a non-technical business owner. Consequences, not concepts.
  */
-export const PROMPTS_VERSION = "2026.08.23-2";
+export const PROMPTS_VERSION = "2026.08.24-1";
+
+/**
+ * Card phrasing arms (learning loop B). `style` is appended to the card USER prompt; the bandit
+ * (`learning/phrasing_bandit.ts`) reads rewards per `Card.phrasing_arm`. "base" must stay index 0 and empty —
+ * it is the historical phrasing every calibration was done on.
+ */
+export const PHRASING_ARMS: { id: string; style: string }[] = [
+  { id: "base", style: "" },
+  {
+    id: "moment",
+    style: `Anchor the context sentence in one specific, concrete moment of the owner's week ("It's Friday afternoon and a client just called about...") before the options.`,
+  },
+];
 
 export const VOCAB_GUARD = `Never use these words in anything the user will read: tenant, multi-tenant, SSO, OAuth, schema, database, API, endpoint, webhook, backend, frontend, JSON, CRUD, entity, RBAC, auth, token, architecture, microservice. Say what happens in the business instead.`;
 
@@ -18,6 +31,7 @@ The Sheet has five lists and must fit on one page:
 Also output:
 - archetypes: 1–3 ids from the allowed list that best describe the app (most specific first).
 - assumptions: 3–5 consequential assumptions you made, each phrased as a concrete consequence the owner can confirm or reject ("Clients get invoices by email and never log in").
+When ADDITIONAL CONTEXT contains real artifacts (an example invoice, a spreadsheet export, an email thread, an existing form), treat them as strong evidence, stronger than your priors: name nouns and fields exactly as they appear there, ground every example in the artifact's real values, infer rules the artifact implies (numbering schemes, currencies, tax lines, who receives what), and prefer the artifact's vocabulary over generic terms.
 Be concrete and domain-specific; prefer the vocabulary a person in this business uses. Do not pad. ${VOCAB_GUARD}`;
 
 export const PLANNER_SYSTEM = `You map a Design Sheet onto a catalog of decisions. You receive the Sheet and the catalog nodes (id, topic, question, options).
@@ -26,6 +40,7 @@ Tasks:
 2. bespoke: propose up to 8 additional decisions specific to THIS app that the catalog does not cover and that would materially change what gets built if answered differently. Each: id (x1, x2, ...), topic, question, 2–4 options with ids (snake_case) and short labels, consequence 1–5 (how much of the app changes if guessed wrong), rationale. Skip trivia.
 3. consequence_adjustments: catalog nodes whose consequence should be raised or lowered for this app (e.g., payments is central for invoicing → 5), with a reason. Only list real changes.
 4. fixed_by_sheet: catalog node ids whose answer the Sheet already makes unambiguous, with the option id. Only when the Sheet is explicit.
+The FIRST archetype in the Sheet's list is the app's primary identity; later ones are secondary. When a generic node from a secondary archetype duplicates or overlaps a domain-specific node from the primary one (e.g. a generic "record views" node vs an invoicing-specific list node), mark the generic one not_applicable — the user should be asked the domain-specific version, never both.
 Return JSON only.`;
 
 export const SAMPLER_SYSTEM = `You generate plausible, internally consistent "worlds": complete answers to every decision for an app, as different realistic users of this kind of app would want it.

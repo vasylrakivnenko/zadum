@@ -1,0 +1,31 @@
+# CI mechanizes the working agreements in CLAUDE.md: tests + typecheck before any step is "done", the mock
+# demo as the no-credentials end-to-end check, and the harness regression gate so selector-visible behavior
+# never changes without a deliberate, committed baseline update ("the harness decides, never argument").
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: mock demo end-to-end
+        run: npm run zadum -- --mock demo --out /tmp/ci-demo
+      - name: selector regression gate (mock harness vs committed baseline)
+        run: npm run harness:check
+      - name: web app install + typecheck + smoke tests
+        run: |
+          npm ci --prefix apps/web
+          npx --prefix apps/web tsc --noEmit
+          npm test --prefix apps/web

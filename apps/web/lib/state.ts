@@ -3,8 +3,9 @@ import type { Sheet } from "@engine/core/sheet";
 import type { SessionState } from "@engine/core/session";
 import type { Commit } from "@engine/core/commit";
 import { settledness } from "@engine/core/selector";
+import type { ZEvent } from "@engine/core/session";
 import type { EngineHandle } from "./engine";
-import type { DecidedEntry, ImpliedLabels, ProjectState, ProjectSummary } from "./types";
+import type { CurvePoint, DecidedEntry, ImpliedLabels, ProjectState, ProjectSummary } from "./types";
 
 type RawImplied = {
   hard: { node: string; option: string }[];
@@ -30,25 +31,55 @@ export async function retryRead<T>(fn: () => Promise<T>, tries = 5, delayMs = 30
 
 export async function projectState(h: EngineHandle, id: string): Promise<ProjectState> {
   const { sheet, session, project, commits } = await retryRead(() => h.engine.getState(id));
-  const [card, assumptions] = await Promise.all([retryRead(() => h.engine.currentCard(id)), draftAssumptions(h, id)]);
+  const [card, events] = await Promise.all([retryRead(() => h.engine.currentCard(id)), retryRead(() => h.store.listEvents(id))]);
   const summary: ProjectSummary = { id: project.id, one_liner: project.one_liner, phase: project.phase, latest_version: project.latest_version, created_at: project.created_at, updated_at: project.updated_at };
   const settled = currentSettledness(sheet, session);
   const stopped = !card && session.last_stop_reason && session.phase !== "correcting" && session.phase !== "drafting";
   return {
     project: summary,
     sheet,
-    assumptions,
+    assumptions: draftAssumptions(events),
     session: { phase: session.phase, cards: session.cards.length, answers: session.answers.length, last_stop_reason: session.last_stop_reason ?? null, settledness: settled },
     card: card ?? (stopped ? { kind: "stop", reason: session.last_stop_reason ?? "stopped", settledness: settled } : null),
     decided: decidedEntries(sheet, commits),
+    curve: gainCurve(sheet, session, events),
   };
 }
 
-async function draftAssumptions(h: EngineHandle, id: string): Promise<string[]> {
-  const events = await h.store.listEvents(id);
+function draftAssumptions(events: ZEvent[]): string[] {
   const draft = events.find((e) => e.type === "draft_created");
   const a = draft?.payload["assumptions"];
   return Array.isArray(a) ? a.filter((x): x is string => typeof x === "string") : [];
+}
+
+/**
+ * The information-gain curve: for every card still in the session (undo pops cards, so the session list is
+ * the truth), the `share` of remaining uncertainty it stood to settle, from its `card_shown` event.
+ */
+function gainCurve(sheet: Sheet, session: SessionState, events: ZEvent[]): CurvePoint[] {
+  const shown = new Map<string, ZEvent>();
+  for (const e of events) if (e.type === "card_shown" && typeof e.payload["card_id"] === "string") shown.set(e.payload["card_id"] as string, e);
+  const answered = new Set(session.answers.map((a) => a.card_id));
+  const out: CurvePoint[] = [];
+  session.cards.forEach((card, i) => {
+    const ev = shown.get(card.id);
+    const share = ev ? num(ev.payload["share"]) : null;
+    if (share === null) return; // pre-curve sessions or missing event: skip rather than fake a bar
+    out.push({
+      card_index: i + 1,
+      card_id: card.id,
+      node: card.node_id,
+      topic: sheet.decisions.find((d) => d.id === card.node_id)?.topic ?? card.node_id,
+      share,
+      settledness: (ev ? num(ev.payload["settledness"]) : null) ?? 0,
+      answered: answered.has(card.id),
+    });
+  });
+  return out;
+}
+
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
 /** Mirrors Engine.allDecisionIds (private): the decisions the progress meter is computed over. */

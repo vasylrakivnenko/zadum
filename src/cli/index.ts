@@ -7,6 +7,7 @@
  *   cards <id>                                        interactive decision cards
  *   defaults <id> | override <id> <node> <option> | accept <id>
  *   compile <id> [--out dir] [--candidates N]
+ *   story <id> "<correction>"                         fix what the walkthrough got wrong (then recompile)
  *   history <id> | events <id> | projects
  *   demo [--mock] [--auto]                            whole flow end to end (auto-answers cards)
  */
@@ -26,7 +27,7 @@ program.option("--mock", "use the scripted mock LLM (no credentials)", false);
 program.option("--cache", "cache LLM responses on disk", false);
 program.option("--data-dir <dir>", "file store directory", process.env.ZADUM_DATA_DIR ?? ".zadum");
 program.option("--theta <n>", "stopping threshold", (v) => Number(v));
-program.option("--scoring <s>", "weighted_entropy (default) | joint_entropy | risk");
+program.option("--scoring <s>", "weighted_entropy (default) | joint_entropy | risk | ec2 (uncalibrated θ — sweep first)");
 program.option("--lookahead <n>", "1 = greedy, 2 = two plies of the decision tree", (v) => Number(v));
 program.option("--thoroughness <level>", "quick|standard|thorough (default standard) — scales theta/maxCards and, for compile, best-of-N/critic loops", "standard");
 program.option("-q, --quiet", "less output", false);
@@ -138,6 +139,16 @@ program
     let res = await engine.startCards(id);
     const rl = o.auto ? null : createInterface({ input, output });
     let n = (await engine.getState(id)).session.cards.length;
+    let userDone = false;
+    // Soft stop (converged is a recommendation, not a guillotine): one yes re-prices θ at ~0 for the rest of
+    // the loop (engine.continueCards); Rule 7's 12-card cap still binds.
+    const offerContinue = async (r: DealResult): Promise<DealResult> => {
+      if (r.kind !== "stop" || r.reason !== "converged" || !rl) return r;
+      console.log(`\n— The next card would settle very little (design ${(r.settledness * 100).toFixed(0)}% settled). Stopping here is recommended.`);
+      const more = (await rl.question("keep going anyway? (y/N) > ")).trim().toLowerCase();
+      return more === "y" || more === "yes" ? engine.continueCards(id) : r;
+    };
+    res = await offerContinue(res);
     while (res.kind === "card") {
       printCard(res, n);
       let line: string;
@@ -147,6 +158,7 @@ program
       } else line = (await rl!.question("> ")).trim();
       const t0 = Date.now();
       if (line === "q") {
+        userDone = true;
         break;
       } else if (line === "u") {
         const back = await engine.undoLast(id);
@@ -175,11 +187,11 @@ program
       const also = [...ans.implied.hard.map((h) => `✓ ${h.node} = ${h.option}`), ...ans.implied.soft.map((s) => `≈ ${s.node} = ${s.option} (${Math.round(s.p * 100)}%)`)];
       if (also.length) console.log(`  this also decided: ${also.join(" · ")}`);
       for (const c of ans.implied.contradictions) console.log(`  ⚠ this normally implies ${c.node} = ${c.wants}, but you already chose ${c.had} — keeping your answer`);
-      res = ans.next;
+      res = await offerContinue(ans.next);
       n += 1;
     }
     rl?.close();
-    if (res.kind === "stop") printCard(res, n);
+    if (res.kind === "stop" && !userDone) printCard(res, n);
     const defaults = await engine.finishCards(id);
     console.log(`Defaults review (${defaults.length} assumed decisions, riskiest first):`);
     for (const d of defaults.slice(0, 15)) console.log(`  ${d.status === "implied" ? "⇒" : d.status === "delegated" ? "↪" : "≈"} ${d.topic}: ${d.chosen_label}  (${Math.round(d.confidence * 100)}%, consequence ${d.consequence})${d.why ? ` — ${d.why}` : ""}  [${d.id}]`);
@@ -241,7 +253,24 @@ program
       r.story.steps.forEach((s, i) => console.log(`  ${i + 1}. ${s}`));
       console.log("  Please confirm:");
       r.story.checks.forEach((c) => console.log(`   - ${c}`));
+      console.log(`\n  Something reads wrong? npm run zadum -- story ${id} "what should happen instead" — then recompile.`);
     }
+    await store.close();
+  });
+
+program
+  .command("story")
+  .description("correct something the story walkthrough got wrong (plain English; updates the Sheet, then recompile)")
+  .argument("<id>")
+  .argument("<text>")
+  .action(async (id: string, text: string) => {
+    const { engine, store } = await engineFromOpts();
+    const r = await engine.applyStoryCorrection(id, text);
+    console.log(`→ ${r.notes}`);
+    console.log(`  applied ${r.applied.length} change(s)${r.rejected.length ? `, rejected ${r.rejected.length}: ${r.rejected.map((x) => x.error).join("; ")}` : ""} · now v${r.version}`);
+    if (r.implied.hard.length || r.implied.soft.length) console.log(`  this also decided: ${[...r.implied.hard.map((h) => `${h.node}=${h.option}`), ...r.implied.soft.map((s) => `${s.node}≈${s.option}`)].join(", ")}`);
+    for (const c of r.implied.contradictions) console.log(`  ⚠ that normally implies ${c.node}=${c.wants}, but ${c.had} was already chosen — keeping it`);
+    if (r.applied.length) console.log(`  the Sheet changed — recompile to refresh the bundle: npm run zadum -- compile ${id}`);
     await store.close();
   });
 

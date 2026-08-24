@@ -38,8 +38,24 @@ export async function buildEngine(opts: BootstrapOptions = {}): Promise<{ engine
   if (cache && !opts.mock) llm = new CachedLLM(llm, path.join(dataDir, "llm-cache"));
   const catalogs = await loadCatalogs(opts.catalogDir);
   const ruleBankDir = opts.engine?.ruleBankDir ?? process.env.ZADUM_RULE_BANK_DIR;
-  const engine = new Engine(store, llm, catalogs, { ...opts.engine, ...(ruleBankDir ? { ruleBankDir } : {}) });
+  // Loop B plug-ins, both harness-gated opt-ins (docs/LEARNING.md): learned population priors and the
+  // reported-confidence recalibration map, each a JSON file produced by `npm run learn`.
+  const priors = await readJsonEnvFile(process.env.ZADUM_PRIORS_FILE);
+  const recal = await readJsonEnvFile(process.env.ZADUM_RECALIBRATION_FILE);
+  const engine = new Engine(store, llm, catalogs, {
+    ...opts.engine,
+    ...(ruleBankDir ? { ruleBankDir } : {}),
+    ...(priors && !opts.engine?.populationPriors ? { populationPriors: priors as never } : {}),
+    ...(recal && !opts.engine?.recalibration ? { recalibration: recal as never } : {}),
+    ...(process.env.ZADUM_CONTRARIAN === "1" && opts.engine?.contrarianSampling === undefined ? { contrarianSampling: true } : {}),
+  });
   return { engine, store, llm };
+}
+
+async function readJsonEnvFile(file: string | undefined): Promise<unknown | null> {
+  if (!file?.trim()) return null;
+  const { promises: fs } = await import("node:fs");
+  return JSON.parse(await fs.readFile(file.trim(), "utf8")) as unknown;
 }
 
 /**

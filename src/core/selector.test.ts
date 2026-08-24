@@ -10,6 +10,8 @@ import {
   mergeConfig,
   valueOfAsking,
   valueWithLookahead,
+  totalUncertainty,
+  entropyBits,
   DEFAULT_SELECTOR_CONFIG,
   DEFAULT_THETA,
 } from "./selector.js";
@@ -323,6 +325,91 @@ describe("options no particle holds", () => {
     }
     // and specifically: joint_entropy gain stays bounded by the belief's own world-entropy (1 bit here)
     expect(valueOfAsking(b, "currency", open, undefined, "joint_entropy")).toBeLessThan(0.5);
+  });
+});
+
+// ---------- EC² / decision-region determination ----------
+
+describe("ec2 (expected weight of inter-region edges cut)", () => {
+  it("scores the node that separates two clean decision regions highest — even a low-consequence separator", () => {
+    // Regions are defined by `big` (c=5 ≥ EC2_RELEVANCE_MIN_CONSEQUENCE): {w1,w2} vs {w3,w4}.
+    // `sep` (c=1) is perfectly correlated with the split; `noise` (c=1) splits within regions.
+    const nodes = [def("big", 5, ["A", "B"]), def("sep", 1, ["s", "t"]), def("noise", 1, ["u", "v"])];
+    const rows = [
+      ["A", "s", "u"],
+      ["A", "s", "v"],
+      ["B", "t", "u"],
+      ["B", "t", "v"],
+    ];
+    const b: Belief = { nodes, worlds: rows.map((r, i) => mkWorld(`w${i}`, { big: r[0]!, sep: r[1]!, noise: r[2]! }, 0.25, "sampled")), alpha: 0 };
+    const open = ["big", "sep", "noise"];
+    // E_total = 4 inter-region pairs × 1/16 = 0.25; big/sep resolve the region entirely, noise cuts 3 of 4 edges
+    const vBig = valueOfAsking(b, "big", open, undefined, "ec2");
+    const vSep = valueOfAsking(b, "sep", open, undefined, "ec2");
+    const vNoise = valueOfAsking(b, "noise", open, undefined, "ec2");
+    expect(vBig).toBeCloseTo(0.25, 9);
+    expect(vSep).toBeCloseTo(0.25, 9); // separation is what counts, not the separator's own consequence
+    expect(vNoise).toBeCloseTo(0.1875, 9);
+    const ranked = rankOpen(b, open, undefined, "ec2");
+    expect(ranked[0]!.nodeId).toBe("big"); // value tie with sep breaks by consequence desc
+    expect(ranked.at(-1)!.nodeId).toBe("noise");
+    // share: value1 over total inter-region mass, 0..1
+    for (const r of ranked) expect(r.share).toBeGreaterThanOrEqual(0), expect(r.share).toBeLessThanOrEqual(1);
+    expect(ranked[0]!.share).toBeCloseTo(1, 9);
+  });
+
+  it("fixes joint_entropy's consequence-blindness: prefers the decision-relevant node where joint prefers the finer irrelevant split", () => {
+    // 8 equal worlds. R (c=5) defines two regions of 4 worlds each; irr (c=1, 4 options) fully identifies the
+    // world *within* each region (each option keeps one world per region). joint_entropy prefers irr (2 bits
+    // vs R's 1 bit — it wants to know EVERYTHING); ec2 prefers R (irr's answers always leave one inter-region
+    // edge standing, R's never do — it wants to not ship the wrong spec).
+    const nodes = [def("R", 5, ["A", "B"]), def("irr", 1, ["o1", "o2", "o3", "o4"]), def("vague", 1, ["x", "y"])];
+    const worlds = Array.from({ length: 8 }, (_, i) => mkWorld(`w${i}`, { R: i < 4 ? "A" : "B", irr: `o${(i % 4) + 1}`, vague: "x" }, 1 / 8, "sampled"));
+    const b: Belief = { nodes, worlds, alpha: 0.5 };
+    const open = ["R", "irr", "vague"];
+    const joint = { R: valueOfAsking(b, "R", open, undefined, "joint_entropy"), irr: valueOfAsking(b, "irr", open, undefined, "joint_entropy") };
+    expect(joint.irr).toBeGreaterThan(joint.R); // the blindness being fixed, made explicit
+    const ec2 = { R: valueOfAsking(b, "R", open, undefined, "ec2"), irr: valueOfAsking(b, "irr", open, undefined, "ec2") };
+    expect(ec2.R).toBeGreaterThan(ec2.irr);
+    expect(rankOpen(b, open, undefined, "joint_entropy")[0]!.nodeId).toBe("irr");
+    expect(rankOpen(b, open, undefined, "ec2")[0]!.nodeId).toBe("R");
+    // `vague`: high marginal entropy (all worlds agree; the α-prior mix carries the entropy) but zero
+    // world-discrimination → ec2 exactly 0. The unsupported answer "y" must NOT count as cutting everything
+    // (the empty-survivor fallback, mirroring `hypothetical` — review defect #9's class).
+    expect(entropyBits(distribution(b, "vague"))).toBeGreaterThan(0.6);
+    expect(valueOfAsking(b, "vague", open, undefined, "ec2")).toBe(0);
+  });
+
+  it("scores 0 when every world agrees on all decision-relevant nodes (one region, no edges)", () => {
+    const nodes = [def("big", 5, ["A", "B"]), def("small", 1, ["u", "v"])];
+    const worlds = [
+      mkWorld("w1", { big: "A", small: "u" }, 0.5, "sampled"),
+      mkWorld("w2", { big: "A", small: "v" }, 0.5, "sampled"),
+    ];
+    const b: Belief = { nodes, worlds, alpha: 0.08 };
+    const open = ["big", "small"];
+    expect(totalUncertainty(b, open, undefined, "ec2")).toBe(0);
+    for (const id of open) expect(valueOfAsking(b, id, open, undefined, "ec2")).toBe(0);
+  });
+
+  it("falls back to all positive-consequence open nodes when nothing clears the relevance threshold", () => {
+    // both nodes are c=2 (< 3): ec2 degrades to version-space reduction instead of going silent
+    const nodes = [def("a", 2, ["x", "y"]), def("bnode", 2, ["p", "q"])];
+    const worlds = [
+      mkWorld("w1", { a: "x", bnode: "p" }, 0.5, "sampled"),
+      mkWorld("w2", { a: "y", bnode: "q" }, 0.5, "sampled"),
+    ];
+    const b: Belief = { nodes, worlds, alpha: 0 };
+    const open = ["a", "bnode"];
+    expect(totalUncertainty(b, open, undefined, "ec2")).toBeCloseTo(0.25, 9);
+    expect(valueOfAsking(b, "a", open, undefined, "ec2")).toBeCloseTo(0.25, 9);
+  });
+
+  it("gets its own (loudly uncalibrated) theta via resolveConfig, without touching the other arms'", () => {
+    expect(resolveConfig({ scoring: "ec2" }).theta).toBe(DEFAULT_THETA.ec2);
+    expect(DEFAULT_THETA.risk).toBe(7);
+    expect(DEFAULT_THETA.weighted_entropy).toBe(24);
+    expect(DEFAULT_THETA.joint_entropy).toBe(1.25);
   });
 });
 

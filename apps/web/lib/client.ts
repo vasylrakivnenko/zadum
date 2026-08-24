@@ -1,5 +1,5 @@
 /** Browser-side fetch helpers for the /api routes. Throws Error(message) on non-2xx. */
-import type { AnswerResponse, CompileResponse, CreateResponse, DealResult, DefaultItem, EditResponse, OverrideResponse, Phase, ProjectState, UndoResponse } from "./types";
+import type { AnswerResponse, CompileResponse, CreateResponse, DealResult, DefaultItem, EditResponse, OverrideResponse, Phase, ProjectState, StoryCorrectResponse, StoryResponse, UndoResponse } from "./types";
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { ...init, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
@@ -24,6 +24,7 @@ export const api = {
   state: (id: string) => call<ProjectState>(`/api/projects/${id}`),
   edit: (id: string, text: string) => post<EditResponse>(`/api/projects/${id}/edit`, { text }),
   startCards: (id: string) => post<{ deal: DealResult; state: ProjectState }>(`/api/projects/${id}/cards/start`),
+  continueCards: (id: string) => post<{ deal: DealResult; state: ProjectState }>(`/api/projects/${id}/cards/continue`),
   answer: (id: string, body: { kind: "option" | "you_decide" | "skip" | "other"; option_id?: string; text?: string; think_ms?: number }) => post<AnswerResponse>(`/api/projects/${id}/cards/answer`, body),
   undo: (id: string) => post<UndoResponse>(`/api/projects/${id}/cards/undo`),
   finishCards: (id: string) => post<{ defaults: DefaultItem[] }>(`/api/projects/${id}/cards/finish`),
@@ -32,6 +33,8 @@ export const api = {
   accept: (id: string) => post<{ ok: true }>(`/api/projects/${id}/defaults/accept`),
   compile: (id: string) => post<CompileResponse>(`/api/projects/${id}/compile`, {}),
   artifacts: (id: string) => call<{ bundle: { name: string; kind: string; created_at: string }[] }>(`/api/projects/${id}/compile`),
+  story: (id: string) => call<StoryResponse>(`/api/projects/${id}/story`),
+  storyCorrect: (id: string, text: string) => post<StoryCorrectResponse>(`/api/projects/${id}/story/correct`, { text }),
 };
 
 export function pct(x: number): string {

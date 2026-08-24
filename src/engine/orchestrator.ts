@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import type { Store } from "../store/store.js";
 import { parallelMap, type LLM } from "../llm/client.js";
 import { makeFns, toUserOps, type Fns, type Draft } from "../llm/functions.js";
-import { PROMPTS_VERSION } from "../llm/prompts.js";
+import { PROMPTS_VERSION, PHRASING_ARMS } from "../llm/prompts.js";
 import { KNOWN_ARCHETYPES, type LoadedCatalogs } from "./catalogs.js";
 import { emptySheet, type Sheet, type Decision } from "../core/sheet.js";
 import { makeCommit, revertOps, type Commit, type CommitSourceKind } from "../core/commit.js";
@@ -17,6 +17,8 @@ import { mergeCatalogs, nodeDefFromDecision, propagateHard, type NodeDef } from 
 import { conditionSoft, conditionHard, distribution, maxOption, topOptions, ess, repairAssignment, makeWorld, normalizeWeights, type Belief, type World } from "../core/worlds.js";
 import { decideNext, impliedByUpdate, settledness, rankOpen, mergeConfig, type SelectorConfig, type Ranked } from "../core/selector.js";
 import type { SessionState, Card, Answer, AnswerKind, ZEvent, EventType, ProjectRecord, Phase } from "../core/session.js";
+import { mixWithCatalog, type PopulationPriors } from "../learning/population_priors.js";
+import { mapFromSerialized, type SerializedRecalibration } from "../learning/recalibrate.js";
 import { loadRuleBank } from "./rule_bank.js";
 import { augmentRulesFromBank } from "./rule_augment.js";
 
@@ -34,6 +36,18 @@ export interface EngineOptions {
   arm?: string; // experiment arm tag
   log?: (line: string) => void;
   ruleBankDir?: string; // defaults to catalogs/rule-bank/ (src/engine/rule_bank.ts's DEFAULT_RULE_BANK_DIR)
+  /** Opt-in (ZADUM_CONTRARIAN=1): the last sampler batch is prompted to stake out coherent minority positions,
+   *  attacking the concentrated-belief blind spot (asked 1/5 deviating nodes — docs/EVALS.md decision probes).
+   *  OFF by default: it shifts belief concentration, so θ and the mock baselines must be re-validated by a
+   *  live A/B before it ships default-on (same bar the rule bank cleared, ADR-027). */
+  contrarianSampling?: boolean;
+  /** Loop B, harness-gated: blend learned population priors into the planned nodes (ZADUM_PRIORS_FILE). */
+  populationPriors?: PopulationPriors;
+  /** Loop B, harness-gated: temper REPORTED confidences (defaults, soft implications) through the learned
+   *  reliability map (ZADUM_RECALIBRATION_FILE, written by `npm run learn`). Deliberately not applied inside
+   *  the selector's τ/θ decisions yet — that shift needs its own harness gate (see docs/REVIEW-2026-08-23.md
+   *  on belief concentration). */
+  recalibration?: SerializedRecalibration;
 }
 
 /** A hard edge from a later answer that demands a different option than the user already resolved. */
@@ -223,7 +237,8 @@ export class Engine {
     }
     const pl = await this.commit(sheet, planOps, { kind: "plan" }, `Planned ${nodes.length} catalog + ${bespokeDefs.length} bespoke decisions`, "plan");
     sheet = pl.sheet;
-    const allNodes = [...nodes, ...bespokeDefs];
+    const planned = [...nodes, ...bespokeDefs];
+    const allNodes = this.opts.populationPriors ? mixWithCatalog(planned, this.opts.populationPriors, sheet.archetypes) : planned;
     const session: SessionState = {
       project_id: id,
       phase: "correcting",
@@ -258,7 +273,9 @@ export class Engine {
       const per = this.opts.worldsPerBatch ?? 4;
       const t0 = Date.now();
       const results = await parallelMap(Array.from({ length: batches }, (_, i) => i), 4, (i) =>
-        this.fns.sampleWorlds({ sheet, nodes: session.belief.nodes, fixed, count: per, batch: i, batches }),
+        // With contrarianSampling, the last batch stakes out coherent minority positions so the particle set
+        // carries disagreement for the selector to score (a unanimous belief hides the questions worth asking).
+        this.fns.sampleWorlds({ sheet, nodes: session.belief.nodes, fixed, count: per, batch: i, batches, contrarian: !!this.opts.contrarianSampling && batches > 1 && i === batches - 1 }),
       );
       const worlds: World[] = [];
       let repairs = 0;
@@ -299,12 +316,22 @@ export class Engine {
   // ---------- phase 2: correction moment ----------
 
   async applyUserEdit(projectId: string, text: string): Promise<{ version: number; applied: PatchOp[]; rejected: { op: PatchOp; error: string }[]; dropped: { op: string; reason: string }[]; notes: string; implied: Implied }> {
+    return this.applyTextPatch(projectId, text, { kind: "user_edit", event: "edit_applied" });
+  }
+
+  /** Story-walkthrough corrections (SPEC §4.7) ride the same Rule-1 path as user edits, tagged with their own
+   *  commit source and event so learning can attribute what the story step catches that the lists missed. */
+  async applyStoryCorrection(projectId: string, text: string): Promise<{ version: number; applied: PatchOp[]; rejected: { op: PatchOp; error: string }[]; dropped: { op: string; reason: string }[]; notes: string; implied: Implied }> {
+    return this.applyTextPatch(projectId, text, { kind: "story_correction", event: "story_corrected" });
+  }
+
+  private async applyTextPatch(projectId: string, text: string, src: { kind: CommitSourceKind; event: EventType }): Promise<{ version: number; applied: PatchOp[]; rejected: { op: PatchOp; error: string }[]; dropped: { op: string; reason: string }[]; notes: string; implied: Implied }> {
     return this.withLock(projectId, async () => {
       const { sheet, session } = await this.load(projectId);
       const res = await this.fns.patch({ sheet, decisions: sheet.decisions, text });
       const { ops, dropped } = toUserOps(res.data);
       const commitId = randomUUID();
-      const { commit, result } = makeCommit(sheet, ops, { id: commitId, source: { kind: "user_edit", ref: commitId }, message: text.slice(0, 200), now: this.now(), itemSource: `user_edit:${commitId}` });
+      const { commit, result } = makeCommit(sheet, ops, { id: commitId, source: { kind: src.kind, ref: commitId }, message: text.slice(0, 200), now: this.now(), itemSource: `${src.kind}:${commitId}` });
       let current = sheet;
       if (commit) {
         await this.store.appendCommit(commit);
@@ -319,13 +346,13 @@ export class Engine {
       for (const r of resolvedNow) {
         const d = current.decisions.find((x) => x.id === r.id);
         if (!d?.chosen) continue;
-        const out = await this.propagateResolution(current, session, d.id, d.chosen, { kind: "user_edit", ref: commitId });
+        const out = await this.propagateResolution(current, session, d.id, d.chosen, { kind: src.kind, ref: commitId });
         current = out.sheet;
         implied = { hard: [...implied.hard, ...out.hard], soft: [...implied.soft, ...out.soft], contradictions: [...implied.contradictions, ...out.contradictions] };
       }
       session.updated_at = this.now();
       await this.store.saveSession(session);
-      await this.emit(session, "edit_applied", { text, ops: result.applied.length, rejected: result.rejected.map((r) => r.error), dropped, notes: res.data.notes, version: current.version, latency_ms: res.latency_ms, usage: res.usage });
+      await this.emit(session, src.event, { text, ops: result.applied.length, rejected: result.rejected.map((r) => r.error), dropped, notes: res.data.notes, version: current.version, latency_ms: res.latency_ms, usage: res.usage });
       return { version: current.version, applied: result.applied, rejected: result.rejected, dropped, notes: res.data.notes, implied };
     });
   }
@@ -364,6 +391,22 @@ export class Engine {
     });
   }
 
+  /**
+   * "Keep going" after a `converged` stop: the user has re-priced their own tap at ~0, so the next card is
+   * dealt ignoring θ. Rule 7's maxCards cap and `no_open` still bind — soft stop, hard ceiling.
+   */
+  async continueCards(projectId: string): Promise<DealResult> {
+    return this.withLock(projectId, async () => {
+      const { sheet, session } = await this.load(projectId);
+      session.user_continued = true;
+      if (session.pending_card) {
+        await this.store.saveSession(session);
+        return this.dealResultFor(sheet, session, session.pending_card);
+      }
+      return this.deal(sheet, session); // deal() reads user_continued and saves the session on both paths
+    });
+  }
+
   async currentCard(projectId: string): Promise<DealResult | null> {
     const { sheet, session } = await this.load(projectId);
     if (!session.pending_card) return null;
@@ -398,7 +441,8 @@ export class Engine {
   /** Decide the next card (or stop), generating it if not precomputed. Caller holds the lock. */
   private async deal(sheet: Sheet, session: SessionState): Promise<DealResult> {
     const open = this.openIds(sheet, session);
-    const next = decideNext(session.belief, open, session.config, session.cards.length, session.consequence_override);
+    const cfg = session.user_continued ? { ...session.config, theta: -Infinity } : session.config;
+    const next = decideNext(session.belief, open, cfg, session.cards.length, session.consequence_override);
     const settled = settledness(session.belief, this.allDecisionIds(sheet, session), session.consequence_override);
     if (next.action === "stop") {
       session.last_stop_reason = next.reason;
@@ -443,10 +487,23 @@ export class Engine {
     const top = topOptions(ranked.dist, k).map((t) => ({ option_id: t.option, label: node.options.find((o) => o.id === t.option)?.label ?? t.option, p: t.p }));
     const alsoSets = this.alsoSets(sheet, session, node, top.map((t) => t.option_id));
     const prior = sheet.decisions.filter((d) => d.status === "resolved" && d.chosen).map((d) => `${d.question} → ${d.options.find((o) => o.id === d.chosen)?.label ?? d.chosen}`);
+    // Phrasing arm (loop B): deterministic per (project, node) so replays are stable, varied across projects so
+    // the bandit (`learning/phrasing_bandit.ts`) accumulates evidence on more than one arm.
+    const arm = PHRASING_ARMS[hashCode(`${session.project_id}:${node.id}`) % PHRASING_ARMS.length]!;
     const t0 = Date.now();
-    const res = await this.fns.card({ sheet, node, options: top, also_sets: alsoSets, prior_answers: prior.slice(-6) });
+    const res = await this.fns.card({ sheet, node, options: top, also_sets: alsoSets, prior_answers: prior.slice(-6), ...(arm.style ? { phrasing_style: arm.style } : {}) });
     const options = top.map((t) => ({ option_id: t.option_id, label: t.label, scenario: res.data.options.find((o) => o.option_id === t.option_id)?.scenario?.trim() || t.label }));
-    return { id: randomUUID(), node_id: node.id, context: res.data.context.trim(), options, also_sets: res.data.also_sets.slice(0, 5), created_at: this.now(), model: res.model, latency_ms: Date.now() - t0 };
+    return { id: randomUUID(), node_id: node.id, context: res.data.context.trim(), options, also_sets: res.data.also_sets.slice(0, 5), created_at: this.now(), model: res.model, latency_ms: Date.now() - t0, phrasing_arm: arm.id };
+  }
+
+  /** Reported-confidence tempering through the learned reliability map (the map's own interpolation, incl.
+   *  its identity fallback — a bin-level lookup here once coarsened untouched confidences to bin midpoints).
+   *  Identity when no map is configured. */
+  private recalMap?: (p: number) => number;
+  private calibrate(p: number): number {
+    if (!this.opts.recalibration) return p;
+    this.recalMap ??= mapFromSerialized(this.opts.recalibration);
+    return this.recalMap(p);
   }
 
   /**
@@ -481,7 +538,8 @@ export class Engine {
       const prop = propagateHard({ [card.node_id]: opt.option_id }, session.belief.nodes, [card.node_id]);
       const soft = impliedByUpdate(session.belief, hyp.belief, open, session.config.softImplyTau, session.config.minImplyDelta).map((s) => s.nodeId);
       const openAfter = open.filter((id) => !(id in prop.derived) && !soft.includes(id));
-      const next = decideNext(hyp.belief, openAfter, session.config, session.cards.length + 1, session.consequence_override);
+      const cfg = session.user_continued ? { ...session.config, theta: -Infinity } : session.config;
+      const next = decideNext(hyp.belief, openAfter, cfg, session.cards.length + 1, session.consequence_override);
       if (next.action === "ask" && !targets.some((t) => t.nodeId === next.node.nodeId) && !session.precomputed[next.node.nodeId]) targets.push({ nodeId: next.node.nodeId, ranked: next.node });
     }
     if (!targets.length) return;
@@ -524,7 +582,7 @@ export class Engine {
       } else if (input.kind === "you_decide") {
         const best = maxOption(distribution(session.belief, node.id));
         session.consequence_override[node.id] = 0;
-        const r = await this.commit(current, [{ op: "set_decision", id: node.id, status: "delegated", chosen: best.option, confidence: best.p, rationale: "user: you decide" }], { kind: "card_answer", ref: card.id }, `Card ${session.cards.length}: ${node.topic} → you decide (${best.option})`, `card:${card.id}`);
+        const r = await this.commit(current, [{ op: "set_decision", id: node.id, status: "delegated", chosen: best.option, confidence: this.calibrate(best.p), rationale: "user: you decide" }], { kind: "card_answer", ref: card.id }, `Card ${session.cards.length}: ${node.topic} → you decide (${best.option})`, `card:${card.id}`);
         current = r.sheet;
       } else if (input.kind === "skip") {
         const r = await this.commit(current, [{ op: "set_decision", id: node.id, status: "skipped", rationale: "user skipped" }], { kind: "card_answer", ref: card.id }, `Card ${session.cards.length}: ${node.topic} skipped`, `card:${card.id}`);
@@ -569,7 +627,7 @@ export class Engine {
     const fixed = fixedAssignments(sheet);
     const batches = this.opts.worldBatches ?? 3;
     const per = this.opts.worldsPerBatch ?? 4;
-    const results = await parallelMap(Array.from({ length: batches }, (_, i) => i), 4, (i) => this.fns.sampleWorlds({ sheet, nodes: session.belief.nodes, fixed, count: per, batch: i, batches }));
+    const results = await parallelMap(Array.from({ length: batches }, (_, i) => i), 4, (i) => this.fns.sampleWorlds({ sheet, nodes: session.belief.nodes, fixed, count: per, batch: i, batches, contrarian: !!this.opts.contrarianSampling && batches > 1 && i === batches - 1 }));
     const worlds: World[] = [];
     results.forEach((res, bi) => {
       const raw = res.data.worlds;
@@ -622,7 +680,7 @@ export class Engine {
     // soft implications: open nodes that crossed tau
     const openNow = sheet.decisions.filter((d) => d.status === "open" && d.id !== nodeId && !hard.some((h) => h.node === d.id)).map((d) => d.id);
     const soft = impliedByUpdate(before, session.belief, openNow, session.config.softImplyTau, session.config.minImplyDelta);
-    for (const s of soft) ops.push({ op: "set_decision", id: s.nodeId, status: "defaulted", chosen: s.option, confidence: round(s.p), implied_by: nodeId, rationale: `very likely given ${nodeId}=${optionId}` });
+    for (const s of soft) ops.push({ op: "set_decision", id: s.nodeId, status: "defaulted", chosen: s.option, confidence: round(this.calibrate(s.p)), implied_by: nodeId, rationale: `very likely given ${nodeId}=${optionId}` });
     let current = sheet;
     if (ops.length) {
       const r = await this.commit(current, ops, { kind: "implication", ref: source.ref }, `Implications of ${nodeId}=${optionId}: ${hard.length} hard, ${soft.length} likely`, `implied:${nodeId}`);
@@ -675,7 +733,7 @@ export class Engine {
         if (d.status !== "open" && d.status !== "skipped") continue;
         if (!session.belief.nodes.some((n) => n.id === d.id)) continue;
         const best = maxOption(distribution(session.belief, d.id));
-        ops.push({ op: "set_decision", id: d.id, status: "defaulted", chosen: best.option, confidence: round(best.p), rationale: d.status === "skipped" ? "skipped by user; defaulted" : "not asked; defaulted from belief" });
+        ops.push({ op: "set_decision", id: d.id, status: "defaulted", chosen: best.option, confidence: round(this.calibrate(best.p)), rationale: d.status === "skipped" ? "skipped by user; defaulted" : "not asked; defaulted from belief" });
       }
       const r = await this.commit(sheet, ops, { kind: "default" }, `Defaulted ${ops.length} decisions after card loop`, "default");
       delete session.pending_card;
@@ -718,12 +776,15 @@ export class Engine {
       const d = sheet.decisions.find((x) => x.id === nodeId);
       if (!d) throw new Error(`decision ${nodeId} not found`);
       const before = { status: d.status, chosen: d.chosen ?? null, confidence: d.confidence ?? null };
+      // 1-based position in the riskiest-first review order at override time: the catch-rate report needs to
+      // know whether wrong defaults are being caught at the top of the list or dug out from below the fold.
+      const review_position = this.defaultsList(sheet, session).findIndex((x) => x.id === nodeId) + 1;
       const r = await this.commit(sheet, [{ op: "resolve_decision", id: nodeId, chosen: optionId, rationale: "corrected in defaults review" }], { kind: "defaults_review" }, `Default override: ${d.topic} → ${optionId}`, "defaults_review");
       if (!r.commit) throw new Error(r.rejected[0]?.error ?? "override rejected");
       const out = await this.propagateResolution(r.sheet, session, nodeId, optionId, { kind: "defaults_review" });
       session.updated_at = this.now();
       await this.store.saveSession(session);
-      await this.emit(session, "default_overridden", { node: nodeId, before, after: optionId, consequence: session.consequence_override[nodeId] ?? d.consequence });
+      await this.emit(session, "default_overridden", { node: nodeId, before, after: optionId, consequence: session.consequence_override[nodeId] ?? d.consequence, review_position: review_position || null });
       return { version: out.sheet.version, implied: { hard: out.hard, soft: out.soft, contradictions: out.contradictions } };
     });
   }
@@ -786,4 +847,11 @@ function describe(nodes: NodeDef[], nodeId: string, optionId: string): string {
 
 function round(x: number): number {
   return Math.round(x * 1000) / 1000;
+}
+
+/** djb2 — stable across runs (unlike anything Math.random-seeded), for deterministic arm assignment. */
+function hashCode(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }

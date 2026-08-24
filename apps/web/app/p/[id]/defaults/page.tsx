@@ -94,7 +94,7 @@ export default function DefaultsPage() {
               <div>
                 <h2>What I assumed — riskiest first</h2>
                 <p className="muted">
-                  Every decision that was not asked got the most likely answer. Correct any of them with one tap; the rest become part of the spec.
+                  Every decision that was not asked got the most likely answer. Riskiest means it matters a lot <em>and</em> we are least sure — those sit at the top. Correct any with one tap; the rest become part of the spec.
                   {resolvedCount ? ` ${resolvedCount} you already decided.` : ""}
                 </p>
               </div>
@@ -120,6 +120,7 @@ export default function DefaultsPage() {
                 <table className="deftable">
                   <thead>
                     <tr>
+                      <th>Risk</th>
                       <th>Topic</th>
                       <th>Assumed</th>
                       <th>Sure</th>
@@ -131,6 +132,9 @@ export default function DefaultsPage() {
                   <tbody>
                     {assumed.map((d) => (
                       <tr key={d.id} className={d.consequence * (1 - d.confidence) >= 2 ? "risky" : ""}>
+                        <td title={`how much it matters × how unsure we are (${d.consequence.toFixed(1)} × ${(1 - d.confidence).toFixed(2)})`}>
+                          <RiskBar risk={d.consequence * (1 - d.confidence)} />
+                        </td>
                         <td>
                           <div>{d.topic}</div>
                           <div className="why">{d.question}</div>
@@ -194,8 +198,13 @@ export default function DefaultsPage() {
                   )}
                   {result.story && (
                     <div>
-                      <h3 style={{ fontSize: 15 }}>{result.story.title}</h3>
-                      <p className="small muted">A day in the life, from the spec — does this look like your business?</p>
+                      <div className="spread">
+                        <h3 style={{ fontSize: 15 }}>{result.story.title}</h3>
+                        <Link href={`/p/${id}/story`} className="btn primary">
+                          Walk through the story →
+                        </Link>
+                      </div>
+                      <p className="small muted">A day in the life, from the spec — does this look like your business? The walkthrough lets you confirm each moment or fix it in one line.</p>
                       <ol>
                         {result.story.steps.map((s, i) => (
                           <li key={i}>{s}</li>
@@ -225,6 +234,11 @@ export default function DefaultsPage() {
                       {name}
                     </Link>
                   ))}
+                  {artifacts.includes("story.md") && !result && (
+                    <Link href={`/p/${id}/story`} className="btn primary">
+                      Walk through the story →
+                    </Link>
+                  )}
                 </div>
               </div>
             </section>
@@ -232,5 +246,17 @@ export default function DefaultsPage() {
         </div>
       </main>
     </>
+  );
+}
+
+/** consequence × (1 − confidence), 0–5, as five coarse cells — how badly a wrong assumption would hurt. */
+function RiskBar({ risk }: { risk: number }) {
+  const on = Math.min(5, Math.max(0, Math.round(risk)));
+  return (
+    <span className="riskbar" aria-label={`risk ${on} of 5`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <i key={i} className={i < on ? "on" : ""} />
+      ))}
+    </span>
   );
 }

@@ -53,7 +53,7 @@ export interface SessionState {
   cards: Card[];
   answers: Answer[];
   pending_card?: Card;
-  /** key `${pending_card.id}:${option_id}` → speculatively generated next card */
+  /** keyed by the precomputed card's node_id → speculatively generated card for that node */
   precomputed: Record<string, Card>;
   /** per-session consequence overrides (e.g., "you decide" → 0) */
   consequence_override: Record<string, number>;
@@ -62,6 +62,9 @@ export interface SessionState {
   resample_count: number;
   versions: SessionVersions;
   last_stop_reason?: string;
+  /** the user chose "keep going" after a converged stop: θ is ignored for the rest of the loop (they re-priced
+   *  their own tap at ~0); Rule 7's maxCards cap and no_open still bind */
+  user_continued?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -317,8 +317,8 @@ export function renderPatternsForAugment(patterns: { id: string; pattern: string
 export interface Fns {
   draft(input: { one_liner: string; extra_context?: string; archetypes: readonly string[] }): Promise<LLMResponse<Draft>>;
   plan(input: { sheet: Sheet; nodes: NodeDef[] }): Promise<LLMResponse<Plan>>;
-  sampleWorlds(input: { sheet: Sheet; nodes: NodeDef[]; fixed: Record<string, string>; count: number; batch: number; batches: number }): Promise<LLMResponse<WorldsOut>>;
-  card(input: { sheet: Sheet; node: NodeDef; options: { option_id: string; label: string; p: number }[]; also_sets: string[]; prior_answers: string[] }): Promise<LLMResponse<CardOut>>;
+  sampleWorlds(input: { sheet: Sheet; nodes: NodeDef[]; fixed: Record<string, string>; count: number; batch: number; batches: number; contrarian?: boolean }): Promise<LLMResponse<WorldsOut>>;
+  card(input: { sheet: Sheet; node: NodeDef; options: { option_id: string; label: string; p: number }[]; also_sets: string[]; prior_answers: string[]; phrasing_style?: string }): Promise<LLMResponse<CardOut>>;
   patch(input: { sheet: Sheet; decisions: Decision[]; text: string }): Promise<LLMResponse<PatchOut>>;
   compileSection(input: { sheet: Sheet; section: SectionId; decisions: Decision[]; prior_sections: string }): Promise<LLMResponse<SectionOut>>;
   critique(input: { spec: string; sheet: Sheet }): Promise<LLMResponse<CriticOut>>;
@@ -352,7 +352,7 @@ export function makeFns(llm: LLM): Fns {
         maxTokens: 6000,
       }),
 
-    sampleWorlds: ({ sheet, nodes, fixed, count, batch, batches }) =>
+    sampleWorlds: ({ sheet, nodes, fixed, count, batch, batches, contrarian }) =>
       llm.structured({
         fn: "sampler",
         tier: "strong",
@@ -362,7 +362,16 @@ export function makeFns(llm: LLM): Fns {
           `FIXED DECISIONS (must hold in every world):\n${Object.entries(fixed).map(([k, v]) => `- ${k} = ${v}`).join("\n") || "(none)"}`,
           `DECISION NODES:\n${nodesToText(nodes)}`,
           `Produce ${count} distinct worlds. This is batch ${batch + 1} of ${batches}; batches should explore different plausible user types (batch ${batch + 1}: ${BATCH_HINTS[batch % BATCH_HINTS.length]}).`,
-        ].join("\n\n"),
+          // Contrarian batch (live finding: real beliefs over-concentrate — ESS 10.5/12, most nodes ≥0.9
+          // agreement — and a belief that never disagrees hides exactly the questions worth asking). One batch
+          // is told to stake out coherent minority positions so the particle set spans the space the selector
+          // scores over, instead of duplicating the archetype's central persona.
+          contrarian
+            ? `For THIS batch only: deliberately explore plausible MINORITY variants. For the highest-consequence decisions not fixed above, include worlds that pick a different option than the obvious default — a realistic user who genuinely wants it that way — while staying internally coherent. Do not violate fixed decisions and do not invent incoherent combinations; give such worlds honest (lower) weights.`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
         schema: WorldsOutSchema,
         effort: "medium",
         maxTokens: 8000,
@@ -370,13 +379,15 @@ export function makeFns(llm: LLM): Fns {
         cacheSalt: `batch${batch}`,
       }),
 
-    card: ({ sheet, node, options, also_sets, prior_answers }) =>
+    card: ({ sheet, node, options, also_sets, prior_answers, phrasing_style }) =>
       llm.structured({
         fn: "card",
         tier: "fast",
         system: P.CARD_SYSTEM,
         user: [
           `THE APP (context only):\n${sheetToText(sheet, { withIds: false })}`,
+          // Arm text rides in the user message (not the system) so the system prompt stays one cacheable block.
+          phrasing_style ? `STYLE FOR THIS CARD: ${phrasing_style}` : "",
           prior_answers.length ? `ALREADY DECIDED:\n${prior_answers.map((a) => `- ${a}`).join("\n")}` : "",
           `DECISION: ${node.question} (topic: ${node.topic})${node.ask_hint ? `\nHINT: ${node.ask_hint}` : ""}`,
           `OPTIONS TO PHRASE (use these option_ids exactly):\n${options.map((o) => `- ${o.option_id}: ${o.label}`).join("\n")}`,

@@ -72,6 +72,88 @@ describe("harness (mock)", () => {
   });
 });
 
+describe("simulated defaults review + answer noise (opt-in)", () => {
+  const mkEngine = async () => new Engine(new MemoryStore(), new MockLLM(invoicingMockHandlers), await loadCatalogs(), { precompute: false });
+
+  it("plain runGold carries none of the opt-in fields (regression gate)", async () => {
+    const m = await runGold(await mkEngine(), await loadInvoicingGold(), { idPrefix: "plain" });
+    expect(m.wrong_defaults_before).toBeUndefined();
+    expect(m.wrong_defaults_after).toBeUndefined();
+    expect(m.review_positions).toBeUndefined();
+    expect(m.noise_events).toBeUndefined();
+    const s = aggregate([m]);
+    expect(s.review).toBeUndefined();
+    expect(s.noise_events).toBeUndefined();
+  });
+
+  it("attentive reviewer at full depth corrects every wrong default to the gold truth", async () => {
+    const gold = await loadInvoicingGold();
+    const base = await runGold(await mkEngine(), gold, { idPrefix: "base" });
+    const engine = await mkEngine();
+    const m = await runGold(engine, gold, { idPrefix: "rev", review: { depth: 999, catchProb: 1 } });
+    expect(m.wrong_defaults_before).toBeGreaterThan(0);
+    expect(m.wrong_defaults_after).toBe(0);
+    expect(m.review_catch_rate).toBe(1);
+    expect(m.review_positions).toHaveLength(m.wrong_defaults_before!);
+    for (const p of m.review_positions!) expect(p).toBeGreaterThanOrEqual(1);
+    // corrected decisions are resolved to the truth on the final sheet
+    const st = await engine.getState(m.project_id);
+    for (const d of st.sheet.decisions) {
+      if (d.status === "defaulted" && gold.decisions[d.id] !== undefined) expect(d.chosen).toBe(gold.decisions[d.id]);
+    }
+    // review can only help recovery
+    expect(m.final_recovery).toBeGreaterThanOrEqual(base.final_recovery - 1e-9);
+  });
+
+  it("catchProb 0 examines but catches nothing; shallow depth only sees the top of the list", async () => {
+    const gold = await loadInvoicingGold();
+    const m0 = await runGold(await mkEngine(), gold, { idPrefix: "r0", review: { depth: 999, catchProb: 0 } });
+    expect(m0.wrong_defaults_after).toBe(m0.wrong_defaults_before);
+    expect(m0.review_catch_rate).toBe(0);
+    const shallow = await runGold(await mkEngine(), gold, { idPrefix: "r1", review: { depth: 1, catchProb: 1 } });
+    const deep = await runGold(await mkEngine(), gold, { idPrefix: "r2", review: { depth: 999, catchProb: 1 } });
+    // examining fewer items can never catch more
+    expect(shallow.wrong_defaults_after!).toBeGreaterThanOrEqual(deep.wrong_defaults_after!);
+  });
+
+  it("aggregate pools review counts and builds the position histogram", async () => {
+    const gold = await loadInvoicingGold();
+    const m = await runGold(await mkEngine(), gold, { idPrefix: "agg", review: { depth: 8, catchProb: 1 } });
+    const s = aggregate([m]);
+    expect(s.review).toBeDefined();
+    expect(s.review!.sessions).toBe(1);
+    expect(s.review!.mean_wrong_before).toBe(m.wrong_defaults_before);
+    expect(s.review!.mean_wrong_after).toBe(m.wrong_defaults_after);
+    const histTotal = Object.values(s.review!.position_histogram).reduce((a, b) => a + b, 0);
+    expect(histTotal).toBe(m.review_positions!.length);
+    for (const p of m.review_positions!) expect(s.review!.position_histogram[p]).toBeGreaterThanOrEqual(1);
+  });
+
+  it("noise p=1 replaces every option answer with a different option, deterministically per seed", async () => {
+    const gold = await loadInvoicingGold();
+    const m = await runGold(await mkEngine(), gold, { idPrefix: "nz", noise: { p: 1, seed: 3 } });
+    const optionAnswers = m.answers.filter((a) => a.kind === "option");
+    expect(m.noise_events).toBeGreaterThan(0);
+    expect(m.noise_events).toBe(optionAnswers.length);
+    // seeded: an identical run answers identically
+    const m2 = await runGold(await mkEngine(), gold, { idPrefix: "nz", noise: { p: 1, seed: 3 } });
+    expect(m2.answers).toEqual(m.answers);
+    expect(m2.asked_nodes).toEqual(m.asked_nodes);
+    // and p=0-equivalent (no noise option) differs from the fully-noised run
+    const clean = await runGold(await mkEngine(), gold, { idPrefix: "cl" });
+    expect(clean.noise_events).toBeUndefined();
+    expect(m.answers).not.toEqual(clean.answers);
+    expect(aggregate([m]).noise_events).toBe(m.noise_events);
+  });
+
+  it("gold extra_context is parsed and passed only under withContext", async () => {
+    const gold = await loadInvoicingGold();
+    expect(gold.extra_context).toContain("INV-0231");
+    const m = await runGold(await mkEngine(), gold, { idPrefix: "ctx", withContext: true });
+    expect(m.cards).toBeGreaterThan(0); // plumbing: createProject accepts the artifact
+  });
+});
+
 describe("counterfactual gold variants", () => {
   it("flips high-consequence decisions and keeps the hidden truth logically consistent", async () => {
     const catalogs = await loadCatalogs();

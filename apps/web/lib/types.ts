@@ -34,6 +34,21 @@ export interface ImpliedLabels {
   contradictions: { node: string; topic: string; label: string; had: string }[];
 }
 
+/**
+ * One point on the information-gain curve: a card that was dealt, with how much of the remaining
+ * uncertainty it stood to settle (`share`, 0–1) and the settledness at the moment it was shown.
+ * Coarse by design — the belief behind it is 12 sampled worlds, so bars, never a smooth line.
+ */
+export interface CurvePoint {
+  card_index: number;
+  card_id: string;
+  node: string;
+  topic: string;
+  share: number;
+  settledness: number;
+  answered: boolean;
+}
+
 export interface ProjectState {
   project: ProjectSummary;
   sheet: Sheet;
@@ -41,6 +56,7 @@ export interface ProjectState {
   session: { phase: Phase; cards: number; answers: number; last_stop_reason: string | null; settledness: number };
   card: DealResult | null; // pending card, or the stop result once the loop ended; null before cards start
   decided: DecidedEntry[]; // most recent first
+  curve: CurvePoint[]; // cards in deal order (undo-safe: only cards still in the session)
 }
 
 export interface CreateResponse {
@@ -87,6 +103,17 @@ export interface CompileResponse {
   sheet_version: number;
   phase: Phase;
 }
+
+/** GET /api/projects/[id]/story — the compiled "day in the life" walkthrough, parsed from story.md. */
+export interface StoryResponse {
+  title: string;
+  steps: string[];
+  checks: string[];
+  compiled_at: string;
+}
+
+/** POST /api/projects/[id]/story/correct — same shape as an edit: what got applied/implied. */
+export type StoryCorrectResponse = EditResponse;
 
 export interface ErrorResponse {
   error: string;

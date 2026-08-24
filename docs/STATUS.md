@@ -1,10 +1,11 @@
 # STATUS — resume here
 
-_Last updated: 2026-08-24 (session 1h, second correctness review + fixes — see the 1h entry in "Session log").
-Next session: start at "Next steps" below._
+_Last updated: 2026-08-24 (session 1i, the overnight roadmap build — ADR-033, four parallel agents + core.
+See milestones 35–42 and the 1i session-log entry). Next session: start at "Next steps" below._
 
 ## TL;DR
-Core workflow + architecture of Design Sheet is built and green: `npm test` → **235 tests / 23 files** pass (incl. a
+Core workflow + architecture of Design Sheet is built and green: `npm test` → **280 tests / 27 files** (+10 web
+smoke tests in `apps/web`, `npm test --prefix apps/web`) pass (incl. a
 Postgres round-trip when `DATABASE_URL` is set), `npm run typecheck` clean, `npm run zadum -- --mock demo` runs the
 whole flow without credentials, and **the live LLM path works end to end on Azure OpenAI gpt-4.1** (draft 47s,
 edit, cards, compile 69s with critic 10/10). See "Live findings" below — they drove three fixes and show θ must be
@@ -20,6 +21,14 @@ and `risk` are switchable (`--scoring`), two-ply lookahead is available (`--look
 
 | # | Milestone | State |
 |---|-----------|-------|
+| 42 | **Confirm-first protocol, live, 3 iterations** (EVALS "Confirm-before-building"): passive note = inert; imperative confirm-FIRST on the original 4-model matrix → flip-probe **asks 0% → 50%** at c0, stale defaults 63%→13%; cards buy down asks (50%→6% at c12); the 0.95-confidence blind spot untouched (as predicted — recalibration/RB territory) | ✅ run (126 live trials + 2×2 recompiles) |
+| 41 | **CI + selector regression gate**: `.github/workflows/ci.yml`; `npm run harness:check` compares the mock harness against a committed baseline (asked sequences + AUC, byte-exact); caught its first real drift within an hour | ✅ |
+| 40 | **EC² scoring arm** (`--scoring ec2`, θ UNCALIBRATED) + **exact subset-DP optimality bound** (`npm run dp:bound`): greedy = optimal at H=12 (100.0%) on mock invoicing; gap only at H=2–3 | ✅ built + run |
+| 39 | **MCP server** (`npm run mcp`: get_sheet/check_task/propose_amendment/record_event — Rule 1 extends to coding agents) + **drift check** (`npm run drift`: reverse-compile docs vs Sheet, CI-friendly exit codes) | ✅ built (15 tests) |
+| 38 | **Loop B wired behind flags**: ZADUM_PRIORS_FILE (mixWithCatalog), ZADUM_RECALIBRATION_FILE (PAV reliability map → reported confidences only), ZADUM_CONTRARIAN (minority-worlds sampler batch, OFF pending live A/B), phrasing arms live (`Card.phrasing_arm`, 2 arms) | ✅ |
+| 37 | **Review instrumentation**: harness `--review/--catch-prob/--noise/--with-context` (sim defaults reviewer, mis-tap stress, extra-context A/B w/ real invoice artifact); `default_overridden` carries `review_position`. Mock finding: **81/110 wrong defaults below the depth-8 fold** — riskiest-first does not surface them under miscalibrated confidence | ✅ built + first mock numbers |
+| 36 | **Soft stop + story step + web curve**: `Engine.continueCards` (persisted; θ re-priced, Rule 7 intact), `applyStoryCorrection` (+ CLI `story`, web story page), settledness meter + coarse share bars, extra-context textarea, 10 web smoke tests | ✅ |
+| 35 | **The contract handoff shipped** (ADR-033): AGENTS.md = protocol w/ spec-as-REFERENCE + confirm-below-80% list of risky defaults; `sheet-tests.ts` in every bundle (it.todo per rule/action, stable ids) | ✅ live-measured (milestone 42) |
 | 0 | Repo scaffold, docs (CLAUDE.md, SPEC, ARCHITECTURE, DECISIONS, LEARNING, EVALS) | ✅ |
 | 1 | Deterministic core: Sheet schema, patch ops + apply, commits + diff/undo, FileStore/MemoryStore | ✅ tested |
 | 2 | Decision catalogs (core 27 nodes + b2b-invoicing 20 nodes), worlds, selector (3 scorings + 2-ply lookahead, calibrated θ), hard edges, stopping | ✅ tested |
@@ -146,7 +155,24 @@ so the one selector-touching fix guards a degenerate case without shifting norma
 recalibration.** The contradiction reporting and the honest toast change what the user sees mid-session, so both
 are worth watching in the first live run.
 
-## Next steps (in order)
+## Next steps (in order, refreshed 2026-08-24 after the overnight build)
+
+A. **First real users** — now genuinely unblocked: hosted deploy + minimal auth for `apps/web` (the only
+   missing pieces; flow, story step, soft stop, latency plumbing all exist). The single most important number
+   real sessions produce: wrong-default catch-rate in the review (`default_overridden.review_position` is
+   already logged; the simulated reviewer predicts the ordering has a below-the-fold hole).
+B. **RB-mixture belief** (survey top-5 #1) — its own session: the DP bound proved policy search is closed
+   (greedy=optimal at H=12), so ALL remaining selector headroom is belief representation/calibration; θ
+   recalibration afterwards. The recalibration estimator needs gold-truth-scored harness data first (gap above).
+C. **MCP server in a real agent session** — point Claude Code / any MCP client at `npm run mcp`, dogfood
+   get_sheet/check_task/propose_amendment on a real repo; `check_task` is the queued delivery vehicle for
+   assumption-confirmation (the confirm-first preamble alone was insufficient for gpt-4.1 — EVALS).
+D. **Founder labels for the anchor set** (~15 min; blocks quoting any judge number externally).
+E. Live A/Bs queued behind the harness: ZADUM_CONTRARIAN on/off (belief diversity), ec2 θ sweep, phrasing
+   bandit's first real rewards, extra-context A/B live (`--with-context` — the invoice artifact is in the
+   invoicing gold), `quick`/`thorough` θ-multiplier calibration (ADR-029, still open).
+
+## Next steps (older list, pre-1i — items not yet subsumed)
 
 0. ~~**Commit and push** + fix the review defects~~ — **done** (session 1g, ADR-030).
    ~~**Run the A/B thesis test**~~ — **done** (session 1g), then re-run across 4 agent model families with an
@@ -195,6 +221,21 @@ are worth watching in the first live run.
    2026-08-23-1, see catalogs/README.md "Learned from corpus") into more catalogs as they're built.
 9. A/B thesis test: hand-written Sheet + AGENTS.md vs none → coding agent asked for a rule-violating feature.
 
+## Known gaps / caveats (2026-08-24 additions)
+- **recalibration.json is not yet epistemically usable**: the current event corpus is dominated by simulated
+  sessions (perfect sim answers) and auto-accepted defaults (scored "correct" by construction), so the fitted
+  map says the belief is UNDER-confident (87–100% everywhere) — the opposite of the live truth. Fit it from
+  real review data, or extend the estimator to score harness defaults against gold truth (the harness knows
+  the answer; `--review` runs already generate honest override events).
+- **θ for `--scoring ec2` is a guess** (0.05); sweep before any live use. `ZADUM_CONTRARIAN` ships OFF until a
+  live A/B re-validates θ and belief concentration under the new sampler prompt.
+- **The confirm-first protocol is measured on one gold at n=1/cell** (5 models total across iterations,
+  invoicing-perturbed only) — strong direction (asks 0%→50% where the list reaches), but it cannot reach
+  confidently-wrong (≥80%) defaults, and gpt-4.1 ignores it entirely; MCP `check_task` at task time remains
+  the enforcement path that doesn't depend on the agent reading preamble.
+- CI runs mock-only; the harness gate (`npm run harness:check`) must be regenerated deliberately
+  (`npm run harness:baseline`) whenever a selector-visible change is harness-justified.
+
 ## Known gaps / caveats
 - **θ is live-confirmed across 2 independent samples** (risk 7 / weighted_entropy 24 / joint_entropy 1.25 —
   ADR-022, reconfirmed ADR-025). Still an absolute price per question: recalibrate after any material catalog
@@ -220,6 +261,20 @@ are worth watching in the first live run.
 - `harness-results/`, `out/`, `.zadum/` are git-ignored. Repo initialized but **nothing committed yet** (by request).
 
 ## Session log
+- 2026-08-24 s1i (overnight, unattended per explicit user request): the whole strategic roadmap implemented in
+  one pass — ADR-033 records every decision. Four parallel agents on disjoint file sets (MCP+drift / EC²+DP /
+  harness+learning / web) + the conflict-heavy core (compile, orchestrator, prompts, CLI, CI) done serially.
+  Shipped: contract handoff (spec-as-REFERENCE + confirm-first protocol + `sheet-tests.ts`), soft stop
+  (`continueCards`), story correction step (engine+CLI+web), MCP server, drift check, simulated defaults
+  reviewer + answer noise + extra-context A/B, PAV recalibration (reported-confidence only, behind env flag),
+  learned-priors flag, phrasing arms, contrarian sampler (OFF pending live A/B), EC² arm (θ uncalibrated),
+  subset-DP bound (greedy=optimal at H=12), CI + selector regression gate (caught its first real drift the
+  hour it was born), review-position instrumentation. Live measurements the same night: recompiled perturbed
+  c0/c12 bundles + 3 decision-probe runs — see EVALS "Confirm-before-building". Self-critique cycle: 3
+  confirmed critiques fixed (capped confirm list dropped a 37%-confidence auth decision — live-confirmed;
+  bin-level recalibration reader coarsened identity maps — code-confirmed + regression-tested; passive
+  confirm wording inert for gpt-4.1 — live-measured, replaced by the confirm-first protocol and re-measured).
+  280 root + 10 web tests green; harness gate byte-identical.
 - 2026-08-24 s1h: second correctness review (fresh eyes over core + the uncommitted thesis/split-tier work) → 8
   findings, all fixed with regression tests; 231 → 235 tests, typecheck clean, mock demo green. Two confirmed
   bugs: (1) **undo burned Rule-7 slots** — answering auto-deals the follow-up card, and `undoLast` left it in

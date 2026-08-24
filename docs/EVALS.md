@@ -656,3 +656,80 @@ spot (ADR-020's phenomenon) now priced downstream:
   "decisions below X% confidence: confirm with the owner before building against them" is a one-line AGENTS.md
   change with a measurable downstream effect, testable in this same harness.
 
+
+### The simulated defaults reviewer (2026-08-24, mock) — the review net, measured before real users
+
+`npm run harness -- --mock --review 8 [--catch-prob p]` simulates the product's defaults review exactly as
+presented (riskiest-first, consequence×(1−confidence)): the reviewer examines the top-`depth` items and
+catches each wrong default with probability `catch-prob` (seeded), correcting it via `overrideDefault` to the
+gold truth. Metrics: wrong defaults before/after, net catch rate, and the POSITIONS wrong defaults occupied.
+
+First numbers (3 base golds; `--variants 2` n=9 in brackets): a PERFECT reviewer at depth 8 nets **31%**
+[27%]; a realistic 50%-attentive reviewer nets **13%** [14%]; full-depth review reaches 100% (every gold truth
+is an overridable option — the ceiling is real). The reason the depth-8 number is low is the headline:
+**81 of 110 wrong defaults sat BELOW the depth-8 fold** (positions up to 49) — riskiest-first ordering does
+not surface wrong defaults when the belief's confidences are miscalibrated (a confidently-wrong 0.95 default
+scores as low-risk and sinks). Mock confidences are known-miscalibrated, so treat the exact split as
+direction-suggestive; but the instrument now exists, `default_overridden` events carry `review_position` in
+real sessions, and the recalibration map (`npm run learn` → ZADUM_RECALIBRATION_FILE) is the queued fix —
+tempered confidences float wrongly-confident defaults back up the review order.
+
+### Greedy vs the exact optimum (2026-08-24, `npm run dp:bound -- --mock`)
+
+The runtime belief is ≤12 particles and hard conditioning can only zero particle subsets, so the reachable
+belief space is ≤2^12 states — small enough for EXACT finite-horizon DP (docs/REVIEW-2026-08-23.md §2). On the
+mock invoicing belief (16-candidate shortlist, risk units, base risk 87.42): **at the shipped 12-card budget
+greedy = optimal, ratio 100.0%** (36,823 states, 115ms). The only gaps are at tiny horizons (H=2: 86.6%,
+H=3: 95.6%, H≥5: 100%) — the DP saturates by 3 questions, greedy needs ~5. Conclusion with a proof shape
+rather than a sweep: deeper runtime search buys ≈nothing at the real budget; the selector's headroom is in the
+BELIEF (representation, calibration, diversity), not the policy. Caveats in the file header: optimality is
+w.r.t. the particle approximation under hard conditioning; live sessions use soft conditioning + resampling.
+
+### Confirm-before-building: three same-night iterations on the perturbed gold (2026-08-24, live)
+
+Milestone 34's product follow-up ("a confidence-threshold line in AGENTS.md, testable in the same harness"),
+built, measured, found wanting, rebuilt, and measured again — all against recompiled live bundles
+(`bundle-c0v2/v3`, `bundle-c12v2/v3`) of `invoicing-bookkeeping-perturbed`, judged by gpt-4.1 throughout.
+
+**Iteration 1 (passive note, capped list).** AGENTS.md listed the top-10 riskiest sub-80% defaults with
+"confirm with the owner before building against it". Inspecting the first live bundle exposed a design bug
+before any trial ran: the cap-10 risk ordering had silently dropped `identity_provider` — a **37%-confidence
+auth assumption** — exactly the below-the-fold failure the simulated-reviewer histogram predicts. Fixed: the
+list is now complete, not curated (~49 lines on a zero-card bundle, ~600 chars — cheap next to the 45k the
+spec-as-reference change removed from the required preamble).
+
+**Iteration 2 (passive note, complete list, gpt-4.1 × 42 trials).** Zero asks in every cell. gpt-4.1 built
+straight on the 37%-confidence assumption it had just been shown; controls stayed 100% default (the line costs
+nothing — and does nothing, for this model). Caveat discovered while comparing: gpt-4.1 was not in the
+original decision-probe matrix and never asks even bare (`none` arm 0 asks in our runs), so it is the wrong
+detector for an asking-protocol; but the null result stands as written.
+
+**Iteration 3 (confirm-FIRST protocol, original 4-model matrix × 84 trials).** The line became an imperative
+protocol ("your FIRST reply must be one short question confirming that decision — do not build on it until
+the owner answers"), measured on gpt-4o / Kimi-K2.5 / Sonnet 4.6 / Opus 4.8 — the models whose baseline run
+produced the 0/16-asks silencing finding. Result:
+
+| flip probes (truth ≠ default) | none | c0v3 | c12v3 |
+|---|---|---|---|
+| asks | 0% | **50%** | 6% |
+| true design | 13% | 6% | **38%** |
+| stale default | 63% | **13%** | 38% |
+
+- **The silencing is broken where the list reaches.** On `p_login` (37% assumption): 3/4 models ask at c0;
+  at c12 (still wrongly defaulted at 68%, still listed) the old run built 3/3 stale email+password — now
+  2 true + 1 ask. Building on a listed assumption without confirmation has become the minority behavior.
+- **Cards now measurably buy down owner interruptions**: asks fall 50% → 6% from c0 to c12 because the cards
+  resolved the assumptions the protocol would otherwise queue for confirmation. A new, product-shaped value
+  axis for elicitation, on top of correctness.
+- **The 0.95 blind spot is untouched, as predicted**: `payment_recording` (wrongly defaulted at 95%
+  confidence, absent from every list) still ships the stale design at c12 in every model. No threshold can
+  reach a confidently-wrong belief — that remains the recalibration/RB-mixture work's territory. (One Opus
+  c0 trial asked about it unprompted — judgment, not protocol.)
+- **Price**: control-probe asks 25% at c0 (Kimi/Opus confirming the correctly-defaulted currency assumption —
+  honest behavior toward a listed 47% assumption), 13% at c12; `c_number` 0 asks anywhere. Zero over-refusals.
+- Honest caveats: n=1 per cell (single repeat), elevated "neither" rates (mixed ask+design replies strain the
+  5-way judge rubric), and the c0 arm's 49-line assumption list is an extreme (zero-elicitation) case.
+
+**Where this leaves the countermeasure stack**: the confirm-first protocol handles listed assumptions
+(<80%); cards shrink the list; the confidently-wrong tail needs calibrated beliefs; and task-time enforcement
+(MCP `check_task`) remains the delivery vehicle that does not depend on the agent reading preamble at all.
