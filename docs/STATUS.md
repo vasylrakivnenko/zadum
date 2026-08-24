@@ -1,10 +1,10 @@
 # STATUS — resume here
 
-_Last updated: 2026-08-23 (session 1g, full correctness review + fixes — see "Correctness review" below and
-ADR-030). Next session: start at "Next steps" below._
+_Last updated: 2026-08-24 (session 1h, second correctness review + fixes — see the 1h entry in "Session log").
+Next session: start at "Next steps" below._
 
 ## TL;DR
-Core workflow + architecture of Design Sheet is built and green: `npm test` → **191 tests / 18 files** pass (incl. a
+Core workflow + architecture of Design Sheet is built and green: `npm test` → **235 tests / 23 files** pass (incl. a
 Postgres round-trip when `DATABASE_URL` is set), `npm run typecheck` clean, `npm run zadum -- --mock demo` runs the
 whole flow without credentials, and **the live LLM path works end to end on Azure OpenAI gpt-4.1** (draft 47s,
 edit, cards, compile 69s with critic 10/10). See "Live findings" below — they drove three fixes and show θ must be
@@ -44,6 +44,12 @@ and `risk` are switchable (`--scoring`), two-ply lookahead is available (`--look
 | 21 | **Multi-option cards**: up to 4 options per card (was always 2), same step-count as before (ADR-026) | ✅ live-verified, regression-tested |
 | 22 | **Rule bank** (`src/mining/rule_bank.ts` + `src/engine/rule_augment.ts`): mines archetype rule patterns from the corpus, suggests missing rules at draft time — the fix for the "0% rules recall everywhere" finding | ✅ shipped as default; live A/B: rules recall 0%→80% (ADR-027) |
 | 23 | **LLM-judge semantic recall** (`src/harness/judge.ts`): the metric fix ADR-024 called for and this session's own rule-bank A/B proved necessary | ✅ built, `--judge` flag; not yet validated against a human anchor set (ADR-028) |
+| 34 | **Decision-sensitive probes on perturbed gold** (140 trials, `src/thesis/run_decisions.ts`): selector asked only 1/5 deviating nodes in 12 cards (concentrated-belief blind spot, priced downstream); where a card landed, 3/3 agents built the TRUE design; **a wrong default silences the agent's questions (asks 2/4 → 0/16)**. Product follow-ups: confidence-threshold line in AGENTS.md; measure wrong-default catch-rate in real defaults reviews | ✅ run |
+| 33 | **The 9k handoff**: `sheet_only + AGENTS.md` (page + protocol, no compiled spec) scores **91% vs the full 53k bundle's 86%** at ~1/6 the context, 0 over-refusals; gpt-4o's best arm too. Conduct-critical handoff = one page + half a page | ✅ run |
+| 32 | **Judge validated across families**: Opus 4.8 re-judged all 671 stored replies — 93% agreement, **κ 0.85**; identical arm ordering under both judges. Human anchor set still awaiting founder labels | ✅ run |
+| 31 | **Cards-to-conduct curve** (320 trials): draft+rule-bank buys +52pp of agent conduct at ZERO cards; cards add ~4pp — conduct is bought at draft time, correctness by the cards (orthogonal value; see EVALS "curve"). v2 experiment defined: decision-sensitive probes on perturbed golds | ✅ run |
+| 30 | **Controls run** (672 trials, 7 arms): length-matched `sheet_only` (8–10k chars) scores 74% vs Spec Kit 45% — content not volume; `sheet_mismatched` falsification: flag rate collapses to 0/4 exactly where the donor bundle lacks an analogous rule. Per-provider concurrency (`keyedLimiter`), `--rejudge` cross-judge κ, blind 50-case human anchor set generated (`thesis-results/anchor-set.md` — **awaiting the founder's labels**) | ✅ run |
+| 29 | **Split-tier fast model** (`src/llm/split_tier.ts`, `ZADUM_FAST_MODEL`): fast tier can run on a different deployment; gpt-4o serves cards 1.4–1.8s warm (vs gpt-4.1 1.7–2.1s); p90 claim needs a wider sample + card-quality check before default | ✅ built + measured (n small) |
 | 28 | **Thesis test across 3 archetypes × 4 agent models, independent judge** (480 trials, 0 errors): pooled one-liner 26% / Spec Kit 46% / DLAI-SDD 51% / bundle 86%. **Opus 4.8: Spec Kit 67% vs bundle 100%** — a stronger agent does not close the gap | ✅ run |
 | 27 | **Multi-model evals**: registry + Anthropic-over-Foundry adapter (forced tool use) + `npm run models`; 5 deployments verified. **480-trial thesis matrix, 4 agent families judged by Opus 4.8: one-liner 25% / competing specs 40-47% / bundle 91%, 0 over-refusals** (ADR-031) | ✅ run |
 | 26 | **Thesis test** (`src/thesis/`, `npm run thesis`): does the bundle change what a coding agent DOES? 5 arms × 8 implicit probes × 3 repeats, live. **Bare one-liner flags 0/18 rule violations; full bundle 89% with citations; competing specs 22–28%** — see docs/EVALS.md "Thesis test" | ✅ first run (1 gold) |
@@ -154,6 +160,14 @@ are worth watching in the first live run.
    **(a) run the A/B thesis test** (was #9 below; ~a day with bundles you can already compile), then
    **(b) first real users** (web polish: fast-tier deployment for <2s p90 cards, traceability click-through,
    and the information-gain curve with recommend-and-default-accept stopping).
+0-b. **Fresh follow-ups from the 2026-08-24 controls/curve runs** (in rough order of value):
+   (a) label `thesis-results/anchor-set.md` (~15 min, founder) then `npm run thesis -- --score-anchors …` —
+   closes the judge-validation gap; (b) ~~`sheet_only + AGENTS.md` arm~~ — **done: 91% vs full bundle's 86% at 1/6 the context** (milestone 33);
+   the follow-through is a compile-output decision: ship AGENTS.md pointing at spec.md as REFERENCE rather
+   than required preamble; (c) ~~decision-sensitive probes on perturbed golds~~ — **done** (milestone 34); new follow-ups it spawned:
+   a confidence-threshold line in AGENTS.md ("confirm decisions below X% before building against them"),
+   testable in the same harness, and per-value design descriptions for multi-valued nodes (p_edit confound);
+   (d) card-quality check for `ZADUM_FAST_MODEL=gpt-4o` before making the fast tier default.
 1. **Extend the rule bank + judge validation to booking/marketplace golds** (`npm run mine:rules` already
    produced banks for both — see `catalogs/rule-bank/`). Tonight's 0%→80% result is n=1 (invoicing only); the
    next real question is whether it holds elsewhere. Also: validate the judge metric against a small human-
@@ -206,6 +220,20 @@ are worth watching in the first live run.
 - `harness-results/`, `out/`, `.zadum/` are git-ignored. Repo initialized but **nothing committed yet** (by request).
 
 ## Session log
+- 2026-08-24 s1h: second correctness review (fresh eyes over core + the uncommitted thesis/split-tier work) → 8
+  findings, all fixed with regression tests; 231 → 235 tests, typecheck clean, mock demo green. Two confirmed
+  bugs: (1) **undo burned Rule-7 slots** — answering auto-deals the follow-up card, and `undoLast` left it in
+  `session.cards`, so the re-answer pushed its node again (repro'd: 3 entries for 1 answered question; each
+  undo permanently cost a card slot and drifted `card_index`); fixed by revoking cards dealt after the undone
+  answer. (2) **`add_decision_option` never reached the belief** — `belief.nodes` is fixed at planning time, so
+  a patch-added option could never be shown, sampled, or defaulted, and answering with it threw; fixed with
+  `syncAddedOptions` on both patch paths (user edit + "other" card answer). Minors: `modify_action` now runs
+  `add_action`'s duplicate guard; `remaining_estimate`/`top` no longer count the pending card's own node;
+  `diffSheets` routes transition-table-forbidden restores through `reopen` (undo across resolved→skipped no
+  longer part-fails); thesis `--rescore`/`--rejudge` match probes by (gold, id) instead of bare id; anchor
+  sampling uses a seeded Fisher-Yates instead of `sort(() => r()-0.5)`; `DecisionProbe.design_true` doc now
+  states the control-probe convention. Mock harness re-run: same asked-node sequences, same 53% AUC — selector
+  untouched, **θ needs no recalibration**.
 - 2026-08-23 s1g: full correctness review of the whole codebase + a parallel creative technology survey
   (belief representation, exact tree/DP, ML-on-corpus, search, neuro-symbolic — see docs/REVIEW-2026-08-23.md).
   Ten defects found, all fixed with regression tests; 152 → 191 tests. Reviewed the "one big model trained on

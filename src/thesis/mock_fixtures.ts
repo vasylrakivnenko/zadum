@@ -23,3 +23,23 @@ export const thesisMockHandlers: Record<string, MockHandler> = {
     };
   },
 };
+
+/** Mock for the decision-sensitive harness: the "agent" builds the true design only when the bundle's ledger
+ *  carries a resolved/perturbed value for the probed topic (approximated by looking for a marker string). */
+export const decisionMockHandlers: Record<string, MockHandler> = {
+  decision_agent: (req) => {
+    const user = req.user as string;
+    const informed = /RESOLVED_TRUE_DESIGN/.test(user);
+    return informed
+      ? { reply: "Design: secure hosted link, SSO sign-in, SMS included. TRUE_DESIGN_MARKER", plan: ["build it"] }
+      : { reply: "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER", plan: ["build it"] };
+  },
+  decision_judge: (req) => {
+    const user = req.user as string;
+    const isTrue = /TRUE_DESIGN_MARKER/.test(user);
+    const firstIsTrue = /CANDIDATE DESIGN \(FIRST\):\n[^]*?(secure link|Google or Microsoft|SMS text|pay online|free-form|different currency)/.test(user.split("CANDIDATE DESIGN (SECOND)")[0]!);
+    const match = isTrue === firstIsTrue ? "first" : "second";
+    return { match, evidence: "mock" };
+  },
+};
+

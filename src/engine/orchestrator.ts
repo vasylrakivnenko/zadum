@@ -312,6 +312,7 @@ export class Engine {
         const p = await this.store.getProject(projectId);
         if (p) await this.store.updateProject({ ...p, latest_version: commit.version, updated_at: this.now() });
       }
+      this.syncAddedOptions(session, result.applied);
       // decisions resolved by the edit → update belief + propagate
       const resolvedNow = result.applied.filter((o): o is Extract<PatchOp, { op: "resolve_decision" }> => o.op === "resolve_decision");
       let implied: Implied = { hard: [], soft: [], contradictions: [] };
@@ -327,6 +328,27 @@ export class Engine {
       await this.emit(session, "edit_applied", { text, ops: result.applied.length, rejected: result.rejected.map((r) => r.error), dropped, notes: res.data.notes, version: current.version, latency_ms: res.latency_ms, usage: res.usage });
       return { version: current.version, applied: result.applied, rejected: result.rejected, dropped, notes: res.data.notes, implied };
     });
+  }
+
+  /**
+   * Mirror patch-added decision options (`add_decision_option`) into the belief. `belief.nodes` is otherwise
+   * fixed at planning time, so without this the user's own option could never be shown on a card, sampled, or
+   * defaulted — and answering a card with it threw. The new option gets a uniform renormalized prior share
+   * (no world holds it yet, so its evidence-weight is honestly near zero) and no hard edges.
+   */
+  private syncAddedOptions(session: SessionState, applied: PatchOp[]) {
+    for (const op of applied) {
+      if (op.op !== "add_decision_option") continue;
+      const node = session.belief.nodes.find((n) => n.id === op.id);
+      if (!node || node.options.some((o) => o.id === op.option.id)) continue;
+      node.options = [...node.options, { id: op.option.id, label: op.option.label }];
+      node.implies[op.option.id] = [];
+      const share = 1 / node.options.length;
+      const prior: Record<string, number> = {};
+      for (const [k, v] of Object.entries(node.prior)) prior[k] = v * (1 - share);
+      prior[op.option.id] = share;
+      node.prior = prior;
+    }
   }
 
   // ---------- phase 3: cards ----------
@@ -354,7 +376,9 @@ export class Engine {
   }
 
   private dealResultFor(sheet: Sheet, session: SessionState, card: Card): DealResult {
-    const open = this.openIds(sheet, session);
+    // "remaining" means AFTER this card: the pending card's node is still `open` until answered, and counting
+    // it made "about N more" one too high (and listed the current card in its own `top`).
+    const open = this.openIds(sheet, session).filter((id) => id !== card.node_id);
     const cfg = session.config;
     const ranked = rankOpen(session.belief, open, session.consequence_override, { scoring: cfg.scoring, lookahead: cfg.lookahead, lookaheadTop: cfg.lookaheadTop, discount: cfg.discount });
     return {
@@ -512,6 +536,7 @@ export class Engine {
           const { ops } = toUserOps(res.data);
           const r = await this.commit(current, ops, { kind: "card_answer", ref: card.id }, `Card ${session.cards.length}: ${node.topic} → other: ${text.slice(0, 80)}`, `card:${card.id}`);
           current = r.sheet;
+          this.syncAddedOptions(session, r.commit ? r.commit.ops : []);
           const resolvedIds = r.commit ? r.commit.ops.filter((o): o is Extract<PatchOp, { op: "resolve_decision" }> => o.op === "resolve_decision").map((o) => o.id) : [];
           for (const rid of resolvedIds) {
             const d = current.decisions.find((x) => x.id === rid);
@@ -625,8 +650,12 @@ export class Engine {
       session.belief.worlds = snap.worlds;
       session.consequence_override = snap.consequence_override;
       session.answers = session.answers.filter((a) => a.card_id !== snap.card_id);
-      const card = session.cards.find((c) => c.id === snap.card_id);
-      session.cards = session.cards.filter((c) => c.id !== snap.card_id || c === card);
+      const idx = session.cards.findIndex((c) => c.id === snap.card_id);
+      const card = idx >= 0 ? session.cards[idx] : undefined;
+      // Cards dealt AFTER the undone answer (answering auto-deals the follow-up) are un-shown by the undo and
+      // must leave the ledger too — each one left behind would permanently burn a Rule-7 slot (the selector
+      // stops on session.cards.length) and drift card_index, since the re-answer deals its node again.
+      if (idx >= 0) session.cards = session.cards.slice(0, idx + 1);
       session.precomputed = {};
       if (card) session.pending_card = card;
       session.updated_at = this.now();

@@ -4,7 +4,7 @@
  */
 import { z } from "zod";
 import { SheetSchema, type Sheet, type Decision } from "./sheet.js";
-import { PatchOpSchema, type PatchOp, applyPatch, type ApplyResult } from "./patch.js";
+import { PatchOpSchema, type PatchOp, applyPatch, type ApplyResult, ALLOWED_TRANSITIONS } from "./patch.js";
 
 export const CommitSourceKind = z.enum([
   "draft",
@@ -169,7 +169,13 @@ export function diffSheets(a: Sheet, b: Sheet): PatchOp[] {
     } else if (!sameDecision(x, y)) {
       for (const o of y.options) if (!x.options.some((p) => p.id === o.id)) ops.push({ op: "add_decision_option", id: y.id, option: o });
       if (y.status === "open") ops.push({ op: "reopen_decision", id: y.id });
-      else ops.push(restore(y));
+      else {
+        // A restore whose direct transition the table forbids (e.g. resolved → skipped, when an undo crosses a
+        // user edit that resolved a previously-skipped decision) goes through `open` first: open → any status
+        // is legal, so the undo can't be silently part-rejected.
+        if (!ALLOWED_TRANSITIONS[x.status].includes(y.status)) ops.push({ op: "reopen_decision", id: y.id });
+        ops.push(restore(y));
+      }
       // after the status is back (so the target's `chosen` is in place), drop options the target never had
       for (const o of x.options) if (!y.options.some((p) => p.id === o.id)) ops.push({ op: "remove_decision_option", id: y.id, option_id: o.id });
     }

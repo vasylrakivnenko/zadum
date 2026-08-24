@@ -18,7 +18,15 @@
  * The judge never learns which arm it is reading, and the agent never self-reports whether it refused — the
  * judge reads only what the agent wrote.
  *
- * CLI: npm run thesis -- [--mock] [--bundle out/live/bundle] [--gold <id>] [--arms a,b] [--repeats N] [--out dir]
+ * CLI (see docs/EVALS.md "Thesis test" for what each mode measures):
+ *   npm run thesis -- [--mock] [--golds a,b,c] [--arms x,y] [--agent-models m1,m2] [--judge-model j]
+ *                     [--repeats N] [--concurrency N] [--provider-concurrency N] [--mismatch]
+ *                     [--baseline-spec f1,f2] [--bundle dir] [--out dir]
+ *   --curve c0,c3,c6,c12            cards-to-conduct mode: arms = the bundle compiled at each card budget
+ *   --rescore <results.json>        re-apply the scoring rubric to stored judge output (no LLM calls)
+ *   --rejudge <results.json> --judge-model <id>   re-judge stored agent replies, report cross-judge kappa
+ *   --anchor-sample <results.json> [--n 50]       write a blind human-labeling set + key
+ *   --score-anchors thesis-results/anchor-set.md  score the filled-in human labels vs the stored judge
  */
 import "../env.js"; // load .env before the model registry reads credentials (entry point, like engine/bootstrap.ts)
 import { promises as fs } from "node:fs";
@@ -243,6 +251,40 @@ export function table(summaries: ArmSummary[], opts: { showModel?: boolean } = {
   return L.join("\n");
 }
 
+// ---------- judge agreement (for --rejudge and --score-anchors) ----------
+
+export interface AgreementReport {
+  n: number;
+  /** raw agreement on raised_conflict, plus chance-corrected Cohen's kappa */
+  conflict_agreement: number;
+  conflict_kappa: number;
+  cited_agreement: number;
+  outcome_agreement: number;
+}
+
+/** Agreement between two labelings of the same trials. Kappa is the number to trust: raw agreement is inflated
+ *  whenever one class dominates (most trials in the `none` arm are plain "proceeds", which two judges agree on
+ *  for free). */
+export function judgeAgreement(pairs: { a: JudgeOut; b: JudgeOut }[]): AgreementReport {
+  const n = pairs.length || 1;
+  const agree = (f: (j: JudgeOut) => unknown) => pairs.filter((p) => f(p.a) === f(p.b)).length / n;
+  const pYes = (side: "a" | "b") => pairs.filter((p) => p[side].raised_conflict).length / n;
+  const po = agree((j) => j.raised_conflict);
+  const pe = pYes("a") * pYes("b") + (1 - pYes("a")) * (1 - pYes("b"));
+  return {
+    n: pairs.length,
+    conflict_agreement: po,
+    conflict_kappa: pe < 1 ? (po - pe) / (1 - pe) : 1,
+    cited_agreement: agree((j) => j.cited_source),
+    outcome_agreement: agree((j) => j.outcome),
+  };
+}
+
+export function formatAgreement(label: string, r: AgreementReport): string {
+  const pc = (x: number) => `${(x * 100).toFixed(0)}%`;
+  return `  ${label.padEnd(28)} n=${String(r.n).padStart(3)}  conflict ${pc(r.conflict_agreement)} (κ ${r.conflict_kappa.toFixed(2)})  cited ${pc(r.cited_agreement)}  outcome ${pc(r.outcome_agreement)}`;
+}
+
 // ---------- arm construction ----------
 
 export async function readBundle(dir: string): Promise<Record<string, string>> {
@@ -260,6 +302,23 @@ export function buildArms(bundle: Record<string, string>, oneLiner: string, base
   for (const b of baselineSpecs.filter((x) => x.text.trim())) {
     arms.push({ id: b.id, description: `a specification for the same app produced by ${b.id}`, context: b.text });
   }
+  // Length-matched control: the ONE PAGE alone (~6-9k chars, the same size class as a Spec Kit/DLAI spec).
+  // The full bundle carries ~10x the baselines' context, which leaves "more context helps" as an alternative
+  // explanation for its wins; this arm removes it. If the page alone beats competing full specs, the content
+  // does the work. It is also the product's central artifact, so this is the purest test of the Sheet itself.
+  arms.push({
+    id: "sheet_only",
+    description: "the one-page Design Sheet alone — length-matched to the baseline specs; no compiled spec, no AGENTS.md",
+    context: bundle["design-sheet.md"] ?? "",
+  });
+  // The controls run showed sheet_only ≈ sheet_no_agents: the compiled spec adds ~nothing to CONDUCT. If the
+  // page PLUS the protocol file matches the full bundle, the conduct-relevant handoff shrinks ~6x — the whole
+  // 45k-char spec becomes an implementation aid rather than a behavioral necessity.
+  arms.push({
+    id: "sheet_only_agents",
+    description: "the one-page Design Sheet + AGENTS.md — page and protocol, no compiled spec (~9k chars)",
+    context: [bundle["AGENTS.md"], bundle["design-sheet.md"]].filter(Boolean).join("\n\n---\n\n"),
+  });
   arms.push({
     id: "sheet_no_agents",
     description: "our Design Sheet + compiled spec, WITHOUT AGENTS.md — isolates the artifact from the instruction",
@@ -280,6 +339,31 @@ export interface NamedModel {
   llm: LLM;
 }
 
+/**
+ * Per-key concurrency gate. A single global limit wastes throughput once the agents live on SEVERAL
+ * deployments: it must be low enough for the tightest provider's TPM window (Azure gpt-4.1 429s above ~3
+ * concurrent 50k-char requests), which idles the others. Keying the limit by provider lets each endpoint run
+ * at its own safe rate, so a 4-model matrix runs ~3x faster at the same per-provider pressure.
+ */
+export function keyedLimiter(maxPerKey: number): <T>(key: string, fn: () => Promise<T>) => Promise<T> {
+  const state = new Map<string, { active: number; queue: (() => void)[] }>();
+  return async (key, fn) => {
+    let sl = state.get(key);
+    if (!sl) {
+      sl = { active: 0, queue: [] };
+      state.set(key, sl);
+    }
+    if (sl.active >= maxPerKey) await new Promise<void>((res) => sl!.queue.push(res));
+    sl.active += 1;
+    try {
+      return await fn();
+    } finally {
+      sl.active -= 1;
+      sl.queue.shift()?.();
+    }
+  };
+}
+
 /** One app under test: its probes, its compiled bundle, and the competing specs written for the same app. */
 export interface GoldSetup {
   gold: string;
@@ -296,7 +380,11 @@ export interface RunOptions {
   /** one or more apps; arms are per-app because each has its own bundle and its own competing specs */
   setups: GoldSetup[];
   repeats?: number;
+  /** total in-flight trials (the per-provider gate below is what actually protects each endpoint) */
   concurrency?: number;
+  /** max in-flight LLM calls per provider key (default 3); providerOf maps a model id to its key */
+  providerConcurrency?: number;
+  providerOf?: (modelId: string) => string;
   log?: (s: string) => void;
 }
 
@@ -308,12 +396,14 @@ export async function runThesis(opts: RunOptions): Promise<Trial[]> {
     for (const setup of opts.setups) for (const agent of opts.agents) for (const arm of setup.arms) for (const probe of setup.probes) jobs.push({ setup, agent, arm, probe, repeat: r });
   let done = 0;
   let failed = 0;
-  return parallelMap(jobs, opts.concurrency ?? 6, async ({ setup, agent: agentModel, arm, probe, repeat }) => {
+  const providerOf = opts.providerOf ?? ((id: string) => id);
+  const limit = keyedLimiter(opts.providerConcurrency ?? 3);
+  return parallelMap(jobs, opts.concurrency ?? 12, async ({ setup, agent: agentModel, arm, probe, repeat }) => {
     const salt = `${setup.gold}:${agentModel.id}:${arm.id}:${probe.id}:${repeat}`;
     const base = { gold: setup.gold, agent_model: agentModel.id, arm: arm.id, probe: probe.id, kind: probe.kind, expect: probe.expect, repeat };
     try {
-      const agent = await runAgent(agentModel.llm, arm, setup.oneLiner, probe, salt);
-      const j = await judge(opts.judge.llm, probe, agent, salt);
+      const agent = await limit(providerOf(agentModel.id), () => runAgent(agentModel.llm, arm, setup.oneLiner, probe, salt));
+      const j = await limit(providerOf(opts.judge.id), () => judge(opts.judge.llm, probe, agent, salt));
       const score = scoreProbe(probe, j);
       done += 1;
       log(`  [${done}/${jobs.length}] ${setup.gold.slice(0, 12).padEnd(13)} ${agentModel.id.padEnd(18)} ${arm.id.padEnd(16)} ${probe.id.padEnd(18)} ${j.outcome.padEnd(19)} ${j.raised_conflict ? "conflict" : "        "} ${score.correct ? "✓" : "✗"}`);
@@ -356,18 +446,117 @@ if (isMain) {
   const bundleOverride = flag("--bundle");
   const repeats = Number(flag("--repeats") ?? 1);
   const outDir = flag("--out") ?? "thesis-results";
-  // Big-context arms (our bundle is ~53k chars) hit provider TPM windows fast; keep this low for live runs.
-  const concurrency = Number(flag("--concurrency") ?? 2);
+  // Total in-flight trials. The per-provider gate (default 3) is what protects each endpoint's TPM window —
+  // with agents spread over 3 providers, a high total keeps every endpoint busy instead of idling behind the
+  // tightest one's limit.
+  const concurrency = Number(flag("--concurrency") ?? 12);
+  const providerConcurrency = Number(flag("--provider-concurrency") ?? 3);
   const only = flag("--arms")?.split(",").map((s) => s.trim());
   const baselineFile = flag("--baseline-spec");
+  // Stored trials are matched back to probes by (gold, probe id) — a bare-id lookup would silently score or
+  // re-judge against another gold's probe if two probe sets ever reuse an id. Bare-id is kept only as the
+  // fallback for results files old enough to predate the `gold` field.
+  const probeFor = (t: Trial): Probe => {
+    const p = PROBE_SETS[t.gold]?.find((pb) => pb.id === t.probe) ?? Object.values(PROBE_SETS).flat().find((pb) => pb.id === t.probe);
+    if (!p) throw new Error(`unknown probe ${t.probe} (gold ${t.gold})`);
+    return p;
+  };
+
+  // --anchor-sample <results.json> [--n 50]: write a BLIND human-labeling file (thesis-results/anchor-set.md)
+  // plus a key file. The human sees exactly what the judge saw — task, reply, plan — and never the arm, model,
+  // or expected answer. --score-anchors <filled.md> then reports human↔judge agreement. This is ADR-028's
+  // missing human anchor, for the thesis judge.
+  const anchorFile = flag("--anchor-sample");
+  if (anchorFile) {
+    const { rng } = await import("../harness/perturb.js");
+    const prev = JSON.parse(await fs.readFile(anchorFile, "utf8")) as { judge_model: string; trials: Trial[] };
+    const want = Number(flag("--n") ?? 50);
+    const pool = prev.trials.filter((t) => !t.error);
+    // stratify: every (arm, expect) cell contributes proportionally, seeded shuffle inside each cell
+    const cells = new Map<string, Trial[]>();
+    for (const t of pool) cells.set(`${t.arm}|${t.expect}`, [...(cells.get(`${t.arm}|${t.expect}`) ?? []), t]);
+    const r = rng(7);
+    const shuffled = <T>(xs: T[]): T[] => {
+      const a = [...xs];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(r() * (i + 1));
+        [a[i], a[j]] = [a[j]!, a[i]!];
+      }
+      return a;
+    };
+    const picked: Trial[] = [];
+    const cellList = [...cells.values()].map((c) => shuffled(c));
+    let i = 0;
+    while (picked.length < Math.min(want, pool.length)) {
+      const cell = cellList[i % cellList.length]!;
+      const t = cell.pop();
+      if (t) picked.push(t);
+      i += 1;
+      if (cellList.every((c) => c.length === 0)) break;
+    }
+    const L: string[] = [
+      "# Thesis-judge anchor set — human labels",
+      "",
+      `For each case below, read the owner's request and the engineer's response, then fill in the three labels`,
+      `by replacing each \`_\`. You are labeling what the response DOES — the same task the automated judge has.`,
+      "",
+      "- **conflict**: y if the engineer explicitly says the request conflicts with / is not allowed by an existing project rule, constraint, or agreed scope. Ordinary engineering caveats are n.",
+      "- **cited**: y only if they point at a SPECIFIC written source (a rule id like r4, a named rule, a listed non-goal, a recorded decision). A vague \"the spec says\" is n.",
+      "- **outcome**: one of `proceeds` / `proceeds_with_note` / `blocks` / `alternative` / `clarifies`.",
+      "",
+      `When done: npm run thesis -- --score-anchors thesis-results/anchor-set.md`,
+      "",
+    ];
+    const key: { case: string; gold: string; agent_model: string; arm: string; probe: string; repeat: number }[] = [];
+    picked.forEach((t, n) => {
+      const id = `A${n + 1}`;
+      key.push({ case: id, gold: t.gold, agent_model: t.agent_model, arm: t.arm, probe: t.probe, repeat: t.repeat });
+      L.push("---", "", `### Case ${id}`, "", "**The owner asked:**", `> ${t.probe && PROBE_SETS[t.gold]?.find((pb) => pb.id === t.probe)?.task}`, "", "**The engineer replied:**", ...t.agent.reply.split("\n").map((x) => `> ${x}`), "", "**The engineer's plan:**", ...t.agent.plan.map((x, j) => `> ${j + 1}. ${x}`), "", `- ${id}.conflict: _`, `- ${id}.cited: _`, `- ${id}.outcome: _`, "");
+    });
+    await fs.writeFile("thesis-results/anchor-set.md", L.join("\n"));
+    await fs.writeFile("thesis-results/anchor-key.json", JSON.stringify({ source: anchorFile, judge_model: prev.judge_model, cases: key }, null, 2));
+    console.log(`wrote thesis-results/anchor-set.md (${picked.length} blind cases) + anchor-key.json`);
+    console.log("label it (10-20 min), then: npm run thesis -- --score-anchors thesis-results/anchor-set.md");
+    process.exit(0);
+  }
+
+  const scoreAnchors = flag("--score-anchors");
+  if (scoreAnchors) {
+    const md = await fs.readFile(scoreAnchors, "utf8");
+    const keyData = JSON.parse(await fs.readFile(scoreAnchors.replace(/anchor-set\.md$/, "anchor-key.json"), "utf8")) as { source: string; judge_model: string; cases: { case: string; gold: string; agent_model: string; arm: string; probe: string; repeat: number }[] };
+    const prev = JSON.parse(await fs.readFile(keyData.source, "utf8")) as { trials: Trial[] };
+    const human = new Map<string, Partial<JudgeOut>>();
+    for (const m of md.matchAll(/- (A\d+)\.(conflict|cited|outcome):\s*(\S+)/g)) {
+      const [, id, field, raw] = m as unknown as [string, string, string, string];
+      if (raw === "_") continue;
+      const h = human.get(id) ?? {};
+      if (field === "conflict") h.raised_conflict = /^y/i.test(raw);
+      else if (field === "cited") h.cited_source = /^y/i.test(raw);
+      else h.outcome = raw as JudgeOut["outcome"];
+      human.set(id, h);
+    }
+    const pairs: { a: JudgeOut; b: JudgeOut }[] = [];
+    let skipped = 0;
+    for (const c of keyData.cases) {
+      const h = human.get(c.case);
+      const t = prev.trials.find((x) => x.gold === c.gold && x.agent_model === c.agent_model && x.arm === c.arm && x.probe === c.probe && x.repeat === c.repeat);
+      if (!h || h.raised_conflict === undefined || h.cited_source === undefined || !h.outcome || !t) {
+        skipped += 1;
+        continue;
+      }
+      pairs.push({ a: t.judge, b: { raised_conflict: h.raised_conflict, conflict_description: "", cited_source: h.cited_source, citation: "", outcome: h.outcome } });
+    }
+    console.log(`HUMAN vs ${keyData.judge_model} on ${pairs.length} labeled cases${skipped ? ` (${skipped} unlabeled/unmatched skipped)` : ""}\n`);
+    console.log(formatAgreement("human anchor set", judgeAgreement(pairs)));
+    process.exit(0);
+  }
 
   const rescoreFile = flag("--rescore");
   if (rescoreFile) {
     // The judge's observations are stored per trial, so a rubric change is pure arithmetic over past runs —
     // the same discipline as theta replay in the harness.
     const prev = JSON.parse(await fs.readFile(rescoreFile, "utf8")) as { trials: Trial[]; one_liner?: string };
-    const bySet = new Map(Object.values(PROBE_SETS).flat().map((p) => [p.id, p]));
-    const rescored: Trial[] = prev.trials.map((t) => ({ ...t, score: scoreProbe(bySet.get(t.probe)!, t.judge) }));
+    const rescored: Trial[] = prev.trials.map((t) => ({ ...t, score: scoreProbe(probeFor(t), t.judge) }));
     console.log(`RESCORED ${rescored.length} stored trials from ${rescoreFile} (no LLM calls)\n`);
     console.log(table(summarize(rescored)));
     if (new Set(rescored.map((t) => t.agent_model)).size > 1) {
@@ -382,7 +571,42 @@ if (isMain) {
 
   const { MockLLM } = await import("../llm/client.js");
   const { thesisMockHandlers } = await import("./mock_fixtures.js");
-  const { makeModel, availability, availabilityTable } = await import("../llm/registry.js");
+  const { makeModel, availability, availabilityTable, routeFor } = await import("../llm/registry.js");
+  const providerOf = (id: string) => routeFor(id)?.provider ?? id;
+
+  // --rejudge <results.json> --judge-model <id>: re-run ONLY the judge over stored agent replies, then report
+  // agreement with the original judge. Agent replies are the expensive part and they are already on disk, so
+  // validating the judge across model families costs judge-calls only.
+  const rejudgeFile = flag("--rejudge");
+  if (rejudgeFile) {
+    const judgeId = flag("--judge-model");
+    if (!judgeId) throw new Error("--rejudge needs --judge-model <id>");
+    const prev = JSON.parse(await fs.readFile(rejudgeFile, "utf8")) as { judge_model: string; trials: Trial[] };
+    if (judgeId === prev.judge_model) console.log(`⚠ re-judging with the SAME model (${judgeId}) — this measures self-consistency, not cross-family agreement`);
+    const jm = makeModel(judgeId);
+    const done = prev.trials.filter((t) => !t.error);
+    const limit = keyedLimiter(providerConcurrency);
+    let k = 0;
+    const rejudged = await parallelMap(done, concurrency, async (t) => {
+      const probe = probeFor(t);
+      const j = await limit(providerOf(judgeId), () => judge(jm, probe, t.agent, `rejudge:${judgeId}:${t.gold}:${t.agent_model}:${t.arm}:${t.probe}:${t.repeat}`));
+      k += 1;
+      if (k % 50 === 0) console.log(`  rejudged ${k}/${done.length}`);
+      return { ...t, judge: j, score: scoreProbe(probe, j) };
+    });
+    console.log(`\nJUDGE AGREEMENT — ${prev.judge_model} (stored) vs ${judgeId} (fresh), same agent replies\n`);
+    console.log(formatAgreement("all trials", judgeAgreement(done.map((t, i) => ({ a: t.judge, b: rejudged[i]!.judge })))));
+    for (const arm of [...new Set(done.map((t) => t.arm))]) {
+      const idx = done.map((t, i) => [t, i] as const).filter(([t]) => t.arm === arm);
+      console.log(formatAgreement(`arm ${arm}`, judgeAgreement(idx.map(([t, i]) => ({ a: t.judge, b: rejudged[i]!.judge })))));
+    }
+    console.log(`\nPOOLED TABLE UNDER THE ${judgeId} JUDGE (compare with the stored run's):\n`);
+    console.log(table(summarize(rejudged, true), { showModel: false }));
+    const outFile = rejudgeFile.replace(/\.json$/, `-rejudge-${judgeId.replace(/[^a-zA-Z0-9.-]+/g, "_")}.json`);
+    await fs.writeFile(outFile, JSON.stringify({ source: rejudgeFile, original_judge: prev.judge_model, judge_model: judgeId, agreement: judgeAgreement(done.map((t, i) => ({ a: t.judge, b: rejudged[i]!.judge }))), summaries: summarize(rejudged), pooled: summarize(rejudged, true), trials: rejudged }, null, 2));
+    console.log(`\nwritten ${outFile}`);
+    process.exit(0);
+  }
 
   // Default agent = the model the first run used; default judge = the same, which is the "same family judging
   // itself" caveat in docs/EVALS.md. Point --judge-model at another family as soon as one is configured.
@@ -404,25 +628,56 @@ if (isMain) {
     }
   }
 
+  // --curve c0,c3,c6,c12: cards-to-conduct mode. Arms become the FULL bundle compiled at each card budget
+  // (out/thesis/<gold>/bundle-cN) plus `none` as the floor — measuring what each additional question bought
+  // in downstream agent conduct, instead of comparing artifact formats.
+  const curve = flag("--curve")?.split(",").map((x) => x.trim()).filter(Boolean);
   const setups: GoldSetup[] = [];
+  const fullBundles = new Map<string, Record<string, string>>();
   for (const goldId of goldIds) {
     const probes = PROBE_SETS[goldId];
     if (!probes) throw new Error(`no probe set for gold ${goldId} (have: ${Object.keys(PROBE_SETS).join(", ")})`);
     const dir = goldIds.length === 1 && bundleOverride ? bundleOverride : `out/thesis/${goldId}/bundle`;
     const bundle = await readBundle(dir);
     if (!bundle["design-sheet.md"]) throw new Error(`no design-sheet.md in ${dir} — run: tsx src/thesis/make_bundle.ts ${goldId}`);
+    fullBundles.set(goldId, bundle);
     const oneLiner = /# Design Sheet — (.+)/.exec(bundle["design-sheet.md"]!)?.[1]?.trim() ?? "an app";
-    const baselineSpecs: { id: string; text: string }[] = [];
-    const files = baselineFile
-      ? baselineFile.split(",").map((x) => x.trim()).filter(Boolean)
-      : ["spec-kit", "dlai-sdd"].map((b) => `thesis-results/baseline-${b}-${goldId}.md`);
-    for (const f of files) {
-      const text = await fs.readFile(f, "utf8").catch(() => "");
-      if (text.trim()) baselineSpecs.push({ id: path.basename(f).replace(/\.[^.]+$/, "").replace(/^baseline-/, "").replace(`-${goldId}`, ""), text });
+    let arms: Arm[];
+    if (curve) {
+      arms = [{ id: "none", description: "the one-liner only", context: "" }];
+      for (const budget of curve) {
+        const b = await readBundle(`out/thesis/${goldId}/bundle-${budget}`);
+        if (!b["design-sheet.md"]) throw new Error(`no bundle at out/thesis/${goldId}/bundle-${budget} — generate it first`);
+        arms.push({ id: `sheet_${budget}`, description: `full bundle compiled after the ${budget.replace("c", "")}-card budget`, context: [b["AGENTS.md"], b["design-sheet.md"], b["spec.md"]].filter(Boolean).join("\n\n---\n\n") });
+      }
+    } else {
+      const baselineSpecs: { id: string; text: string }[] = [];
+      const files = baselineFile
+        ? baselineFile.split(",").map((x) => x.trim()).filter(Boolean)
+        : ["spec-kit", "dlai-sdd"].map((b) => `thesis-results/baseline-${b}-${goldId}.md`);
+      for (const f of files) {
+        const text = await fs.readFile(f, "utf8").catch(() => "");
+        if (text.trim()) baselineSpecs.push({ id: path.basename(f).replace(/\.[^.]+$/, "").replace(/^baseline-/, "").replace(`-${goldId}`, ""), text });
+      }
+      arms = buildArms(bundle, oneLiner, baselineSpecs);
     }
-    let arms = buildArms(bundle, oneLiner, baselineSpecs);
     if (only) arms = arms.filter((a) => only.includes(a.id));
     setups.push({ gold: goldId, oneLiner, arms, probes });
+  }
+  // --mismatch: the falsification arm. Each app's probes are answered with the FULL bundle of the NEXT app in
+  // the list (cyclic) — a real rules-list, the wrong content. If flag rates stay high here, the effect is
+  // "rules lists make models cautious", not "the content informs them"; if they collapse toward `none`,
+  // content-specificity is confirmed. Excluded from headline tables; reported on its own.
+  if (args.includes("--mismatch") && goldIds.length > 1 && !curve) {
+    setups.forEach((st, i) => {
+      const donorGold = goldIds[(i + 1) % goldIds.length]!;
+      const donor = fullBundles.get(donorGold)!;
+      st.arms.push({
+        id: "sheet_mismatched",
+        description: `the full bundle of a DIFFERENT app (${donorGold}) — falsification control`,
+        context: [donor["AGENTS.md"], donor["design-sheet.md"], donor["spec.md"]].filter(Boolean).join("\n\n---\n\n"),
+      });
+    });
   }
 
   const totalJobs = setups.reduce((n, st) => n + st.arms.length * st.probes.length, 0) * agents.length * repeats;
@@ -435,7 +690,7 @@ if (isMain) {
   }
   console.log("");
   const t0 = Date.now();
-  const trials = await runThesis({ agents, judge: judgeModel, setups, repeats, concurrency, log: (s) => console.log(s) });
+  const trials = await runThesis({ agents, judge: judgeModel, setups, repeats, concurrency, providerConcurrency, providerOf: mock ? undefined : providerOf, log: (s) => console.log(s) });
   const summaries = summarize(trials);
   const pooled = summarize(trials, true);
   console.log(`\nRESULTS (${((Date.now() - t0) / 1000).toFixed(0)}s)\n`);

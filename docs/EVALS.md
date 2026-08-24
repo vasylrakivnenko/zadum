@@ -480,3 +480,179 @@ against human labels (ADR-028), and the bundle carries ~10× the context of the 
 the product, not a controlled variable. A length-matched control (Sheet rules only, no compiled spec) is the
 honest next step.
 
+### Controls run: length-matched, falsification, and a widened matrix (2026-08-24, 672 trials)
+
+The two controls the previous run said it needed, plus everything at once: 3 apps × **7 arms** × 8 probes ×
+4 agent models, gpt-4.1 judging (independent of every agent). 671/672 trials completed (one gpt-4o 429 past
+its retries — contained, excluded, counted). New arms:
+
+- **`sheet_only`** — the one-page Design Sheet alone, 8–10k chars, the same size class as the baseline specs.
+  The length-matched control the earlier runs lacked.
+- **`sheet_mismatched`** — the full bundle of a DIFFERENT app (cyclic across the three golds). Falsification:
+  if agents flag violations with the wrong rules in hand, the effect would be generic caution, not content.
+
+**Pooled headline** (671 trials):
+
+| metric | none | spec-kit | dlai-sdd | **sheet_only** | sheet_no_agents | **sheet** | mismatched |
+|---|---|---|---|---|---|---|---|
+| appropriate | 26% | 45% | 54% | **74%** | 70% | **86%** | 65% |
+| flagged (violation probes) | 1% | 28% | 39% | 67% | 62% | **85%** | 56% |
+| flagged **with citation** | 0% | 14% | 26% | **64%** | 60% | **85%** | 56% |
+| over-refusal (benign) | 0% | 4% | 0% | 0% | 0% | 8%* | 4% |
+
+**Findings.**
+1. **The length objection is closed.** At comparable size, the one page scores 74% vs Spec Kit's 45% and
+   DLAI-SDD's 54% — and cites specific sources 64% vs their 14–26%. Content, not volume. More striking:
+   `sheet_only` (8–10k chars) ≈ `sheet_no_agents` (52–67k chars) — **the 45k chars of compiled spec add
+   roughly nothing to agent *conduct***. The conduct value lives in the one page; the compiled spec's value is
+   implementation detail (data model, scenarios), not rule-following. Direct product implication worth its own
+   experiment: a `sheet_only + AGENTS.md` arm (~9k chars) might match the full bundle at 1/6 the context.
+2. **The falsification control reads as a natural experiment, not a simple pass/fail.** Mismatched-bundle flag
+   rate is 56% — high — but inspection shows why: the three apps SHARE archetype-typical constraints (every
+   one bans in-app payments in v1, restricts client edits, defers automation), and agents flagged by citing
+   the *donor bundle's own rule ids* (booking's `g2` against the invoicing pay-by-card probe). Those are
+   genuinely applicable rules from the "wrong" document — correct behaviour. The clean cell is
+   `v1_overpayment`, whose integrity invariant has NO analogue in the donor bundle: **0/4 flagged mismatched
+   vs 3/4 with the correct bundle**. Agents flag exactly when the text in front of them contains an applicable
+   constraint — they read the rules; they don't pattern-match "rules exist, be cautious". Mismatched
+   over-refusal stayed at 4%, so wrong docs did not induce paranoia either.
+3. **The gpt-4o profile sharpened**: none 25% → sheet_only 33% → sheet_no_agents 25% → sheet 71%. It cannot
+   use the artifact without the instruction at any size, and with the instruction it obeys. Capable models
+   (Sonnet 92%, Opus 96–100%, Kimi 75–88%) extract the constraints from the page alone.
+4. *The 8% `sheet` over-refusal is two trials, both on `b2_ach_payment`, and both defensible: the bundle's
+   defaulted decision says "no partial payments — paid in full or not", and the probe asks to record an
+   arbitrary received amount, so Kimi and Sonnet constraining the design to exact-amount payments is
+   probe-adjacency to rule r4, not paranoia. Recorded as a probe-design note rather than a failure of the arms.
+
+Ordering across all seven arms was identical in all three apps.
+
+### The cards-to-conduct curve (2026-08-24, 320 trials) — and what it honestly says
+
+The bridge experiment between the two eval families: the same app compiled after a **0 / 3 / 6 / 12-card
+budget** (θ disabled so the budget binds; live bundles, sim-user answers from the gold), each bundle run
+through the thesis test. 2 apps × 5 arms × 8 probes × 4 agents, gpt-4.1 judging; 316/320 clean.
+
+| metric (pooled) | none | c0 | c3 | c6 | c12 |
+|---|---|---|---|---|---|
+| appropriate | 27% | **78%** | 77% | 78% | 82% |
+| flagged w/ citation | 0% | 67% | 69% | 71% | 76% |
+| over-refusal | 0% | 0% | 0% | 0% | 0% |
+
+**The curve is flat after zero.** The draft-stage bundle buys +52pp of agent conduct; twelve cards of
+elicitation add ~4pp (within per-cell noise, n=16). This is a REAL and useful finding, and the mechanism is
+visible in the artifacts: the Rules and Not-yet lists — the thing conduct probes test — are written by the
+**drafter and the rule bank at draft time** (10 rules in the c0 sheet vs 11 in the c12 sheet). Cards resolve
+**decisions**, and a conduct probe cannot see a wrong-but-internally-consistent decision: a bundle that
+defaulted "invoice numbering: sequential" when the founder needed per-client numbering produces an agent that
+builds the wrong numbering *without violating anything*.
+
+**So the two eval families measure orthogonal value, and the product story splits cleanly:**
+- **Conduct (rules respected, scope defended) is bought at draft time** — by the drafter and the mined rule
+  bank. That pillar stands after zero questions, which also means the `quick` thoroughness mode loses little
+  conduct-wise.
+- **Correctness (the right decisions in the spec) is bought by the cards** — measured by recovery, where the
+  engine beats Spec Kit/DLAI-SDD on every archetype. The curve does NOT devalue elicitation; it shows conduct
+  probes are the wrong instrument for it.
+
+**The experiment this calls for (v2):** decision-sensitive probes on *perturbed* golds. Perturb a gold so the
+truth contradicts the priors (the machinery exists — `perturbGold`), compile c0 vs c12 bundles, then ask the
+agent to build features whose correct design depends on the perturbed decisions and judge WHICH design it
+builds. c0 should confidently build the wrong-default design; c12 the corrected one. That is the downstream
+measurement of what a card is worth — "wrong-spec-followed" rate vs cards asked — and closes the loop the
+conduct curve cannot.
+
+### Judge validation: cross-family agreement (2026-08-24)
+
+`--rejudge` re-ran ONLY the judge (Claude Opus 4.8) over the 671 stored agent replies from the controls run —
+the expensive half stayed on disk, so validating the judge across families cost judge-calls only.
+
+**gpt-4.1 vs Opus 4.8, same replies: 93% raw agreement on conflict-raised, κ = 0.85** (almost-perfect band);
+cited-source 91%, outcome 87%. Per-arm κ 0.75–0.89 everywhere the statistic is defined (the `none` arm shows
+κ≈0 at 99% raw agreement — a degenerate cell: almost nothing is flagged there, so there is no positive class
+for kappa to correct; the raw number is the informative one).
+
+**Every finding is judge-robust.** Under the Opus judge the pooled table keeps the identical ordering — none
+25%, spec-kit 49%, dlai-sdd 60%, sheet_only 69%, sheet_no_agents 71%, **sheet 91%** — and the length-matched
+conclusion holds under both judges (sheet_only beats spec-kit by +20pp under Opus, +29pp under gpt-4.1). The
+remaining validation layer is human: `thesis-results/anchor-set.md` (50 blind cases) awaits the founder's
+labels; `--score-anchors` reports human↔judge κ.
+
+One nuance the cross-judge view surfaced: Opus reads slightly more of the mismatched-arm replies as
+"caveated" (22% benign-caveat vs gpt-4.1's lower read) — consistent with the mismatch arm's replies being
+genuinely harder to classify. Nothing changes sign.
+
+### The 9k-char handoff: `sheet_only + AGENTS.md` (2026-08-24, 96 trials)
+
+The follow-up the controls run demanded: if the compiled spec adds nothing to conduct, does page + protocol
+match the full bundle? Same 3 golds × 8 probes × 4 agents × gpt-4.1 judge as the controls run, so the numbers
+are directly comparable (n=96 per arm everywhere):
+
+| arm | chars | appropriate | flagged | w/ citation | over-refusal |
+|---|---|---|---|---|---|
+| sheet_only (page alone) | 8–12k | 74% | 67% | 64% | 0% |
+| **sheet_only_agents (page + AGENTS.md)** | **9–12k** | **91%** | **88%** | **86%** | **0%** |
+| sheet (full 53–68k bundle) | 53–68k | 86% | 85% | 85% | 8%* |
+
+**Page + protocol matches the full bundle** (91% vs 86% — within noise at this n, and nominally ahead) at
+**~1/6 the context**, with zero over-refusals. Per model: Sonnet 100%, Opus 100%, Kimi 96% — and gpt-4o at
+67%, its best score in any arm (vs 71% on the full bundle previously; both reads: the instruction is what
+gpt-4o needs, and the 45k chars of spec were costing it as much as they gave).
+
+**Product implication (the cheapest big win of the whole benchmark):** the conduct-critical handoff is
+`design-sheet.md + AGENTS.md` — one page and half a page. `spec.md` remains valuable as implementation
+content (data model, scenarios, journeys) but is not what makes an agent respect the rules; AGENTS.md should
+tell agents to consult it as reference rather than requiring it as preamble. Smaller handoff also means:
+lower per-task token cost for every downstream agent call, less context competing with the user's actual
+task, and a bundle that fits models with small context windows.
+
+### Decision-sensitive probes on a perturbed gold (2026-08-24, 140 trials) — what a card is worth downstream, and what a wrong default costs
+
+The curve-v2 experiment. Gold: `invoicing-bookkeeping-perturbed` (4 hard-edge-validated flips on
+frequently-asked nodes — SSO-only login, hosted-link delivery, edit-in-place after send, email+SMS reminders —
+plus the base gold's natural payment-recording deviation and 2 never-asked controls). Bundles compiled live at
+c0/c3/c6/c12 (θ disabled). Each probe is a natural build request whose correct design hinges on one decision;
+a blind judge (arm-blind, candidate order salt-randomized) reports which of two concrete designs the agent
+built. Harness: `src/thesis/run_decisions.ts`. 138/140 clean (two gpt-4o 429s contained).
+
+**Pre-registered check, from the bundle ledgers before any trial ran: across 12 cards the selector asked about
+only ONE of the five deviating nodes** (delivery). The rest sat at confidently-wrong defaults through the whole
+budget — the belief was concentrated and wrong, so VOI never ranked them. This is the concentrated-belief blind
+spot (ADR-020's phenomenon) now priced downstream:
+
+| node (truth deviates) | asked by c12? | agent's design at c12 |
+|---|---|---|
+| invoice_delivery | **yes** | **3/3 build the TRUE design** (hosted link, no PDF) |
+| identity_provider | no | 3/3 build stale email+password auth |
+| notifications | no | 4/4 build email-only reminders |
+| payment_recording | no | 4/4 build manual-entry only |
+| edit_after_send | no | (confounded — see below) |
+
+**Findings.**
+1. **Where a card lands, it converts fully downstream.** The one resolved deviation produced 3/3 true designs
+   at c12 vs 0-1/4 in every other arm — the instrument works end-to-end, and a card that hits a wrong default
+   is worth a correct downstream build.
+2. **A wrong default is worse than no spec — it silences the question.** On payment recording, agents with NO
+   context asked the owner 2/4 times (and once guessed the modern answer correctly); with ANY bundle they asked
+   **0/16** times and built the stale manual-only design 16/16. The document's authority suppresses the agent's
+   own judgment and its clarifying questions. Every wrongly-defaulted decision ships with that multiplier.
+3. **Controls clean**: bundle arms build the (correct) default ~90-100% on the two control probes; the `none`
+   arm is scattered (asks/unclear), as an uninformed agent should be.
+4. **Instrument note (honest):** `p_edit` is confounded — the node has THREE values and the intermediate
+   default (`editable_until_paid`) matches the "edit directly" design description for unpaid invoices, so its
+   Ts at c3/c6 are an artifact of squeezing a 3-valued node into a 2-design probe. Multi-valued nodes need one
+   design description per value.
+
+**What this means for the product (the punchline of the whole eval program):**
+- The elicitation loop's weak point is not question QUALITY but question TARGETING: cards go where sampled
+  worlds disagree, and a confidently-wrong belief never disagrees. The fixes are exactly the queued selector
+  work — better belief representation (mixture/RB), learned priors — plus the two product surfaces built for
+  this: the **correction moment** and the **defaults review** (riskiest-first). The harness auto-accepts
+  defaults; a real user reviewing "payment recording: manual (95%)" is the intended catch. Measuring how often
+  real users catch wrong defaults in review is now the single most important number the first user sessions
+  can produce.
+- Combined with the conduct results: the bundle's authority is a double-edged sword — it makes agents respect
+  rules (86-91% conduct) AND makes them trust wrong defaults without asking (0/16 asks). Calibrated confidence
+  markers in the sheet (the ledger already carries them: "(95%)") could be surfaced to the coding agent —
+  "decisions below X% confidence: confirm with the owner before building against them" is a one-line AGENTS.md
+  change with a measurable downstream effect, testable in this same harness.
+

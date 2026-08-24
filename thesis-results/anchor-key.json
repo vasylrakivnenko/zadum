@@ -1,0 +1,406 @@
+{
+  "source": "thesis-results/2026-08-24T01-27-28-195Z.json",
+  "judge_model": "gpt-4.1",
+  "cases": [
+    {
+      "case": "A1",
+      "gold": "marketplace-services",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "none",
+      "probe": "v1_review_before_done",
+      "repeat": 0
+    },
+    {
+      "case": "A2",
+      "gold": "marketplace-services",
+      "agent_model": "claude-opus-4-8",
+      "arm": "none",
+      "probe": "b2_booking_status_view",
+      "repeat": 0
+    },
+    {
+      "case": "A3",
+      "gold": "booking-salon",
+      "agent_model": "Kimi-K2.5",
+      "arm": "spec-kit",
+      "probe": "v1_double_book",
+      "repeat": 0
+    },
+    {
+      "case": "A4",
+      "gold": "booking-salon",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "spec-kit",
+      "probe": "b2_client_history",
+      "repeat": 0
+    },
+    {
+      "case": "A5",
+      "gold": "marketplace-services",
+      "agent_model": "gpt-4o",
+      "arm": "dlai-sdd",
+      "probe": "v4_instant_listing",
+      "repeat": 0
+    },
+    {
+      "case": "A6",
+      "gold": "booking-salon",
+      "agent_model": "gpt-4o",
+      "arm": "dlai-sdd",
+      "probe": "b2_client_history",
+      "repeat": 0
+    },
+    {
+      "case": "A7",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-opus-4-8",
+      "arm": "sheet_only",
+      "probe": "v1_overpayment",
+      "repeat": 0
+    },
+    {
+      "case": "A8",
+      "gold": "booking-salon",
+      "agent_model": "gpt-4o",
+      "arm": "sheet_only",
+      "probe": "b2_client_history",
+      "repeat": 0
+    },
+    {
+      "case": "A9",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "sheet_no_agents",
+      "probe": "s2_card_payments",
+      "repeat": 0
+    },
+    {
+      "case": "A10",
+      "gold": "marketplace-services",
+      "agent_model": "gpt-4o",
+      "arm": "sheet_no_agents",
+      "probe": "b2_booking_status_view",
+      "repeat": 0
+    },
+    {
+      "case": "A11",
+      "gold": "booking-salon",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "sheet",
+      "probe": "v4_book_any_time",
+      "repeat": 0
+    },
+    {
+      "case": "A12",
+      "gold": "booking-salon",
+      "agent_model": "claude-opus-4-8",
+      "arm": "sheet",
+      "probe": "b1_day_filter",
+      "repeat": 0
+    },
+    {
+      "case": "A13",
+      "gold": "marketplace-services",
+      "agent_model": "gpt-4o",
+      "arm": "sheet_mismatched",
+      "probe": "v3_apply_outside_area",
+      "repeat": 0
+    },
+    {
+      "case": "A14",
+      "gold": "marketplace-services",
+      "agent_model": "Kimi-K2.5",
+      "arm": "sheet_mismatched",
+      "probe": "b1_filter_open_requests",
+      "repeat": 0
+    },
+    {
+      "case": "A15",
+      "gold": "marketplace-services",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "none",
+      "probe": "v4_instant_listing",
+      "repeat": 0
+    },
+    {
+      "case": "A16",
+      "gold": "marketplace-services",
+      "agent_model": "claude-opus-4-8",
+      "arm": "none",
+      "probe": "b1_filter_open_requests",
+      "repeat": 0
+    },
+    {
+      "case": "A17",
+      "gold": "booking-salon",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "spec-kit",
+      "probe": "v3_edit_paid_appointment",
+      "repeat": 0
+    },
+    {
+      "case": "A18",
+      "gold": "booking-salon",
+      "agent_model": "claude-opus-4-8",
+      "arm": "spec-kit",
+      "probe": "b2_client_history",
+      "repeat": 0
+    },
+    {
+      "case": "A19",
+      "gold": "marketplace-services",
+      "agent_model": "claude-opus-4-8",
+      "arm": "dlai-sdd",
+      "probe": "v1_review_before_done",
+      "repeat": 0
+    },
+    {
+      "case": "A20",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "dlai-sdd",
+      "probe": "b1_overdue_filter",
+      "repeat": 0
+    },
+    {
+      "case": "A21",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "gpt-4o",
+      "arm": "sheet_only",
+      "probe": "v1_overpayment",
+      "repeat": 0
+    },
+    {
+      "case": "A22",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "sheet_only",
+      "probe": "b2_ach_payment",
+      "repeat": 0
+    },
+    {
+      "case": "A23",
+      "gold": "marketplace-services",
+      "agent_model": "claude-opus-4-8",
+      "arm": "sheet_no_agents",
+      "probe": "v2_self_close_dispute",
+      "repeat": 0
+    },
+    {
+      "case": "A24",
+      "gold": "booking-salon",
+      "agent_model": "claude-opus-4-8",
+      "arm": "sheet_no_agents",
+      "probe": "b1_day_filter",
+      "repeat": 0
+    },
+    {
+      "case": "A25",
+      "gold": "booking-salon",
+      "agent_model": "gpt-4o",
+      "arm": "sheet",
+      "probe": "v1_double_book",
+      "repeat": 0
+    },
+    {
+      "case": "A26",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "sheet",
+      "probe": "b1_overdue_filter",
+      "repeat": 0
+    },
+    {
+      "case": "A27",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "Kimi-K2.5",
+      "arm": "sheet_mismatched",
+      "probe": "v1_overpayment",
+      "repeat": 0
+    },
+    {
+      "case": "A28",
+      "gold": "booking-salon",
+      "agent_model": "Kimi-K2.5",
+      "arm": "sheet_mismatched",
+      "probe": "b2_client_history",
+      "repeat": 0
+    },
+    {
+      "case": "A29",
+      "gold": "booking-salon",
+      "agent_model": "Kimi-K2.5",
+      "arm": "none",
+      "probe": "v4_book_any_time",
+      "repeat": 0
+    },
+    {
+      "case": "A30",
+      "gold": "marketplace-services",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "none",
+      "probe": "b2_booking_status_view",
+      "repeat": 0
+    },
+    {
+      "case": "A31",
+      "gold": "booking-salon",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "spec-kit",
+      "probe": "v1_double_book",
+      "repeat": 0
+    },
+    {
+      "case": "A32",
+      "gold": "marketplace-services",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "spec-kit",
+      "probe": "b2_booking_status_view",
+      "repeat": 0
+    },
+    {
+      "case": "A33",
+      "gold": "booking-salon",
+      "agent_model": "Kimi-K2.5",
+      "arm": "dlai-sdd",
+      "probe": "v1_double_book",
+      "repeat": 0
+    },
+    {
+      "case": "A34",
+      "gold": "marketplace-services",
+      "agent_model": "Kimi-K2.5",
+      "arm": "dlai-sdd",
+      "probe": "b2_booking_status_view",
+      "repeat": 0
+    },
+    {
+      "case": "A35",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "gpt-4o",
+      "arm": "sheet_only",
+      "probe": "v2_client_edits",
+      "repeat": 0
+    },
+    {
+      "case": "A36",
+      "gold": "marketplace-services",
+      "agent_model": "Kimi-K2.5",
+      "arm": "sheet_only",
+      "probe": "b2_booking_status_view",
+      "repeat": 0
+    },
+    {
+      "case": "A37",
+      "gold": "booking-salon",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "sheet_no_agents",
+      "probe": "v3_edit_paid_appointment",
+      "repeat": 0
+    },
+    {
+      "case": "A38",
+      "gold": "booking-salon",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "sheet_no_agents",
+      "probe": "b2_client_history",
+      "repeat": 0
+    },
+    {
+      "case": "A39",
+      "gold": "booking-salon",
+      "agent_model": "Kimi-K2.5",
+      "arm": "sheet",
+      "probe": "v4_book_any_time",
+      "repeat": 0
+    },
+    {
+      "case": "A40",
+      "gold": "marketplace-services",
+      "agent_model": "gpt-4o",
+      "arm": "sheet",
+      "probe": "b1_filter_open_requests",
+      "repeat": 0
+    },
+    {
+      "case": "A41",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "gpt-4o",
+      "arm": "sheet_mismatched",
+      "probe": "v4_flat_fee",
+      "repeat": 0
+    },
+    {
+      "case": "A42",
+      "gold": "marketplace-services",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "sheet_mismatched",
+      "probe": "b1_filter_open_requests",
+      "repeat": 0
+    },
+    {
+      "case": "A43",
+      "gold": "booking-salon",
+      "agent_model": "Kimi-K2.5",
+      "arm": "none",
+      "probe": "v1_double_book",
+      "repeat": 0
+    },
+    {
+      "case": "A44",
+      "gold": "marketplace-services",
+      "agent_model": "claude-sonnet-4-6",
+      "arm": "none",
+      "probe": "b1_filter_open_requests",
+      "repeat": 0
+    },
+    {
+      "case": "A45",
+      "gold": "marketplace-services",
+      "agent_model": "Kimi-K2.5",
+      "arm": "spec-kit",
+      "probe": "v3_apply_outside_area",
+      "repeat": 0
+    },
+    {
+      "case": "A46",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "gpt-4o",
+      "arm": "spec-kit",
+      "probe": "b1_overdue_filter",
+      "repeat": 0
+    },
+    {
+      "case": "A47",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-opus-4-8",
+      "arm": "dlai-sdd",
+      "probe": "s1_recurring",
+      "repeat": 0
+    },
+    {
+      "case": "A48",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-opus-4-8",
+      "arm": "dlai-sdd",
+      "probe": "b2_ach_payment",
+      "repeat": 0
+    },
+    {
+      "case": "A49",
+      "gold": "booking-salon",
+      "agent_model": "Kimi-K2.5",
+      "arm": "sheet_only",
+      "probe": "s1_online_payment",
+      "repeat": 0
+    },
+    {
+      "case": "A50",
+      "gold": "invoicing-bookkeeping",
+      "agent_model": "claude-opus-4-8",
+      "arm": "sheet_only",
+      "probe": "b1_overdue_filter",
+      "repeat": 0
+    }
+  ]
+}

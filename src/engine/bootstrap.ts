@@ -3,6 +3,8 @@ import "../env.js"; // loads .env before anything reads process.env
 import path from "node:path";
 import { AnthropicLLM, CachedLLM, MockLLM, modelConfigFromEnv, type LLM } from "../llm/client.js";
 import { openAICompatFromEnv } from "../llm/openai_client.js";
+import { SplitTierLLM } from "../llm/split_tier.js";
+import { credentialsFromEnv, makeModel } from "../llm/registry.js";
 import { invoicingMockHandlers } from "../llm/mock_fixtures.js";
 import { FileStore } from "../store/file_store.js";
 import type { Store } from "../store/store.js";
@@ -31,13 +33,26 @@ export async function buildEngine(opts: BootstrapOptions = {}): Promise<{ engine
   let llm: LLM;
   if (opts.llm) llm = opts.llm;
   else if (opts.mock) llm = new MockLLM(invoicingMockHandlers);
-  else llm = llmFromEnv();
+  else llm = withFastTierFromEnv(llmFromEnv());
   const cache = opts.cache ?? process.env.ZADUM_LLM_CACHE === "1";
   if (cache && !opts.mock) llm = new CachedLLM(llm, path.join(dataDir, "llm-cache"));
   const catalogs = await loadCatalogs(opts.catalogDir);
   const ruleBankDir = opts.engine?.ruleBankDir ?? process.env.ZADUM_RULE_BANK_DIR;
   const engine = new Engine(store, llm, catalogs, { ...opts.engine, ...(ruleBankDir ? { ruleBankDir } : {}) });
   return { engine, store, llm };
+}
+
+/**
+ * ZADUM_FAST_MODEL=<registry id> (e.g. gpt-4o) sends the fast tier to that deployment via the model registry,
+ * leaving the strong tier on the provider's own model. Needed for Rule 5 (<2s p90 card render): a provider
+ * resource with only strong-class deployments can't serve fast-tier calls fast enough. Unset → `base`
+ * unchanged. Applied inside the engine bootstrap only (before CachedLLM, which must stay outermost so cache
+ * keys see the split tiers' real model ids); `llmFromEnv()` itself is untouched for its other callers.
+ */
+export function withFastTierFromEnv(base: LLM, env: NodeJS.ProcessEnv = process.env): LLM {
+  const fastId = env.ZADUM_FAST_MODEL?.trim();
+  if (!fastId) return base;
+  return new SplitTierLLM(base, makeModel(fastId, credentialsFromEnv(env)));
 }
 
 /**

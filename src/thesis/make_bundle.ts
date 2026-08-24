@@ -3,7 +3,13 @@
  * (not hand-written stand-ins). Same path a user takes: draft → decision cards → defaults → compile, with the
  * harness's simulated user answering from the gold's hidden truth.
  *
- * Usage: tsx src/thesis/make_bundle.ts <gold-id> [outDir]
+ * Usage: tsx src/thesis/make_bundle.ts <gold-id> [outDir] [maxCards]
+ *
+ * When maxCards is given explicitly, θ is disabled (theta: -1, so the selector never self-stops) and the card
+ * BUDGET is what binds — this is for the cards-to-conduct curve experiment, where budgets past the natural
+ * stopping point must still differ. maxCards = 0 skips the card loop entirely (draft → defaults → compile).
+ * Without the arg, behavior is exactly the historical default (calibrated θ, cap 12), so existing bundles
+ * remain reproducible.
  */
 import path from "node:path";
 import { buildEngine } from "../engine/bootstrap.js";
@@ -12,19 +18,26 @@ import { loadGolds, truthText } from "../harness/run.js";
 
 const goldId = process.argv[2] ?? "booking-salon";
 const outDir = process.argv[3] ?? `out/thesis/${goldId}/bundle`;
-const golds = await loadGolds(path.resolve("src/harness/gold"));
+const maxCardsArg = process.argv[4];
+// argv[5]: directory of gold files (default the repo harness set) — lets perturbed golds live outside src/.
+const goldDir = process.argv[5] ?? "src/harness/gold";
+const maxCards = maxCardsArg === undefined ? 12 : Number(maxCardsArg);
+if (!Number.isInteger(maxCards) || maxCards < 0 || maxCards > 12) throw new Error(`maxCards must be an integer 0..12, got ${maxCardsArg}`);
+const golds = await loadGolds(path.resolve(goldDir));
 const gold = golds.find((g) => g.id === goldId);
 if (!gold) throw new Error(`gold ${goldId} not found (have: ${golds.map((g) => g.id).join(", ")})`);
 
-const { engine, store } = await buildEngine({ engine: { precompute: false } });
-const id = `thesis_${goldId.replace(/[^a-z0-9]+/gi, "-")}`;
+const { engine, store } = await buildEngine({
+  engine: maxCardsArg === undefined ? { precompute: false } : { precompute: false, config: { theta: -1 } },
+});
+const id = `thesis_${goldId.replace(/[^a-z0-9]+/gi, "-")}${maxCardsArg === undefined ? "" : `-c${maxCards}`}`;
 console.log(`[${goldId}] drafting…`);
 const t0 = Date.now();
 await engine.createProject(gold.one_liner, { id });
 
-let res = await engine.startCards(id);
+let res = maxCards > 0 ? await engine.startCards(id) : ({ kind: "stop" } as const);
 let n = 0;
-while (res.kind === "card" && n < 12) {
+while (res.kind === "card" && n < maxCards) {
   const sim = await engine.fns.simUser({ card: res.card, persona: gold.persona, truth: truthText(gold) });
   const a = sim.data;
   const ans =

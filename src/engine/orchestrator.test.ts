@@ -267,6 +267,61 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect(["card", "stop"]).toContain(a3.next.kind);
   });
 
+  it("undo revokes the auto-dealt follow-up card instead of burning a Rule-7 slot", async () => {
+    // Regression: answering auto-deals the next card; undoing the answer restored the undone card as pending
+    // but left the follow-up in session.cards, so the re-answer dealt its node AGAIN — each undo permanently
+    // ate one of the 12 card slots (the selector stops on session.cards.length) and drifted card_index.
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p7" });
+    const first = await engine.startCards("p7");
+    expect(first.kind).toBe("card");
+    if (first.kind !== "card") return;
+    // "about N more" and `top` describe what comes AFTER this card, so they must exclude its own node
+    expect(first.top.every((t) => t.node !== first.card.node_id)).toBe(true);
+    const a1 = await engine.answerCard("p7", { kind: "option", option_id: first.card.options[0]!.option_id });
+    expect(a1.next.kind).toBe("card");
+    expect((await engine.getState("p7")).session.cards.length).toBe(2); // answered + follow-up pending
+    await engine.undoLast("p7");
+    const afterUndo = (await engine.getState("p7")).session;
+    expect(afterUndo.cards.length).toBe(1); // the follow-up was un-shown along with the answer
+    expect(afterUndo.pending_card?.id).toBe(first.card.id);
+    const a2 = await engine.answerCard("p7", { kind: "option", option_id: first.card.options[0]!.option_id });
+    expect(a2.next.kind).toBe("card");
+    const s = (await engine.getState("p7")).session;
+    expect(s.cards.length).toBe(2); // not 3: the budget reflects questions actually standing
+    expect(new Set(s.cards.map((c) => c.node_id)).size).toBe(s.cards.length); // no node counted twice
+  });
+
+  it("a patch-added decision option reaches the belief, not just the Sheet", async () => {
+    // Regression: `add_decision_option` committed to the Sheet but belief.nodes is fixed at planning time, so
+    // the user's own option could never be shown on a card, sampled, or defaulted — and answering with it threw.
+    await makeEngine(); // ensures emptyRuleBankDir exists
+    const blank = { ref: "", name: "", description: "", fields_hint: [] as string[], example: "", actor: "", verb: "", object: "", text: "", kind: "" as const, id: "", chosen: "", rationale: "", option_id: "", option_label: "" };
+    const custom = {
+      ...invoicingMockHandlers,
+      patcher: () => ({
+        ops: [
+          { ...blank, op: "add_decision_option" as const, id: "external_access", option_id: "api_only", option_label: "Through an API only" },
+          { ...blank, op: "resolve_decision" as const, id: "external_access", chosen: "api_only", rationale: "user wants API-only access" },
+        ],
+        notes: "added and chose a new option",
+      }),
+    };
+    const engine = new Engine(new MemoryStore(), new MockLLM(custom), await loadCatalogs(), { precompute: false, ruleBankDir: emptyRuleBankDir });
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p8" });
+    const e = await engine.applyUserEdit("p8", "clients should only reach us through an API");
+    expect(e.applied.map((o) => o.op)).toEqual(["add_decision_option", "resolve_decision"]);
+    const { sheet, session } = await engine.getState("p8");
+    expect(sheet.decisions.find((d) => d.id === "external_access")).toMatchObject({ status: "resolved", chosen: "api_only" });
+    const node = session.belief.nodes.find((n) => n.id === "external_access")!;
+    expect(node.options.map((o) => o.id)).toContain("api_only");
+    expect(node.implies.api_only).toEqual([]);
+    expect(Object.values(node.prior).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 6);
+    expect(node.prior.api_only).toBeGreaterThan(0);
+    // the belief distribution now knows the option exists
+    expect(Object.keys(distribution(session.belief, "external_access"))).toContain("api_only");
+  });
+
   it("stops immediately when theta is huge and asks more when theta is tiny (bounded by 12)", async () => {
     const big = await makeEngine({ config: { theta: 1e6 } as never });
     await big.engine.createProject("an invoicing app for small bookkeeping firms", { id: "p5" });

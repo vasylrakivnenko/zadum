@@ -1,0 +1,319 @@
+{
+  "gold": "invoicing-bookkeeping-perturbed",
+  "budgets": [
+    "c0"
+  ],
+  "repeats": 1,
+  "agent_models": [
+    "mock-a"
+  ],
+  "judge_model": "mock-j",
+  "arms": [
+    {
+      "id": "none",
+      "context_chars": 0,
+      "resolved": []
+    },
+    {
+      "id": "c0",
+      "context_chars": 69554,
+      "resolved": []
+    }
+  ],
+  "trials": [
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "none",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "none",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "none",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "none",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "none",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "none",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "none",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "c0",
+      "probe": "p_login",
+      "node": "identity_provider",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "c0",
+      "probe": "p_delivery",
+      "node": "invoice_delivery",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "c0",
+      "probe": "p_edit",
+      "node": "invoice_edit_after_send",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "true"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "c0",
+      "probe": "p_notify",
+      "node": "notifications",
+      "kind": "flip",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "first",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "c0",
+      "probe": "p_payrec",
+      "node": "payment_recording",
+      "kind": "natural",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "c0",
+      "probe": "c_number",
+      "node": "invoice_numbering",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    },
+    {
+      "gold": "invoicing-bookkeeping-perturbed",
+      "agent_model": "mock-a",
+      "arm": "c0",
+      "probe": "c_currency",
+      "node": "currencies",
+      "kind": "control",
+      "repeat": 0,
+      "node_resolved_in_bundle": false,
+      "agent": {
+        "reply": "Design: PDF attachment emailed, email+password login. DEFAULT_DESIGN_MARKER",
+        "plan": [
+          "build it"
+        ]
+      },
+      "judge": {
+        "match": "second",
+        "evidence": "mock"
+      },
+      "picked": "default"
+    }
+  ]
+}

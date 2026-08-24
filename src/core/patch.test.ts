@@ -81,6 +81,17 @@ describe("applyPatch", () => {
     expect(bad.rejected[0]?.code).toBe("invalid_option");
   });
 
+  it("rejects a modify_action that would duplicate an existing action, leaving no trace", () => {
+    // Regression: `add_action` deduplicates on (actor, object, normalized verb) but `modify_action` didn't,
+    // so editing an action's actor/verb/object onto an existing triple created the duplicate that add_action
+    // would have rejected.
+    const s = base();
+    const r = applyPatch(s, [{ op: "modify_action", ref: "a2", actor: "Bookkeeper", verb: "sends" }], { source: "user_edit:c1" });
+    expect(r.applied).toHaveLength(0);
+    expect(r.rejected[0]?.code).toBe("duplicate");
+    expect(r.sheet.actions[1]).toMatchObject({ actor: "p2", verb: "pays", object: "n1" });
+  });
+
   it("never mutates its input", () => {
     const s = base();
     const before = JSON.stringify(s);
@@ -150,6 +161,18 @@ describe("commits + diff", () => {
     const a2 = applyPatch(b, revertOps(b, a), { source: "undo", strict: true }).sheet;
     expect(strip(a2)).toEqual(strip(a));
     expect(a2.decisions.find((d) => d.id === "client_portal")).toMatchObject({ status: "implied", implied_by: "external_access", rationale: "follows from external_access=portal" });
+  });
+
+  it("reverts across a status change the transition table forbids directly (resolved → skipped)", () => {
+    // Regression: undoing back to a `skipped` decision that a later user edit had resolved emitted
+    // `set_decision resolved→skipped`, which the transition table rejects — the undo silently part-failed and
+    // the decision stayed resolved. The diff now goes through `open` first (open → any status is legal).
+    const a = applyPatch(base(), [{ op: "set_decision", id: "client_portal", status: "skipped", rationale: "user skipped" }], { source: "card:c1", strict: true }).sheet;
+    const b = applyPatch(a, [{ op: "resolve_decision", id: "client_portal", chosen: "portal", rationale: "changed their mind" }], { source: "user_edit:c2", strict: true }).sheet;
+    const a2 = applyPatch(b, revertOps(b, a), { source: "undo", strict: true }).sheet;
+    expect(strip(a2)).toEqual(strip(a));
+    expect(a2.decisions[0]).toMatchObject({ status: "skipped" });
+    expect(a2.decisions[0]!.chosen).toBeUndefined();
   });
 
   it("diffSheets produces ops that reproduce the target; revert restores an earlier snapshot", () => {

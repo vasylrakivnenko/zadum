@@ -179,7 +179,7 @@ export function applyPatch(input: Sheet, ops: PatchOp[], ctx: ApplyContext): App
   return { sheet, applied, rejected, cascaded };
 }
 
-const ALLOWED_TRANSITIONS: Record<DecisionStatus, DecisionStatus[]> = {
+export const ALLOWED_TRANSITIONS: Record<DecisionStatus, DecisionStatus[]> = {
   open: ["resolved", "implied", "defaulted", "delegated", "skipped"],
   resolved: ["resolved"], // change of mind via explicit user edit; cards never re-ask (Rule 3)
   implied: ["resolved", "implied", "defaulted"],
@@ -281,6 +281,15 @@ function applyOne(s: Sheet, op: PatchOp, source: string, cascaded: PatchOp[]): v
       // trace, or the Sheet stops being the sum of `applied` ops (Rule 1/2).
       const newActor = op.actor !== undefined ? (byIdOrName(s.actors, op.actor) ?? invalidRef("actor", op.actor, op)).id : undefined;
       const newObject = op.object !== undefined ? (byIdOrName(s.nouns, op.object) ?? invalidRef("noun", op.object, op)).id : undefined;
+      const nextActor = newActor ?? a.actor;
+      const nextObject = newObject ?? a.object;
+      const nextVerb = op.verb !== undefined ? op.verb.trim() : a.verb;
+      if (s.actions.some((x) => x.id !== a.id && x.actor === nextActor && x.object === nextObject && normName(x.verb) === normName(nextVerb)))
+        throw new PatchError(
+          "duplicate",
+          `action already exists: ${s.actors.find((x) => x.id === nextActor)?.name ?? nextActor} ${nextVerb} ${s.nouns.find((x) => x.id === nextObject)?.name ?? nextObject}`,
+          op,
+        );
       if (newActor !== undefined) a.actor = newActor;
       if (newObject !== undefined) a.object = newObject;
       if (op.verb !== undefined) a.verb = op.verb.trim();

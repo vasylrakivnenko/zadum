@@ -395,3 +395,35 @@ explicitly so the next person does not repeat it.
 Claude Sonnet 4.6), 13 adapter/registry tests, and the thesis matrix can now be judged by a model from a
 different family than any agent under test.
 
+## ADR-032 — Benchmark controls, judge validation, and the cards-to-conduct split (2026-08-24)
+**Context.** The thesis test's remaining objections were: (a) the bundle carries ~10× the baselines' context;
+(b) maybe any rules-list induces caution regardless of content; (c) the judge was unvalidated; (d) recovery's
+link to downstream conduct was assumed, not measured.
+
+**Decisions.**
+1. **`sheet_only` arm** — the one page alone, length-matched to the baseline specs. Result: 74% vs Spec Kit's
+   45% at comparable size, and ≈ `sheet_no_agents` at 1/6 the context — the compiled spec adds ~nothing to
+   agent CONDUCT (its value is implementation content). Follow-up queued: `sheet_only + AGENTS.md`.
+2. **`sheet_mismatched` arm** — the full bundle of a different app (cyclic), as falsification. Interpretation
+   rule recorded here because the raw number misleads: the three apps share archetype-typical constraints, so
+   agents flagging via the DONOR's own rule ids (booking's `g2` against a pay-by-card probe) are behaving
+   correctly on genuinely applicable text. The clean falsification cells are probes with NO donor analogue —
+   there the flag rate collapsed (0/4 vs 3/4 with the right bundle). Verdict: models read the rules; they do
+   not pattern-match "rules exist, be cautious".
+3. **Judge validation is two-layered and cheap**: `--rejudge` re-runs judge-only over stored agent replies
+   (the expensive half stays on disk) and reports Cohen's κ per arm; `--anchor-sample`/`--score-anchors`
+   produce and score a blind 50-case human anchor set. Rubric changes stay free via `--rescore`.
+4. **Per-provider concurrency** (`keyedLimiter`): the in-flight limit is per endpoint, not global — a
+   4-provider matrix runs ~3× faster at the same per-provider pressure. One global limit had been sized for
+   Azure's TPM window and idled every other endpoint.
+5. **The cards-to-conduct curve separates the product's two value axes.** Bundles compiled at 0/3/6/12-card
+   budgets (θ disabled so the budget binds) show conduct is bought at DRAFT time (+52pp at zero cards — the
+   drafter and rule bank write the Rules/Not-yet lists) while cards add ~4pp conduct. Cards buy decision
+   CORRECTNESS, which conduct probes structurally cannot see (a wrong-but-consistent spec violates nothing).
+   Consequence: recovery remains the metric for elicitation; conduct is the metric for the artifact; the v2
+   experiment (decision-sensitive probes on perturbed golds) is specified in docs/EVALS.md.
+
+**Consequences.** 671+316 clean trials in the two runs; per-trial error containment proved out (5 provider
+hiccups contained, zero runs lost). Split-tier fast model (`ZADUM_FAST_MODEL`, ADR-031's registry reused)
+built and latency-measured by a parallel agent — gpt-4o serves cards under 2s warm, pending a quality check.
+

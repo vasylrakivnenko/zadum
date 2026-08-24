@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { MockLLM } from "../llm/client.js";
 import { thesisMockHandlers } from "./mock_fixtures.js";
 import { INVOICING_PROBES, PROBE_SETS, type Probe } from "./probes.js";
-import { scoreProbe, summarize, buildArms, runThesis, renderAgentUser, AGENT_SYSTEM, type JudgeOut, type Trial } from "./run.js";
+import { scoreProbe, summarize, buildArms, runThesis, renderAgentUser, keyedLimiter, judgeAgreement, AGENT_SYSTEM, type JudgeOut, type Trial } from "./run.js";
 
 const j = (o: Partial<JudgeOut> = {}): JudgeOut => ({ raised_conflict: false, conflict_description: "", cited_source: false, citation: "", outcome: "proceeds", ...o });
 const flagProbe = INVOICING_PROBES.find((p) => p.expect === "flag")!;
@@ -75,9 +75,16 @@ describe("arms", () => {
   it("separates the artifact from the instruction", () => {
     const bundle = { "design-sheet.md": "SHEET", "spec.md": "SPEC", "AGENTS.md": "AGENTS" };
     const arms = buildArms(bundle, "an app", [{ id: "spec-kit", text: "KIT" }]);
-    expect(arms.map((a) => a.id)).toEqual(["none", "spec-kit", "sheet_no_agents", "sheet"]);
+    expect(arms.map((a) => a.id)).toEqual(["none", "spec-kit", "sheet_only", "sheet_only_agents", "sheet_no_agents", "sheet"]);
+    const poa = arms.find((a) => a.id === "sheet_only_agents")!;
+    expect(poa.context).toContain("AGENTS");
+    expect(poa.context).toContain("SHEET");
+    expect(poa.context).not.toContain("SPEC");
     expect(arms.find((a) => a.id === "sheet_no_agents")!.context).not.toContain("AGENTS");
     expect(arms.find((a) => a.id === "sheet")!.context).toContain("AGENTS");
+    // the length-matched control is the ONE PAGE only: no compiled spec, no protocol file
+    const only = arms.find((a) => a.id === "sheet_only")!;
+    expect(only.context).toBe("SHEET");
     expect(buildArms(bundle, "an app", [{ id: "empty", text: "  " }]).map((a) => a.id)).not.toContain("empty");
   });
   it("gives every arm the same instruction-free agent prompt", () => {
@@ -88,6 +95,54 @@ describe("arms", () => {
   });
 });
 
+describe("keyedLimiter", () => {
+  it("caps concurrency per key while different keys run in parallel", async () => {
+    const limit = keyedLimiter(2);
+    const active = new Map<string, number>();
+    const peak = new Map<string, number>();
+    const job = (key: string) =>
+      limit(key, async () => {
+        active.set(key, (active.get(key) ?? 0) + 1);
+        peak.set(key, Math.max(peak.get(key) ?? 0, active.get(key)!));
+        await new Promise((r) => setTimeout(r, 5));
+        active.set(key, active.get(key)! - 1);
+      });
+    await Promise.all([job("a"), job("a"), job("a"), job("a"), job("b"), job("b"), job("b")]);
+    expect(peak.get("a")).toBe(2);
+    expect(peak.get("b")).toBe(2);
+  });
+
+  it("releases the slot when the job throws", async () => {
+    const limit = keyedLimiter(1);
+    await expect(limit("k", async () => { throw new Error("x"); })).rejects.toThrow("x");
+    // a stuck slot would deadlock this second call
+    expect(await limit("k", async () => 42)).toBe(42);
+  });
+});
+
+describe("judgeAgreement", () => {
+  const j = (o: Partial<JudgeOut> = {}): JudgeOut => ({ raised_conflict: false, conflict_description: "", cited_source: false, citation: "", outcome: "proceeds", ...o });
+
+  it("perfect agreement gives kappa 1; chance-level agreement gives kappa ~0", () => {
+    const same = Array.from({ length: 10 }, (_, i) => ({ a: j({ raised_conflict: i % 2 === 0 }), b: j({ raised_conflict: i % 2 === 0 }) }));
+    expect(judgeAgreement(same).conflict_kappa).toBeCloseTo(1, 6);
+    // b says yes to a coin flip regardless of a → agreement ~50% but kappa ~0
+    const coin = Array.from({ length: 100 }, (_, i) => ({ a: j({ raised_conflict: i % 2 === 0 }), b: j({ raised_conflict: i % 4 < 2 }) }));
+    expect(Math.abs(judgeAgreement(coin).conflict_kappa)).toBeLessThan(0.15);
+  });
+
+  it("raw agreement can look high while kappa exposes a dominant class", () => {
+    // 90 both-no + 10 disagreements: 90% raw agreement, but b NEVER says yes — kappa must be low
+    const pairs = [
+      ...Array.from({ length: 90 }, () => ({ a: j(), b: j() })),
+      ...Array.from({ length: 10 }, () => ({ a: j({ raised_conflict: true }), b: j() })),
+    ];
+    const r = judgeAgreement(pairs);
+    expect(r.conflict_agreement).toBeCloseTo(0.9, 6);
+    expect(r.conflict_kappa).toBeLessThan(0.05);
+  });
+});
+
 describe("runThesis (mock)", () => {
   it("runs every arm × probe and summarizes", async () => {
     const llm = new MockLLM(thesisMockHandlers);
@@ -95,7 +150,7 @@ describe("runThesis (mock)", () => {
     const trials = await runThesis({ agents: [{ id: "m1", llm }], judge: { id: "j", llm }, setups: [{ gold: "g", oneLiner: "an app", arms, probes: INVOICING_PROBES }], concurrency: 4 });
     expect(trials.length).toBe(arms.length * INVOICING_PROBES.length);
     const s = summarize(trials);
-    expect(s.map((x) => x.arm)).toEqual(["none", "sheet_no_agents", "sheet"]);
+    expect(s.map((x) => x.arm)).toEqual(["none", "sheet_only", "sheet_only_agents", "sheet_no_agents", "sheet"]);
     expect(s.find((x) => x.arm === "none")!.flagged).toBe(0);
     expect(s.find((x) => x.arm === "sheet")!.flagged).toBe(1);
   });
