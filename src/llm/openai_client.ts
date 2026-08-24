@@ -25,6 +25,13 @@ export interface OpenAICompatOptions {
   fetchImpl?: typeof fetch;
   /** sleep for retry backoff — injectable for tests */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Floor for `max_completion_tokens`. Reasoning deployments (e.g. Kimi K2.5) spend the completion budget on
+   * `reasoning_content` before emitting any `content`, so a caller's modest maxTokens can end in
+   * `finish_reason: "length"` with an empty message. The floor is a property of the deployment, not of the
+   * call site, so it is configured here rather than pushed onto every caller.
+   */
+  minCompletionTokens?: number;
 }
 
 /** Strip keys strict mode rejects; assert the shape our ADR-011 discipline guarantees. */
@@ -76,7 +83,7 @@ export class OpenAICompatLLM implements LLM {
         { role: "system", content: req.system },
         { role: "user", content: req.user },
       ],
-      max_completion_tokens: req.maxTokens ?? (req.tier === "strong" ? 16_000 : 4_096),
+      max_completion_tokens: Math.max(req.maxTokens ?? (req.tier === "strong" ? 16_000 : 4_096), this.opts.minCompletionTokens ?? 0),
       ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
       response_format: { type: "json_schema", json_schema: { name: safeName(req.fn), strict: true, schema: toStrictJsonSchema(req.schema) } },
     };
@@ -85,7 +92,7 @@ export class OpenAICompatLLM implements LLM {
     if (style !== "bearer") headers["api-key"] = this.opts.apiKey;
     if (style !== "api-key") headers.Authorization = `Bearer ${this.opts.apiKey}`;
 
-    const maxRetries = this.opts.maxRetries ?? 2;
+    const maxRetries = this.opts.maxRetries ?? 3;
     const t0 = Date.now();
     let lastErr: LLMError | null = null;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -121,12 +128,21 @@ export class OpenAICompatLLM implements LLM {
       }
       const content = choice.message?.content;
       if (!content) throw new LLMError("parse", `${req.fn}: no content (finish_reason=${choice.finish_reason})`, req.fn);
+      // Truncated/invalid JSON is transient in a way a refusal or a schema mismatch is not (same prompt,
+      // different sampling), and one bad body should not kill a whole compile wave — retry it like a 429.
       let raw: unknown;
       try {
         raw = JSON.parse(content);
       } catch {
-        throw new LLMError("parse", `${req.fn}: content is not JSON (finish_reason=${choice.finish_reason})`, req.fn);
+        lastErr = new LLMError("parse", `${req.fn}: content is not JSON (finish_reason=${choice.finish_reason})`, req.fn);
+        if (attempt < maxRetries) {
+          await this.sleep(backoff(attempt));
+          continue;
+        }
+        throw lastErr;
       }
+      // NOT retried: with `strict: true` the provider guarantees schema conformance, so a mismatch means the
+      // schema and the model genuinely disagree — retrying triples the cost for the same answer.
       const parsed = req.schema.safeParse(raw);
       if (!parsed.success) throw new LLMError("parse", `${req.fn}: output failed schema: ${parsed.error.message.slice(0, 300)}`, req.fn);
       return {
@@ -149,17 +165,21 @@ export class OpenAICompatLLM implements LLM {
 function safeName(fn: string): string {
   return fn.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "output";
 }
+/** Rate-limit windows are measured in seconds, not milliseconds: 1s, 2s, 4s beats 0.5s, 1s for a 429 on TPM. */
 function backoff(attempt: number): number {
-  return 500 * 2 ** attempt;
+  return 1000 * 2 ** attempt;
 }
 
 /** Build from environment: ZADUM_PROVIDER=azure-openai|openai; AZURE_API_KEY / AZURE_OPENAI_ENDPOINT; OPENAI_API_KEY / OPENAI_BASE_URL. */
 export function openAICompatFromEnv(env: NodeJS.ProcessEnv = process.env): OpenAICompatLLM {
   const provider = (env.ZADUM_PROVIDER ?? "").toLowerCase();
   const azure = provider === "azure-openai" || (!provider && !!env.AZURE_API_KEY);
-  const baseUrl = azure ? env.AZURE_OPENAI_ENDPOINT?.trim() || "https://ldl.openai.azure.com/openai/v1" : env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1";
+  // Azure endpoints are per-tenant: there is no sane default, so require it rather than shipping one
+  // developer's resource URL as everyone else's fallback. OpenAI's base URL is genuinely universal.
+  const baseUrl = azure ? env.AZURE_OPENAI_ENDPOINT?.trim() : env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1";
   const apiKey = azure ? env.AZURE_API_KEY : env.OPENAI_API_KEY;
   if (!apiKey) throw new LLMError("api", `no API key for provider ${azure ? "azure-openai (AZURE_API_KEY)" : "openai (OPENAI_API_KEY)"}`);
+  if (!baseUrl) throw new LLMError("api", "azure-openai needs AZURE_OPENAI_ENDPOINT (e.g. https://<resource>.openai.azure.com/openai/v1)");
   const defaultModel = azure ? "gpt-4.1" : "gpt-4.1";
   return new OpenAICompatLLM({
     baseUrl,

@@ -82,12 +82,25 @@ describe("OpenAICompatLLM", () => {
   });
 
   it("builds from env for Azure and OpenAI", () => {
-    const az = openAICompatFromEnv({ AZURE_API_KEY: "a", ZADUM_PROVIDER: "azure-openai" });
+    const az = openAICompatFromEnv({ AZURE_API_KEY: "a", ZADUM_PROVIDER: "azure-openai", AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/openai/v1" });
     expect(az.name).toBe("azure-openai");
     expect(az.models).toEqual({ strong: "gpt-4.1", fast: "gpt-4.1" });
     const oa = openAICompatFromEnv({ OPENAI_API_KEY: "o", ZADUM_PROVIDER: "openai", ZADUM_MODEL_FAST: "gpt-4.1-mini" });
     expect(oa.name).toBe("openai-compat");
     expect(oa.models.fast).toBe("gpt-4.1-mini");
     expect(() => openAICompatFromEnv({ ZADUM_PROVIDER: "openai" })).toThrow(/no API key/);
+    // Azure endpoints are per-tenant: no default may be assumed (we used to ship one developer's resource URL).
+    expect(() => openAICompatFromEnv({ ZADUM_PROVIDER: "azure-openai", AZURE_API_KEY: "a" })).toThrow(/AZURE_OPENAI_ENDPOINT/);
+  });
+
+  it("retries a truncated JSON body but not a schema mismatch", async () => {
+    const truncated = { status: 200, body: { choices: [{ message: { content: '{"name":"y","n":' }, finish_reason: "length" }] } };
+    const f = fakeFetch([truncated, ok({ name: "y", n: 2, kind: "b" })]);
+    const res = await client(f).structured({ fn: "card", tier: "fast", system: "S", user: "U", schema });
+    expect(res.data.n).toBe(2);
+    expect(f.calls.length).toBe(2);
+    const g = fakeFetch([ok({ name: "x", n: "not a number", kind: "a" })]);
+    await expect(client(g).structured({ fn: "card", tier: "fast", system: "S", user: "U", schema })).rejects.toMatchObject({ code: "parse" });
+    expect(g.calls.length).toBe(1); // deterministic failure: no retry
   });
 });

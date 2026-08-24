@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { THOROUGHNESS_PRESETS, isThoroughness, thoroughnessSelectorOverrides, thoroughnessCompileOverrides } from "./thoroughness.js";
+import { THOROUGHNESS_PRESETS, MAX_CARDS_HARD_CAP, isThoroughness, thoroughnessSelectorOverrides, thoroughnessCompileOverrides } from "./thoroughness.js";
 import { DEFAULT_THETA } from "./selector.js";
 
 describe("isThoroughness", () => {
@@ -30,7 +30,10 @@ describe("thoroughnessSelectorOverrides", () => {
       expect(quick.theta).toBeGreaterThan(standard.theta);
       expect(thorough.theta).toBeLessThan(standard.theta);
       expect(quick.maxCards).toBeLessThan(standard.maxCards);
-      expect(thorough.maxCards).toBeGreaterThan(standard.maxCards);
+      // `thorough` buys depth with a lower θ, never with a bigger cap: Rule 7 ("never more than 12 cards per
+      // session") binds every preset. It used to ship maxCards 20, which silently broke that invariant.
+      expect(thorough.maxCards).toBe(standard.maxCards);
+      expect(thorough.maxCards).toBeLessThanOrEqual(MAX_CARDS_HARD_CAP);
     }
   });
 

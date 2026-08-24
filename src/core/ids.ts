@@ -33,11 +33,25 @@ export function slug(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Normalized name for duplicate detection ("Invoice" ~ "invoices" ~ " INVOICE "). */
+/**
+ * Canonical comparison KEY for duplicate detection ("Invoice" ~ "invoices" ~ " INVOICE ").
+ *
+ * The output is deliberately NOT a display singular — it is a key both spellings collapse onto, and callers
+ * only ever compare two keys (never show one). That distinction is what makes this correct where a
+ * "singularizer" cannot be: "-ses" is genuinely ambiguous in English ("statuses"→status needs -es stripped,
+ * "houses"→house needs only -s), and no suffix rule can separate `bus|es` from `hous|es` without a lexicon.
+ * Collapsing a trailing silent "e" as well sidesteps the ambiguity entirely: house/houses and status/statuses
+ * both land on a shared key, whichever branch they took.
+ *
+ * Words ending in "us" (status, bonus, campus) are left alone — they are singular, and their plural "-uses"
+ * reaches the same key through the "-es" branch. The earlier implementation got both of these wrong:
+ * "expenses"→"expens" vs "expense"→"expense", and "status"→"statu" vs "statuses"→"status", so real duplicate
+ * nouns slipped past dedup and lexical recall undercounted matches.
+ */
 export function normName(s: string): string {
   let n = s.trim().toLowerCase().replace(/\s+/g, " ");
-  if (n.endsWith("ies")) n = n.slice(0, -3) + "y";
-  else if (n.endsWith("ses") || n.endsWith("xes") || n.endsWith("ches") || n.endsWith("shes")) n = n.slice(0, -2);
-  else if (n.endsWith("s") && !n.endsWith("ss")) n = n.slice(0, -1);
+  if (n.endsWith("ies") && n.length > 4) n = n.slice(0, -3) + "y";
+  else if (n.endsWith("s") && !n.endsWith("ss") && !n.endsWith("us")) n = n.slice(0, n.endsWith("es") ? -2 : -1);
+  if (n.endsWith("e")) n = n.slice(0, -1);
   return n;
 }

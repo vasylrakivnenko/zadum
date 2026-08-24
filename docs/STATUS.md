@@ -1,10 +1,10 @@
 # STATUS — resume here
 
-_Last updated: 2026-08-23 (session 1f, autonomous overnight improvement pass — 3 self-critique/refinement
-cycles per user request, see "Autonomous overnight pass" below). Next session: start at "Next steps" below._
+_Last updated: 2026-08-23 (session 1g, full correctness review + fixes — see "Correctness review" below and
+ADR-030). Next session: start at "Next steps" below._
 
 ## TL;DR
-Core workflow + architecture of Design Sheet is built and green: `npm test` → **91 tests / 10 files** pass (incl. a
+Core workflow + architecture of Design Sheet is built and green: `npm test` → **191 tests / 18 files** pass (incl. a
 Postgres round-trip when `DATABASE_URL` is set), `npm run typecheck` clean, `npm run zadum -- --mock demo` runs the
 whole flow without credentials, and **the live LLM path works end to end on Azure OpenAI gpt-4.1** (draft 47s,
 edit, cards, compile 69s with critic 10/10). See "Live findings" below — they drove three fixes and show θ must be
@@ -44,6 +44,10 @@ and `risk` are switchable (`--scoring`), two-ply lookahead is available (`--look
 | 21 | **Multi-option cards**: up to 4 options per card (was always 2), same step-count as before (ADR-026) | ✅ live-verified, regression-tested |
 | 22 | **Rule bank** (`src/mining/rule_bank.ts` + `src/engine/rule_augment.ts`): mines archetype rule patterns from the corpus, suggests missing rules at draft time — the fix for the "0% rules recall everywhere" finding | ✅ shipped as default; live A/B: rules recall 0%→80% (ADR-027) |
 | 23 | **LLM-judge semantic recall** (`src/harness/judge.ts`): the metric fix ADR-024 called for and this session's own rule-bank A/B proved necessary | ✅ built, `--judge` flag; not yet validated against a human anchor set (ADR-028) |
+| 28 | **Thesis test across 3 archetypes × 4 agent models, independent judge** (480 trials, 0 errors): pooled one-liner 26% / Spec Kit 46% / DLAI-SDD 51% / bundle 86%. **Opus 4.8: Spec Kit 67% vs bundle 100%** — a stronger agent does not close the gap | ✅ run |
+| 27 | **Multi-model evals**: registry + Anthropic-over-Foundry adapter (forced tool use) + `npm run models`; 5 deployments verified. **480-trial thesis matrix, 4 agent families judged by Opus 4.8: one-liner 25% / competing specs 40-47% / bundle 91%, 0 over-refusals** (ADR-031) | ✅ run |
+| 26 | **Thesis test** (`src/thesis/`, `npm run thesis`): does the bundle change what a coding agent DOES? 5 arms × 8 implicit probes × 3 repeats, live. **Bare one-liner flags 0/18 rule violations; full bundle 89% with citations; competing specs 22–28%** — see docs/EVALS.md "Thesis test" | ✅ first run (1 gold) |
+| 25 | **Correctness review** (session 1g): 10 defects found by a full read-through, 4 reproduced by script; all fixed with regression tests (ADR-030). Selector touch harness-gated: mock harness byte-identical to baseline | ✅ 191 tests green |
 | 24 | **Thoroughness levels** (`src/core/thoroughness.ts`, `--thoroughness quick\|standard\|thorough`): bonus feature per the user's explicit request; `standard` regression-tested to exactly match prior defaults | ✅ built; presets honestly uncalibrated (ADR-029) |
 
 ## How to resume
@@ -61,8 +65,8 @@ and `risk` are switchable (`--scoring`), two-ply lookahead is available (`--look
 - Real worlds are far more concentrated than the mock's (ESS 10.5/12; most nodes ≥0.9 agreement). Consequences:
   (a) θ=50 (mock-calibrated) stopped after **1 card at 86% settled** → θ must be recalibrated live (an
   equal-budget run `--theta -1 cards <id> --auto` logs `value1` per card; `npm run learn` / harness replay the curve);
-  (b) one answer "implied" 23 nodes that were already at ~0.89 → soft implications now require a ≥0.05 rise
-  (`minImplyDelta`).
+  (b) one answer "implied" 23 nodes that were already at ~0.89 → soft implications now require a ≥0.10 rise
+  (`minImplyDelta`, ADR-020) *and* ≥0.95 max P (`softImplyTau`).
 - Sampler emitted 26 repairs / 6 hard-edge conflicts across 12 worlds — the repair path is earning its keep;
   consider feeding conflicts back into the sampler prompt.
 
@@ -109,7 +113,47 @@ alternatives:
   caveat matching how `DEFAULT_THETA` itself was treated before its own harness-replay calibration.
 - **153/153 tests green** at the end of this pass (up from 121 at the start of it).
 
+## Correctness review (2026-08-23, session 1g)
+
+A full read-through (concept + bug review) found ten defects — edge-path and consistency issues, not structural.
+Four were reproduced by script before fixing. Full rationale and the judgment calls in **ADR-030**; the headline
+items:
+
+- **State corruption:** `modify_action` mutated the Sheet on ops it then *rejected*; `normName` failed to
+  collapse two whole classes of plural (`expense(s)`, `status(es)`), so duplicate nouns slipped past dedup.
+- **Silent mis-stopping:** the CLI passed a θ computed from the *CLI-side* scoring on every invocation, so
+  resuming a `--scoring risk` project with a bare `cards <id>` judged risk-scale values against
+  weighted_entropy's θ and stopped after one card. θ now follows the effective scoring (`mergeConfig`), and
+  thoroughness travels as a multiplier rather than a resolved number.
+- **Two dogfood rules were being violated in code:** `thorough` shipped `maxCards: 20` against Rule 7's 12 (and
+  the test asserted the violation); a spec that failed its critic was delivered unmarked against Rule 6.
+- **Rule 3's "unless contradicted by a later user action" was unimplemented:** changing your mind left the old
+  hard-edge consequence standing, so the spec could ship two contradictory decisions.
+- **The card toast was fiction:** measured on the mock invoicing belief, the `also_sets` preview promised **71**
+  settlements for one card where the engine settles **none** (the UI shows 6). ADR-020 tightened the real
+  implication path in the live-findings pass and missed its preview, which still used hard conditioning at the
+  looser τ.
+
+Verification: 191 tests green (was 152), typecheck clean, `--mock demo` end-to-end unchanged, and
+`npm run harness -- --mock` byte-identical to the pre-fix baseline (same asked-node sequences, same 53% AUC) —
+so the one selector-touching fix guards a degenerate case without shifting normal behaviour. **θ needs no
+recalibration.** The contradiction reporting and the honest toast change what the user sees mid-session, so both
+are worth watching in the first live run.
+
 ## Next steps (in order)
+
+0. ~~**Commit and push** + fix the review defects~~ — **done** (session 1g, ADR-030).
+   ~~**Run the A/B thesis test**~~ — **done** (session 1g), then re-run across 4 agent model families with an
+   independent judge (Opus 4.8), 480 trials: the one-liner arm flags **0 of 72** rule/scope violations while
+   the bundle flags 88% with citations, competing specs 19-29%, zero over-refusals (docs/EVALS.md). **Next for
+   it:** re-run on booking + marketplace golds, add a length-matched control, and validate the judge against a
+   small human-labelled anchor set before quoting 91% externally.
+   The strategic constraint is no longer engineering: the product thesis (a Sheet-equipped coding agent refuses
+   a rule-violating change and cites the rule) has **never been tested**, and there are still **zero real user
+   sessions**, so the learning flywheel — the moat — is not spinning. Those are now the top two items:
+   **(a) run the A/B thesis test** (was #9 below; ~a day with bundles you can already compile), then
+   **(b) first real users** (web polish: fast-tier deployment for <2s p90 cards, traceability click-through,
+   and the information-gain curve with recommend-and-default-accept stopping).
 1. **Extend the rule bank + judge validation to booking/marketplace golds** (`npm run mine:rules` already
    produced banks for both — see `catalogs/rule-bank/`). Tonight's 0%→80% result is n=1 (invoicing only); the
    next real question is whether it holds elsewhere. Also: validate the judge metric against a small human-
@@ -162,6 +206,10 @@ alternatives:
 - `harness-results/`, `out/`, `.zadum/` are git-ignored. Repo initialized but **nothing committed yet** (by request).
 
 ## Session log
+- 2026-08-23 s1g: full correctness review of the whole codebase + a parallel creative technology survey
+  (belief representation, exact tree/DP, ML-on-corpus, search, neuro-symbolic — see docs/REVIEW-2026-08-23.md).
+  Ten defects found, all fixed with regression tests; 152 → 191 tests. Reviewed the "one big model trained on
+  GitHub" idea and recorded why the corpus/matrix route feeds the existing engine instead (REVIEW doc §3).
 - 2026-08-22 s1: concept review (3 rounds) → ADR-001…013; built milestones 0–8; 24 tests green; mock demo + mock
   harness run end to end. Live LLM untested (no credentials in the session).
 - 2026-08-23 s1e: catalog-priors agent folded 106-spec mining results into 5 catalogs (61 reblended priors, 4

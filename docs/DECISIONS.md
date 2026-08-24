@@ -287,3 +287,111 @@ own): the theta multipliers (quick 1.4×, thorough 0.55×) are a first-pass heur
 probe to not be degenerate (confirmed "quick" asks real cards on an unresolved belief, and correctly asks zero
 more when a prior edit already left the design >80% settled) — not live-harness-calibrated the way the main
 scoring thetas were. Recalibrate the same way (docs/EVALS.md "Calibrating θ") before trusting exact behavior.
+
+## ADR-030 — Correctness review: patch atomicity, comparison keys, θ merging, and two rule violations (2026-08-23)
+**Context.** A full read-through of the codebase (concept + bug review, session 1g) found ten defects, four
+reproduced by script. They were edge-path and consistency issues, not structural — but three of them silently
+corrupted user-visible state and two contradicted the dogfood rules in CLAUDE.md.
+
+**Decisions.**
+1. **Patch ops are all-or-nothing.** `modify_action` resolved `actor` and wrote it before validating `object`,
+   so a *rejected* op still moved the action to a different actor. Both references are now resolved before any
+   mutation. The invariant this protects is Rule 1/2's: the Sheet is exactly the sum of `applied` ops.
+2. **`normName` is a canonical comparison KEY, not a display singular.** It mis-collapsed two whole classes of
+   noun: `expenses→expens` vs `expense→expense` (every silent-e stem: house, case, license, purchase, phase),
+   and `status→statu` vs `statuses→status` (every `-us` singular). Real duplicate nouns therefore slipped past
+   dedup and lexical recall undercounted matches. `-ses` is genuinely ambiguous in English (`bus|es` vs
+   `hous|es`) and no suffix rule separates them without a lexicon — so both spellings are instead collapsed
+   onto a shared key by also dropping a trailing silent "e". Verified: 29 plural pairs collapse, 23 distinct
+   business nouns stay distinct. Callers only ever compare keys, never display them (checked: all 24 uses).
+3. **θ follows the EFFECTIVE scoring (`mergeConfig`).** The CLI computed θ from the CLI-side scoring and passed
+   it on *every* invocation, and `Engine.load()` spread it over the stored session config — so a project created
+   with `--scoring risk` (θ 7) and resumed with a bare `cards <id>` was judged against weighted_entropy's θ 24
+   and stopped after one card. θ is scoring-specific and calibrated in that scoring's own units, so carrying it
+   across a scoring change is meaningless. The CLI now passes θ only when `--theta` was given, and thoroughness
+   travels as a *multiplier* (`EngineOptions.thetaMultiplier`) applied to the effective scoring's calibrated
+   default after the merge — the resolved-θ-at-the-edge design could not be correct when the scoring comes from
+   the stored session rather than this run's flags.
+4. **`resolveConfig` ignores explicitly-undefined keys.** `{...partial}` re-applied `theta: undefined` over the
+   computed default, and `value1 < undefined` is false forever — the loop could then only stop at the cap. No
+   caller triggered it; it was one `{theta: opts.theta}` away.
+5. **Rule 3's "unless contradicted by a later user action" is now implemented.** A hard edge demanding a
+   different option than a decision already carried was skipped whenever that decision was `implied`, so
+   changing your mind left the stale consequence standing and the spec shipped two contradictory decisions.
+   Policy now: a *derived* value (implied/defaulted/skipped) loses to the newer user action and is re-implied;
+   a value the *user themselves* resolved wins, and the collision is reported (`Implied.contradictions`, the
+   `implications_applied` event, CLI warning, web labels) rather than silently dropped. `delegated` is left
+   alone — consequence 0, and `delegated → implied` is not a legal transition.
+6. **The card preview shares the real implication predicate.** `also_sets` previewed with HARD conditioning at
+   the looser τ=0.9 while the engine really applies soft ε-conditioning at `softImplyTau` 0.95 with a
+   `minImplyDelta` rise (ADR-020). Measured on the mock invoicing belief: the old predicate previewed **71**
+   settlements for one card where the engine settles **none** — the UI slices to 6, so every card showed six
+   fabricated "this also settles …" promises. ADR-020 tightened the real path and missed its preview.
+7. **Rule 7 binds every preset.** `thorough` shipped `maxCards: 20` against a rule CLAUDE.md calls an invariant
+   and ARCHITECTURE says is asserted in tests (the test asserted the violation instead). `thorough` now buys
+   depth with a lower θ only, clamped to `MAX_CARDS_HARD_CAP` = 12. Raising the ceiling is a real product
+   change needing the explicit user-continuation flow ("the next question settles very little — keep going?")
+   and its own ADR — not a bigger number in a preset table.
+8. **Rule 6: a failing spec is delivered as an unmistakable draft.** The bundle used to be written and the
+   files handed over with no marking when the critic still failed after its repair passes; only the `done`
+   phase was withheld. Throwing the compile away helps nobody, so `spec.md` and `AGENTS.md` are now stamped
+   with the verdict and the surviving violations, and `compile-report.json` records `critic_passed`. The
+   judgment call: "must pass before delivery" is enforced as "must be impossible to mistake for passing".
+
+**Also fixed:** exact undo (re-added decisions went through `add_decision`, which carries no
+`rationale`/`implied_by`; options added after a snapshot were never removed — new `remove_decision_option` op);
+`joint_entropy` credited options no particle holds with perfect certainty (empty particle set ⇒ zero entropy),
+now falls back to the unchanged belief, which is what soft conditioning really does; `precomputeNext`'s
+"still open" guard tested node membership (always true) instead of decision status; compile events used the
+wall clock instead of the injected one; the artifact index was a non-atomic read-modify-write; the
+OpenAI-compatible adapter never retried a truncated body (now does — but NOT a schema mismatch, which is
+deterministic under `strict: true`); and a per-tenant Azure endpoint shipped as everyone's default (now
+required; the local `.env` was updated so the live setup keeps working).
+
+**Consequences.** 191 tests green (was 152), typecheck clean, mock demo end-to-end unchanged. The selector
+touch (item: `joint_entropy` fallback) was harness-gated per the working agreement: `npm run harness -- --mock`
+is **byte-identical** to the pre-fix baseline — same asked-node sequences, same 53% AUC — confirming it guards
+a degenerate case without shifting behaviour on beliefs where every option has particle support. θ needs no
+recalibration. Items 5 and 6 change what the user sees mid-session, so they are worth watching in the first
+live run.
+
+## ADR-031 — Multi-model evals: a model registry, an Anthropic-over-Foundry adapter, and a reasoning-token floor (2026-08-23)
+**Context.** The first thesis-test run used gpt-4.1 as both the coding agent and the judge — "the same family
+judging itself" was its biggest stated weakness (docs/EVALS.md). Fixing it needs several models addressable at
+once, which `llmFromEnv()` cannot express: it resolves ONE provider into a strong/fast pair.
+
+**Decisions.**
+1. **`src/llm/registry.ts` — a flat routing table, not auto-detection.** A model id maps to the endpoint that
+   actually serves it (`gpt-4.1` → the original Azure resource; `gpt-4o`/`Kimi-K2.5` → AI Foundry's
+   OpenAI-compatible route; `claude-*-4-*` → Foundry's `/anthropic` route; `claude-sonnet-5`/`opus-5` →
+   Anthropic direct). Which deployment lives behind which resource is deployment configuration and cannot be
+   inferred from a model name, so it is written down. `npm run models` reports availability and sends every
+   configured model a real STRUCTURED request — a pass means the schema plumbing works, not just that the
+   endpoint answers.
+2. **`src/llm/anthropic_foundry.ts` gets strict JSON via forced tool use.** `AnthropicLLM` uses first-party
+   structured outputs (`output_config` + `zodOutputFormat`), which a Foundry-hosted deployment does not
+   necessarily expose. Declaring one tool whose `input_schema` is the zod schema and forcing `tool_choice`
+   works on any Anthropic-Messages endpoint. ADR-011's conservative schema subset meant zero schema work.
+   Verified against the official Python SDK's own source: `AnthropicFoundry` sends
+   `{"x-api-key": key, "api-key": key}`, exactly what this adapter sends.
+3. **A per-deployment `minCompletionTokens` floor.** Kimi K2.5 is a reasoning deployment: it emits
+   `reasoning_content` that counts against the completion budget, so a caller's modest `maxTokens` returns
+   `finish_reason: "length"` with empty content (it failed `npm run models` at 200 tokens and passed at 4096).
+   The floor is a property of the deployment, so it is configured in the route table and applied by the
+   adapter — not pushed onto every call site.
+4. **The thesis harness crosses agent models × arms** with ONE independent judge for every trial, prints a
+   pooled table (does the bundle help regardless of which model reads it?) beside the per-model breakdown, and
+   warns when the judge is also an agent.
+
+**Credential lesson, recorded because it cost a cycle.** The Foundry resource key is a DIFFERENT credential
+from `AZURE_API_KEY`, even inside one subscription — Azure issues keys per resource. Every auth variant with
+the wrong key returned 401 ("invalid subscription key or wrong API endpoint"), which reads like an endpoint
+bug and is not one; `/anthropic/messages` → 404 vs `/anthropic/v1/messages` → 401 was the tell that the route
+was right and the credential wrong. This repo's `.env` already had the right key under `LLM2_API_KEY`; the
+registry accepts that name and `FOUNDRY_API_KEY` as an alias, and `missingCredential` names the distinction
+explicitly so the next person does not repeat it.
+
+**Consequences.** Five deployments verified working end to end (gpt-4.1, gpt-4o, Kimi K2.5, Claude Opus 4.8,
+Claude Sonnet 4.6), 13 adapter/registry tests, and the thesis matrix can now be judged by a model from a
+different family than any agent under test.
+

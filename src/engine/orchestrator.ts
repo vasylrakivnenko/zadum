@@ -15,13 +15,17 @@ import { makeCommit, revertOps, type Commit, type CommitSourceKind } from "../co
 import type { PatchOp } from "../core/patch.js";
 import { mergeCatalogs, nodeDefFromDecision, propagateHard, type NodeDef } from "../core/catalog.js";
 import { conditionSoft, conditionHard, distribution, maxOption, topOptions, ess, repairAssignment, makeWorld, normalizeWeights, type Belief, type World } from "../core/worlds.js";
-import { decideNext, impliedByUpdate, settledness, rankOpen, resolveConfig, type SelectorConfig, type Ranked } from "../core/selector.js";
+import { decideNext, impliedByUpdate, settledness, rankOpen, mergeConfig, type SelectorConfig, type Ranked } from "../core/selector.js";
 import type { SessionState, Card, Answer, AnswerKind, ZEvent, EventType, ProjectRecord, Phase } from "../core/session.js";
 import { loadRuleBank } from "./rule_bank.js";
 import { augmentRulesFromBank } from "./rule_augment.js";
 
 export interface EngineOptions {
   config?: Partial<SelectorConfig>;
+  /** thoroughness dial: scales the calibrated θ of the EFFECTIVE scoring (see `mergeConfig`); an explicit
+   *  `config.theta` still wins. Passing a resolved θ instead would be wrong whenever the scoring comes from a
+   *  stored session rather than this run's flags. */
+  thetaMultiplier?: number;
   worldBatches?: number; // parallel sampler calls (default 3)
   worldsPerBatch?: number; // worlds per call (default 4)
   eagerWorlds?: boolean; // sample worlds right after the draft (default true)
@@ -32,13 +36,27 @@ export interface EngineOptions {
   ruleBankDir?: string; // defaults to catalogs/rule-bank/ (src/engine/rule_bank.ts's DEFAULT_RULE_BANK_DIR)
 }
 
+/** A hard edge from a later answer that demands a different option than the user already resolved. */
+export interface Contradiction {
+  node: string;
+  had: string;
+  wants: string;
+  because: string;
+}
+
+export type Implied = {
+  hard: { node: string; option: string }[];
+  soft: { node: string; option: string; p: number }[];
+  contradictions: Contradiction[];
+};
+
 export type DealResult =
   | { kind: "card"; card: Card; settledness: number; remaining_estimate: number; top: { node: string; value: number }[] }
   | { kind: "stop"; reason: string; settledness: number };
 
 export interface AnswerResult {
   answer: Answer;
-  implied: { hard: { node: string; option: string }[]; soft: { node: string; option: string; p: number }[] };
+  implied: Implied;
   sheet_version: number;
   next: DealResult;
 }
@@ -67,7 +85,7 @@ export class Engine {
     public readonly opts: EngineOptions = {},
   ) {
     this.fns = makeFns(llm);
-    this.config = resolveConfig(opts.config);
+    this.config = mergeConfig({}, opts.config, { ...(opts.thetaMultiplier !== undefined ? { thetaMultiplier: opts.thetaMultiplier } : {}) });
   }
 
   // ---------- infrastructure ----------
@@ -118,7 +136,8 @@ export class Engine {
     if (!sheet || !session || !project) throw new Error(`project not found or incomplete: ${projectId}`);
     // sessions persisted by an older build may lack newer config fields; explicit engine options (CLI flags,
     // harness arms) override the stored session config — flags are intent, the stored copy is just the last run's.
-    session.config = resolveConfig({ ...session.config, ...(this.opts.config ?? {}) });
+    // `mergeConfig` (not a plain spread) keeps θ in the units of whichever scoring actually ends up in force.
+    session.config = mergeConfig(session.config, this.opts.config, { ...(this.opts.thetaMultiplier !== undefined ? { thetaMultiplier: this.opts.thetaMultiplier } : {}) });
     return { sheet, session, project };
   }
 
@@ -279,7 +298,7 @@ export class Engine {
 
   // ---------- phase 2: correction moment ----------
 
-  async applyUserEdit(projectId: string, text: string): Promise<{ version: number; applied: PatchOp[]; rejected: { op: PatchOp; error: string }[]; dropped: { op: string; reason: string }[]; notes: string; implied: { hard: { node: string; option: string }[]; soft: { node: string; option: string; p: number }[] } }> {
+  async applyUserEdit(projectId: string, text: string): Promise<{ version: number; applied: PatchOp[]; rejected: { op: PatchOp; error: string }[]; dropped: { op: string; reason: string }[]; notes: string; implied: Implied }> {
     return this.withLock(projectId, async () => {
       const { sheet, session } = await this.load(projectId);
       const res = await this.fns.patch({ sheet, decisions: sheet.decisions, text });
@@ -295,13 +314,13 @@ export class Engine {
       }
       // decisions resolved by the edit → update belief + propagate
       const resolvedNow = result.applied.filter((o): o is Extract<PatchOp, { op: "resolve_decision" }> => o.op === "resolve_decision");
-      let implied = { hard: [] as { node: string; option: string }[], soft: [] as { node: string; option: string; p: number }[] };
+      let implied: Implied = { hard: [], soft: [], contradictions: [] };
       for (const r of resolvedNow) {
         const d = current.decisions.find((x) => x.id === r.id);
         if (!d?.chosen) continue;
         const out = await this.propagateResolution(current, session, d.id, d.chosen, { kind: "user_edit", ref: commitId });
         current = out.sheet;
-        implied = { hard: [...implied.hard, ...out.hard], soft: [...implied.soft, ...out.soft] };
+        implied = { hard: [...implied.hard, ...out.hard], soft: [...implied.soft, ...out.soft], contradictions: [...implied.contradictions, ...out.contradictions] };
       }
       session.updated_at = this.now();
       await this.store.saveSession(session);
@@ -406,20 +425,23 @@ export class Engine {
     return { id: randomUUID(), node_id: node.id, context: res.data.context.trim(), options, also_sets: res.data.also_sets.slice(0, 5), created_at: this.now(), model: res.model, latency_ms: Date.now() - t0 };
   }
 
-  /** Plain-language list of what else an answer settles: hard edges + soft implications under either option. */
+  /**
+   * Plain-language list of what else an answer settles: hard edges + soft implications under either option.
+   *
+   * This preview must apply exactly the test the engine will really apply after the answer — soft
+   * ε-conditioning at `softImplyTau` with a `minImplyDelta` rise (ADR-020) — or the card promises settlements
+   * that never happen. The earlier version previewed with HARD conditioning at the looser `tau` (0.9), which
+   * over-promises precisely on the concentrated live beliefs ADR-020 tightened the real path for.
+   */
   private alsoSets(sheet: Sheet, session: SessionState, node: NodeDef, optionIds: string[]): string[] {
     const out = new Set<string>();
-    const open = new Set(this.openIds(sheet, session));
+    const open = this.openIds(sheet, session).filter((id) => id !== node.id);
     for (const opt of optionIds) {
       const prop = propagateHard({ [node.id]: opt }, session.belief.nodes, [node.id]);
-      for (const [n, d] of Object.entries(prop.derived)) if (open.has(n)) out.add(describe(session.belief.nodes, n, d.option));
-      const hyp: Belief = { ...session.belief, worlds: conditionHard(session.belief.worlds, node.id, opt) };
-      for (const n of open) {
-        if (n === node.id) continue;
-        const before = maxOption(distribution(session.belief, n)).p;
-        const after = maxOption(distribution(hyp, n));
-        if (before < session.config.tau && after.p >= session.config.tau) out.add(describe(session.belief.nodes, n, after.option));
-      }
+      for (const [n, d] of Object.entries(prop.derived)) if (open.includes(n)) out.add(describe(session.belief.nodes, n, d.option));
+      const after: Belief = { ...session.belief, worlds: conditionSoft(session.belief.worlds, node.id, opt, session.config.epsilon) };
+      for (const s of impliedByUpdate(session.belief, after, open, session.config.softImplyTau, session.config.minImplyDelta))
+        out.add(describe(session.belief.nodes, s.nodeId, s.option));
     }
     return [...out].slice(0, 6);
   }
@@ -441,11 +463,13 @@ export class Engine {
     if (!targets.length) return;
     const cards = await parallelMap(targets, 2, (t) => this.generateCard(sheet, session, t.ranked));
     await this.withLock(projectId, async () => {
-      const fresh = await this.store.getSession(projectId);
+      const [fresh, freshSheet] = await Promise.all([this.store.getSession(projectId), this.store.getLatestSheet(projectId)]);
       if (!fresh) return;
       cards.forEach((c, i) => {
         const nodeId = targets[i]!.nodeId;
-        const stillOpen = fresh.belief.nodes.some((n) => n.id === nodeId);
+        // Must be the DECISION's status, not mere membership in belief.nodes (which never changes and so
+        // guarded nothing): between dealing and this write-back the node may have been implied or resolved.
+        const stillOpen = freshSheet ? freshSheet.decisions.find((d) => d.id === nodeId)?.status === "open" : true;
         if (stillOpen && !fresh.precomputed[nodeId]) fresh.precomputed[nodeId] = { ...c, precomputed: true };
       });
       await this.store.saveSession(fresh);
@@ -463,7 +487,7 @@ export class Engine {
       session.history.push({ card_id: card.id, worlds: session.belief.worlds, consequence_override: { ...session.consequence_override }, sheet_version: sheet.version });
       session.answers.push(answer);
       let current = sheet;
-      let implied: AnswerResult["implied"] = { hard: [], soft: [] };
+      let implied: AnswerResult["implied"] = { hard: [], soft: [], contradictions: [] };
 
       if (input.kind === "option") {
         const opt = node.options.find((o) => o.id === input.option_id);
@@ -472,7 +496,7 @@ export class Engine {
         current = r.sheet;
         const out = await this.propagateResolution(current, session, node.id, opt.id, { kind: "card_answer", ref: card.id });
         current = out.sheet;
-        implied = { hard: out.hard, soft: out.soft };
+        implied = { hard: out.hard, soft: out.soft, contradictions: out.contradictions };
       } else if (input.kind === "you_decide") {
         const best = maxOption(distribution(session.belief, node.id));
         session.consequence_override[node.id] = 0;
@@ -494,7 +518,7 @@ export class Engine {
             if (!d?.chosen) continue;
             const out = await this.propagateResolution(current, session, rid, d.chosen, { kind: "card_answer", ref: card.id });
             current = out.sheet;
-            implied = { hard: [...implied.hard, ...out.hard], soft: [...implied.soft, ...out.soft] };
+            implied = { hard: [...implied.hard, ...out.hard], soft: [...implied.soft, ...out.soft], contradictions: [...implied.contradictions, ...out.contradictions] };
           }
         }
         const d = current.decisions.find((x) => x.id === node.id);
@@ -506,7 +530,7 @@ export class Engine {
       delete session.pending_card;
       session.updated_at = this.now();
       await this.store.saveSession(session);
-      await this.emit(session, "card_answered", { card_id: card.id, node: node.id, kind: input.kind, option: input.option_id ?? null, text: input.text ?? null, think_ms: input.think_ms ?? null, card_index: session.cards.length, implied_hard: implied.hard.length, implied_soft: implied.soft.length });
+      await this.emit(session, "card_answered", { card_id: card.id, node: node.id, kind: input.kind, option: input.option_id ?? null, text: input.text ?? null, think_ms: input.think_ms ?? null, card_index: session.cards.length, implied_hard: implied.hard.length, implied_soft: implied.soft.length, contradictions: implied.contradictions.length });
       if (ess(session.belief.worlds) < session.config.minEss && session.belief.worlds.length) {
         // resample outside our lock scope is not possible (we hold it) → inline sampling
         await this.resampleInline(current, session);
@@ -544,15 +568,25 @@ export class Engine {
   }
 
   /** Update belief after node=option is settled; apply hard edges and soft implications as commits. */
-  private async propagateResolution(sheet: Sheet, session: SessionState, nodeId: string, optionId: string, source: { kind: CommitSourceKind; ref?: string }): Promise<{ sheet: Sheet; hard: { node: string; option: string }[]; soft: { node: string; option: string; p: number }[] }> {
+  private async propagateResolution(sheet: Sheet, session: SessionState, nodeId: string, optionId: string, source: { kind: CommitSourceKind; ref?: string }): Promise<{ sheet: Sheet; hard: { node: string; option: string }[]; soft: { node: string; option: string; p: number }[]; contradictions: Contradiction[] }> {
     const before: Belief = { ...session.belief, worlds: session.belief.worlds };
     // hard edges
     const prop = propagateHard({ [nodeId]: optionId }, session.belief.nodes, [nodeId]);
     const hard: { node: string; option: string }[] = [];
+    const contradictions: Contradiction[] = [];
     const ops: PatchOp[] = [];
+    // Rule 3's "unless contradicted by a later user action": a hard edge that demands a DIFFERENT option than
+    // a decision already carries must not be silently dropped, or the Sheet ships two contradictory decisions.
+    // Derived (implied/defaulted/skipped) values lose to the newer user action and are re-implied; a value the
+    // user themselves resolved wins and the collision is reported instead.
     for (const [n, d] of Object.entries(prop.derived)) {
       const dec = sheet.decisions.find((x) => x.id === n);
-      if (!dec || dec.status === "resolved" || dec.status === "implied" || dec.status === "delegated") continue;
+      if (!dec || dec.chosen === d.option) continue; // absent, or already settled the same way
+      if (dec.status === "resolved") {
+        contradictions.push({ node: n, had: dec.chosen ?? "", wants: d.option, because: d.because });
+        continue;
+      }
+      if (dec.status === "delegated") continue; // "you decide" — consequence 0, and delegated → implied is not a legal transition
       hard.push({ node: n, option: d.option });
       ops.push({ op: "set_decision", id: n, status: "implied", chosen: d.option, confidence: 1, implied_by: nodeId, rationale: `follows from ${d.because}` });
     }
@@ -568,10 +602,16 @@ export class Engine {
     if (ops.length) {
       const r = await this.commit(current, ops, { kind: "implication", ref: source.ref }, `Implications of ${nodeId}=${optionId}: ${hard.length} hard, ${soft.length} likely`, `implied:${nodeId}`);
       current = r.sheet;
-      await this.emit(session, "implications_applied", { node: nodeId, option: optionId, hard, soft: soft.map((s) => ({ node: s.nodeId, option: s.option, p: round(s.p) })), version: current.version, conflicts: prop.conflicts });
+      await this.emit(session, "implications_applied", { node: nodeId, option: optionId, hard, soft: soft.map((s) => ({ node: s.nodeId, option: s.option, p: round(s.p) })), version: current.version, conflicts: prop.conflicts, contradictions });
+    }
+    if (contradictions.length) {
+      // Nothing was written: the user's own earlier answer stands. Surfaced so a caller can show it rather
+      // than letting two decisions disagree inside a compiled spec.
+      if (!ops.length) await this.emit(session, "implications_applied", { node: nodeId, option: optionId, hard, soft: [], version: current.version, conflicts: prop.conflicts, contradictions });
+      for (const c of contradictions) this.log(`contradiction: ${nodeId}=${optionId} implies ${c.node}=${c.wants}, but you already chose ${c.had} — keeping your answer`);
     }
     session.precomputed = Object.fromEntries(Object.entries(session.precomputed).filter(([k]) => current.decisions.find((d) => d.id === k)?.status === "open"));
-    return { sheet: current, hard, soft: soft.map((s) => ({ node: s.nodeId, option: s.option, p: s.p })) };
+    return { sheet: current, hard, soft: soft.map((s) => ({ node: s.nodeId, option: s.option, p: s.p })), contradictions };
   }
 
   async undoLast(projectId: string): Promise<DealResult | null> {
@@ -643,7 +683,7 @@ export class Engine {
     return items.sort((a, b) => b.consequence * (1 - b.confidence) - a.consequence * (1 - a.confidence) || b.consequence - a.consequence || a.id.localeCompare(b.id));
   }
 
-  async overrideDefault(projectId: string, nodeId: string, optionId: string): Promise<{ version: number; implied: { hard: { node: string; option: string }[]; soft: { node: string; option: string; p: number }[] } }> {
+  async overrideDefault(projectId: string, nodeId: string, optionId: string): Promise<{ version: number; implied: Implied }> {
     return this.withLock(projectId, async () => {
       const { sheet, session } = await this.load(projectId);
       const d = sheet.decisions.find((x) => x.id === nodeId);
@@ -655,7 +695,7 @@ export class Engine {
       session.updated_at = this.now();
       await this.store.saveSession(session);
       await this.emit(session, "default_overridden", { node: nodeId, before, after: optionId, consequence: session.consequence_override[nodeId] ?? d.consequence });
-      return { version: out.sheet.version, implied: { hard: out.hard, soft: out.soft } };
+      return { version: out.sheet.version, implied: { hard: out.hard, soft: out.soft, contradictions: out.contradictions } };
     });
   }
 

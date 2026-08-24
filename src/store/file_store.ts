@@ -106,7 +106,7 @@ export class FileStore implements Store {
     const metaFile = path.join(this.pdir(a.project_id), "artifacts", "_index.json");
     const idx = (await this.readJson<Omit<Artifact, "content">[]>(metaFile)) ?? [];
     const { content: _c, ...meta } = a;
-    await fs.writeFile(metaFile, JSON.stringify([...idx.filter((x) => x.name !== a.name), meta], null, 2));
+    await this.writeJsonAtomic(metaFile, [...idx.filter((x) => x.name !== a.name), meta]);
   }
   async listArtifacts(projectId: string) {
     const dir = path.join(this.pdir(projectId), "artifacts");

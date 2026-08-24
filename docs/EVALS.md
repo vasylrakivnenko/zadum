@@ -275,3 +275,208 @@ AND on how much the catalog leaves open.
 ## Running
 `npm run harness -- --mock` (plumbing, no credentials) · `npm run harness -- --gold src/harness/gold --variants 3`
 Results: `harness-results/<timestamp>.json` + a summary table on stdout.
+
+## Thesis test — does the bundle change what a coding agent DOES? (2026-08-23, first run)
+
+Every other number in this document measures whether the Sheet *captures* the truth. This one measures the
+product claim itself: that a coding agent handed the bundle refuses a rule-violating change and cites the rule.
+Harness: `src/thesis/` · `npm run thesis`.
+
+**Method.** One live-compiled bundle (`out/live/bundle`, invoicing Design Sheet v7, Azure gpt-4.1). Eight probes
+written as a founder would phrase them — four colliding with a Rule, two with the Not-yet list, two entirely
+benign. Five arms differing ONLY in the documentation the agent is given; the agent system prompt is identical
+everywhere and says nothing about rules, scope or pushing back. A blind judge (no arm, no context, no expected
+answer) reports what the agent did; scoring happens in code afterwards. 8 probes × 5 arms × 3 repeats = **120
+agent+judge pairs**, 304s.
+
+Three guards against a rigged result: probes never mention rules/scope/refusal (asserted in
+`thesis.test.ts`), the controls are *comparable artifacts* (Spec Kit and DLAI-SDD specs for the same app) rather
+than "no context", and the benign probes score in the opposite direction so an agent that refuses everything
+loses (also asserted in the tests).
+
+| arm | context | appropriate | flagged | w/ citation | over-refusal |
+|---|---|---|---|---|---|
+| `none` (one-liner only) | 0 chars | 25% | 0% | 0% | 0% |
+| `spec-kit` | 5.9k | 42% | 22% | 11% | 0% |
+| `dlai-sdd` | 3.9k | 46% | 28% | 17% | 0% |
+| `sheet_no_agents` (Sheet+spec, no AGENTS.md) | 52k | 75% | 67% | 67% | 0% |
+| **`sheet` (full bundle)** | 53k | **92%** | **89%** | **89%** | **0%** |
+
+By probe kind (share handled appropriately): `sheet` 83% rule · 100% scope · 100% benign; best baseline
+(`dlai-sdd`) 17% · 50% · 100%; `none` 0% · 0% · 100%.
+
+**Findings.**
+1. **The thesis holds on this gold.** The bare one-liner arm flagged **0 of 18** rule/scope probes across three
+   repeats — it cheerfully designed overpayment recording, client-editable invoices, one-click "mark paid",
+   and automated recurring billing. The full bundle flagged 89% and cited a specific rule id or non-goal in
+   89% of cases (`R-4`, `r1`, `R-5`, `R-2`, `g1`, `g4`) — demo moment #4 is real, not aspirational.
+2. **It is not just "more context".** Comparable specs from two competing tools land at 42–46%, roughly halfway
+   between nothing and our bundle. The gap is what the Sheet's *explicit Rules and Not-yet lists* add over
+   ordinary prose specs.
+3. **It is not just the AGENTS.md nag.** Dropping AGENTS.md and keeping the Sheet still scores 75% — so the
+   artifact does most of the work (+29pp over the best baseline) and the instruction adds the rest (+17pp).
+   That decomposition is the answer to the obvious objection, and it is why `sheet_no_agents` exists.
+4. **Per-probe structure is informative.** `s2_card_payments` (pay by card) was caught by every arm with any
+   spec at all — payment processing is an obvious scope boundary that all tools write down. `v1_overpayment`
+   (payment exceeding the invoice) was caught **only** by the full bundle, 3/3, and by nothing else, 0/12 —
+   it needs the invariant to be written down as an invariant, which is exactly what the Rules list is for.
+5. **No over-refusal.** Zero benign tasks were blocked in any arm. One `sheet` trial built the benign payment
+   task while noting the payment-cannot-exceed-invoice invariant — correct behaviour, reported separately as
+   `caveat` (17% of benign trials in that arm), not as a failure. The first scoring pass counted any raised
+   constraint on a benign probe as over-refusal and reported 17%; the rubric was corrected to count only
+   *blocking or diverting*, and re-scored offline via `--rescore` without spending an LLM call.
+
+### Multi-model (built 2026-08-23; blocked on one credential)
+
+The biggest weakness of the run above is that gpt-4.1 played both the coding agent and the judge. Two things
+now exist to fix it:
+
+- **`src/llm/registry.ts`** — a model id routes to whichever endpoint serves it: `gpt-4.1` (original Azure
+  resource), `gpt-4o` / `Kimi-K2.5` (Azure AI Foundry, OpenAI-compatible), `claude-opus-4-8` /
+  `claude-sonnet-4-6` (Foundry's `/anthropic` route), `claude-sonnet-5` / `claude-opus-5` (Anthropic direct).
+- **`src/llm/anthropic_foundry.ts`** — Anthropic Messages over a custom endpoint. It gets strict JSON through
+  **forced tool use** rather than first-party structured outputs, because a Foundry-hosted deployment does not
+  necessarily expose `output_config`. Same ADR-011 schema subset, so no schema work was needed.
+
+`npm run models` reports which deployments are configured and sends each a real structured request — a pass
+means the schema plumbing works for that model, not just that the endpoint answers.
+
+The thesis harness now crosses **agent models × arms**, with one independent judge for every trial, and prints
+a pooled table (does the bundle help regardless of which model reads it?) alongside the per-model breakdown.
+It warns when the judge is also an agent.
+
+### Multi-model results (2026-08-23, 480 trials, judged by Claude Opus 4.8)
+
+4 agent models × 5 arms × 8 probes × 3 repeats. No model grades its own work.
+
+**Pooled across all four agent models** (n=96 per arm):
+
+| arm | appropriate | flagged | w/ citation | over-refusal |
+|---|---|---|---|---|
+| `none` (one-liner) | 25% | **0%** | 0% | 0% |
+| `spec-kit` | 40% | 19% | 17% | 0% |
+| `dlai-sdd` | 47% | 29% | 19% | 0% |
+| `sheet_no_agents` | 76% | 68% | 65% | 0% |
+| **`sheet`** | **91%** | **88%** | **88%** | **0%** |
+
+**Per agent model** (share handled appropriately):
+
+| agent | none | spec-kit | dlai-sdd | sheet_no_agents | sheet |
+|---|---|---|---|---|---|
+| gpt-4.1 | 25% | 38% | 46% | 79% | **100%** |
+| gpt-4o | 25% | 25% | 38% | 29% | **62%** |
+| Kimi K2.5 | 25% | 50% | 54% | 96% | **100%** |
+| Claude Sonnet 4.6 | 25% | 46% | 50% | 100% | **100%** |
+
+**Per probe, conflict-raised rate** (rule/scope probes, 12 trials per cell):
+
+| probe | none | spec-kit | dlai-sdd | sheet_no_agents | sheet |
+|---|---|---|---|---|---|
+| v1 overpayment (r4) | 0/12 | 0/12 | 0/12 | 7/12 | 11/12 |
+| v2 client edits (r1+g2) | 0/12 | 2/12 | 8/12 | 9/12 | 10/12 |
+| v3 quick close (r5) | 0/12 | 4/12 | 1/12 | 9/12 | 10/12 |
+| v4 flat fee (r2) | 0/12 | 0/12 | 0/12 | 6/12 | 10/12 |
+| s1 recurring (g4) | 0/12 | 0/12 | 1/12 | 10/12 | 11/12 |
+| s2 card payments (g1) | 0/12 | 8/12 | 11/12 | 8/12 | 11/12 |
+
+**Findings.**
+1. **The result survives an independent judge and three additional model families.** With Opus 4.8 judging,
+   the pooled ordering is unchanged and the gaps widen slightly against the baselines.
+2. **The one-liner arm flagged 0 of 72 rule/scope probes** — every model, every repeat, without exception. The
+   floor is not model-specific.
+3. **Direction is universal; magnitude is not.** Every model improves monotonically from `none` → baselines →
+   `sheet`, but gpt-4o gains far less (62% vs 100% for the other three) and is the one model that barely uses
+   the Sheet without AGENTS.md (29%, *below* its dlai-sdd score of 38%). Weaker instruction-following models
+   need the explicit protocol file; stronger ones extract the constraints from the artifact itself. That is a
+   product finding — AGENTS.md is not redundant scaffolding, it is what makes the bundle robust across agents.
+4. **Two probes separate the Sheet from prose specs completely.** `v1_overpayment` and `v4_flat_fee` were
+   caught **0/36 times** by the one-liner and both competing specs, and 10-11/12 by the full bundle. Both are
+   integrity invariants ("a payment cannot exceed its invoice", "an invoice must cite a service entry") —
+   exactly the class of requirement prose specs omit and a Rules list forces into existence.
+5. **Zero over-refusals in 120 benign trials**, across every arm and model. The controls did their job: the
+   gains are not bought with paranoia.
+6. Citations are specific and varied: `r4, D-1`, `Rule r1 and Defaulted Decision g2`, `Rule R-5 and Derived
+   Invariant D-1`, `g4 / recurring_invoices=no`, `Acceptance Scenario 3` — agents cite Sheet rules, non-goals,
+   decision ids, and compiled-spec sections.
+
+The command that produced this:
+
+```
+npm run thesis -- --agent-models gpt-4.1,gpt-4o,Kimi-K2.5,claude-sonnet-4-6                   --judge-model claude-opus-4-8 --repeats 3 --concurrency 2                   --baseline-spec thesis-results/baseline-spec-kit.md,thesis-results/baseline-dlai-sdd.md
+```
+4 agents × 5 arms × 8 probes × 3 repeats = 480 pairs. `--rescore` re-scores stored trials for free.
+
+**Status: all five deployments verified working** (`npm run models`): gpt-4.1, gpt-4o, Kimi K2.5,
+Claude Opus 4.8, Claude Sonnet 4.6 — each answering a real structured request.
+
+Two things cost a cycle getting here and are worth remembering:
+- **The Foundry resource key is a different credential from `AZURE_API_KEY`** — Azure issues keys per resource,
+  not per subscription. With the wrong key every auth variant returns 401 "invalid subscription key or wrong
+  API endpoint", which reads like an endpoint bug. The tell that the route was right and the credential wrong:
+  `/anthropic/messages` → 404 but `/anthropic/v1/messages` → 401 (i.e. it reached the auth layer). The correct
+  key was already in `.env` as `LLM2_API_KEY`; the registry accepts that name and `FOUNDRY_API_KEY`.
+- **Kimi K2.5 is a reasoning deployment**: `reasoning_content` counts against the completion budget, so it
+  returned `finish_reason: "length"` with empty content at 200 tokens and passed at 4096. Handled by a
+  per-deployment `minCompletionTokens` floor in the route table (ADR-031), not by every call site.
+
+**Honest limits.** One gold, one archetype, one model (gpt-4.1 as both agent and judge — same family judging
+itself; the multi-model path above is the fix, pending that key), n=3 repeats, and a judge not yet validated against human labels (ADR-028's gap applies here too).
+The `sheet` arm also carries ~9× more context than the baselines, which is a real property of the product but
+not a controlled variable. Before treating the 92% as a headline: re-run on booking and marketplace, with a
+different model family as judge, and ideally with a length-matched control (Sheet rules only, no compiled spec).
+`--rescore` makes rubric changes free; only new arms/golds cost calls.
+
+### Three apps × four agent models, judged independently (2026-08-24)
+
+The two follow-ups the previous runs called for, done: **all three archetypes** (each with its own
+live-compiled bundle and its own competing specs) and **Claude Opus 4.8 as an agent**, with **gpt-4.1 as judge**
+so no model grades its own work. 3 apps × 5 arms × 8 probes × 4 agents = **480 trials, 0 errored**
+(`thesis-results/2026-08-24T00-18-50-121Z.json`).
+
+**Appropriate-response rate, pooled over all three apps:**
+
+| agent | none | spec-kit | dlai-sdd | sheet_no_agents | sheet |
+|---|---|---|---|---|---|
+| gpt-4o | 25% | 29% | 29% | 29% | 54% |
+| Kimi K2.5 | 25% | 33% | 38% | 88% | 96% |
+| Claude Sonnet 4.6 | 25% | 54% | 58% | 96% | 96% |
+| **Claude Opus 4.8** | 29% | 67% | 79% | 96% | **100%** |
+| **all pooled** | **26%** | **46%** | **51%** | **77%** | **86%** |
+
+**By app** (pooled over models): invoicing 25 / 47 / 50 / 78 / **88**; booking 28 / 50 / 47 / 72 / **81**;
+marketplace 25 / 41 / 56 / 81 / **91**. The ordering is identical in all three domains.
+
+**Opus only** (n=24 per arm) — the "does a better model close the gap?" question:
+
+| arm | appropriate | flagged | cited a source |
+|---|---|---|---|
+| one-liner | 29% | 6% | 0% |
+| Spec Kit | 67% | 56% | 33% |
+| DLAI-SDD | 79% | 78% | 39% |
+| Sheet without AGENTS.md | 96% | 94% | 94% |
+| **full bundle** | **100%** | **100%** | **100%** |
+
+**Findings.**
+1. **A stronger agent does not close the gap; it widens the useful part of it.** Opus is the best model in the
+   set on every arm — and still misses a third of the violations on a Spec Kit spec (67%) while scoring 100%
+   on the bundle. Capability raises the floor; the artifact is what gets you the last third. The eight probes
+   Opus missed on Spec Kit but caught on the bundle are the concrete evidence, and it cited `R-4`, `r10`,
+   `R-3`, `g1`, `g3` etc. on each.
+2. **Citation rate is the sharper separator than the flag rate.** Opus flags 56-78% with a competing spec but
+   can only *cite* a specific source 33-39% of the time — it senses something is off and argues from judgment.
+   With the bundle it cites 100%. "Cannot do that, rule r10 says so" is a different conversation from
+   "hmm, that feels wrong".
+3. **The result holds across three domains and four model families**, including a non-Western one (Kimi), with
+   an independent judge. The one-liner arm sits at 25-29% everywhere: it never flags anything, and only scores
+   at all because the benign probes are correctly built.
+4. **AGENTS.md matters most exactly where the model is weakest** — gpt-4o gains +25pp from it (29% → 54%),
+   Opus +4pp (96% → 100%). Confirms the earlier single-app finding on a much wider sample.
+5. **One over-refusal in 120 benign trials, and it belonged to a baseline, not to us**: Opus reading the
+   *DLAI-SDD* spec refused to add an overdue-invoice filter, claiming payment status was out of scope. A
+   thin spec can mislead as well as under-inform.
+
+**Still open.** n=1 repeat per cell (the earlier invoicing run did n=3 and agreed), the judge is unvalidated
+against human labels (ADR-028), and the bundle carries ~10× the context of the baselines — a real property of
+the product, not a controlled variable. A length-matched control (Sheet rules only, no compiled spec) is the
+honest next step.
+

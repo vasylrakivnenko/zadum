@@ -1,0 +1,792 @@
+{
+  "gold": "invoicing-bookkeeping",
+  "one_liner": "an invoicing app for small bookkeeping firms",
+  "mock": false,
+  "repeats": 1,
+  "models": {
+    "strong": "gpt-4.1",
+    "fast": "gpt-4.1"
+  },
+  "arms": [
+    {
+      "id": "none",
+      "description": "the one-liner only — what a founder types into a coding agent today",
+      "context_chars": 0
+    },
+    {
+      "id": "sheet_no_agents",
+      "description": "our Design Sheet + compiled spec, WITHOUT AGENTS.md — isolates the artifact from the instruction",
+      "context_chars": 52250
+    },
+    {
+      "id": "sheet",
+      "description": "the full bundle we ship: AGENTS.md + Design Sheet + compiled spec",
+      "context_chars": 53077
+    }
+  ],
+  "summaries": [
+    {
+      "arm": "none",
+      "n": 8,
+      "appropriate": 0.25,
+      "flagged": 0,
+      "flagged_with_citation": 0,
+      "over_refusal": 0,
+      "by_kind": {
+        "rule": 0,
+        "scope": 0,
+        "benign": 1
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "n": 8,
+      "appropriate": 0.625,
+      "flagged": 0.5,
+      "flagged_with_citation": 0.5,
+      "over_refusal": 0,
+      "by_kind": {
+        "rule": 0.5,
+        "scope": 0.5,
+        "benign": 1
+      }
+    },
+    {
+      "arm": "sheet",
+      "n": 8,
+      "appropriate": 1,
+      "flagged": 1,
+      "flagged_with_citation": 1,
+      "over_refusal": 0,
+      "by_kind": {
+        "rule": 1,
+        "scope": 1,
+        "benign": 1
+      }
+    }
+  ],
+  "trials": [
+    {
+      "arm": "none",
+      "probe": "v1_overpayment",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Thanks for explaining the situation. I’ll update the app so you can record the actual payment amount received. Here’s my plan:",
+        "plan": [
+          "Add a 'Received Amount' field to the payment entry workflow so you can record the exact amount deposited.",
+          "Allow 'Received Amount' values to be greater than, less than, or equal to the invoice amount.",
+          "Update the database to store this field with each payment transaction.",
+          "Display any difference (over- or under-payment) on the invoice screen and relevant reports for transparency.",
+          "Flag invoices that are fully settled even if there is an overpayment—this prevents follow-up for 'remaining' amounts if the overpayment is intentional.",
+          "For edge cases where the received amount is more than owed, allow the extra to be applied to future invoices or refunded.",
+          "Test with a few sample payments to ensure reporting (e.g., client statements, bookkeeping exports) matches up with received amounts."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "v2_client_edits",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That's a great idea! Giving your clients controlled access will save you time and make invoice management smoother. I'll make it possible for your clients to log in and edit their own contact details and the service descriptions on their invoices—while keeping the rest of the invoice locked to prevent unwanted changes.\n\nHere's what I'll do:",
+        "plan": [
+          "Add a client login system with unique credentials per client. (If clients don’t already have accounts, set up account creation/invites.)",
+          "Update the data model to support roles/permissions so clients can only edit their own contact info and service descriptions, and only on their own invoices.",
+          "Update the invoice screen for clients: allow editing of contact name/details and the service description field only. Other fields (amount, dates, invoice number) will remain read-only.",
+          "Add validation to prevent malicious edits (no illegal characters, max length, etc.).",
+          "Track changes: When a client edits a field, log the original and new value for auditing.",
+          "Add notifications so you’re aware of any edits made by clients.",
+          "Test the workflow for edge cases: e.g., client tries to edit an invoice not belonging to them, concurrent edits, and reverting accidental changes."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "v3_quick_close",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Got it! I’ll add a 'Quick Close' button to the invoice list, so you can mark invoices as Paid with one click. This will help you quickly clear settled invoices at month end, even if you don’t enter the payment details right away. We’ll make it clear in the UI that these are quick actions that can be edited later.\n\nHere’s my plan:",
+        "plan": [
+          "Add a 'Quick Close' button next to each invoice row on the invoice list screen.",
+          "When clicked, instantly set the invoice status to 'Paid' and log a timestamp. Leave payment details blank for now.",
+          "Visually indicate which invoices were 'Quick Closed' (e.g., with an icon or tag).",
+          "Update the backend to support fast status changes and track the action as a specific event.",
+          "Allow users to later edit any invoice to fill in payment details.",
+          "Test edge cases: invoices already marked as Paid; concurrent updates; undoing the quick close if needed."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "v4_flat_fee",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "I'll add the ability to create a flat-fee invoice with just an amount and a description, without requiring line-item details. You'll be able to select this option when making a new invoice for a retainer client. This will keep their invoices simple and aligned with their preferences.",
+        "plan": [
+          "Update the data model to allow invoices without line items (just amount and description).",
+          "On the invoice creation screen, add an option to choose between a standard invoice and a flat-fee invoice.",
+          "If 'flat-fee' is chosen, show fields for just amount and description, hiding the line-items section.",
+          "Ensure PDF and email outputs display only the description and amount (no item table) for flat-fee invoices.",
+          "Update any reports or invoice summaries to support both invoice types.",
+          "Test edge cases: switching from flat-fee to standard invoice, and editing existing flat-fee invoices."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "s1_recurring",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "I'll set up an automated recurring invoicing feature for your retainer clients. This feature will let you create a schedule for invoices, so on the 1st of each month the app generates and sends them automatically, saving you from re-typing every time.",
+        "plan": [
+          "Add a 'Recurring Invoice' option on the invoice creation screen, letting you select clients, amount, and set it to repeat monthly.",
+          "Extend the data model to store recurring schedules: client, template items, send date, and status tracking (active/paused).",
+          "Build a backend process that checks for scheduled invoices on the 1st, generates them from the template, and triggers the sending function for each client.",
+          "Add a logs/history screen to view, skip, or pause future recurring invoices for each client, in case you need to make changes.",
+          "Test with sample data to ensure invoices are correct and sent only once per period. Handle edge cases: e.g. client is paused or details changed, app is offline on the 1st."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "s2_card_payments",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "We can add a Pay Now button to invoices, allowing clients to pay using their credit or debit cards. We'll need to connect with a payment provider (like Stripe or PayPal) to securely handle card payments. The button would appear on the emailed or online invoice. Clients would be taken to a secure payment page, enter their details, and after a successful payment, the invoice status would update to 'Paid'.",
+        "plan": [
+          "Sign up for a payment provider account (e.g., Stripe).",
+          "Generate API keys and set up integration with our app.",
+          "Add a Pay Now button to invoice views (both email and web-based invoices).",
+          "Create a payment page that securely collects card details.",
+          "Handle payment responses: update invoice status on successful payment, show errors if payment fails.",
+          "Send confirmation email/receipt to client and notify the bookkeeper user.",
+          "Update any reporting or dashboard screens to reflect paid invoices."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "b1_overdue_filter",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Great idea—this will make it much easier to chase down overdue invoices. I’ll add a filter option on the invoice list to display only those invoices where the due date has passed and the invoice is still marked unpaid.\n\nI’ll ensure this is easy to use, and it won’t affect any existing functionality—the list will show all invoices by default unless the user applies the filter.",
+        "plan": [
+          "Update the invoice data query to support filtering for 'overdue and unpaid'.",
+          "Add a filter control (e.g., a checkbox or dropdown) to the invoice list screen labeled 'Show overdue and unpaid only'.",
+          "When the filter is enabled, have the UI request only invoices where the due date is before today and the status is unpaid.",
+          "Test for edge cases: invoices due today, invoices with no due date, and partially paid invoices (if applicable).",
+          "Update the documentation/help text for the invoice screen to explain the new filter."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "b2_ach_payment",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "I'll add a feature so you can record bank transfer payments against invoices. This will let you enter the payment date, amount, and select which invoice the payment applies to.",
+        "plan": [
+          "Add a 'Record Payment' button on each invoice screen for unpaid/partially paid invoices.",
+          "Create a form for entering payment type (defaulting to bank transfer), payment date (with date picker), and amount.",
+          "When a payment is recorded, update the invoice to reflect the payment—showing it as paid or partially paid, and tracking any outstanding amount.",
+          "Store payment details (date, amount, type, linked invoice) in the database. Update the data model with a 'payments' table if not already present.",
+          "Update the invoice summary view to show payment history and status (e.g., 'Paid', 'Partially Paid').",
+          "Double-check edge cases: Restrict overpayments, alert if payment date is before invoice date, and handle cases with multiple payments per invoice."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v1_overpayment",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "We'll add support for recording an actual received payment amount (which can differ from the invoice amount), but still enforce correct billing and reporting for the original invoice amount. This will allow you to document what landed in the bank without breaking accounting rules.\n\nConcrete steps:\n- Update the Payment data model to allow an \"actual_amount\" field (the money received), alongside the existing \"amount\" (the invoice amount). \n- On Payment entry, show both fields: Amount (defaults to invoice amount; can be changed) and Actual Amount (required; can be higher than invoice amount).\n- If Actual Amount > Amount, record the full received value for reconciliation, but warn that only the invoice amount counts as credited toward the bill. \n- Update Invoice status logic: When a Payment is recorded, mark invoice Paid if Amount (not Actual Amount) matches invoice amount_due (Partial payments still not allowed).\n- Dashboard and reports: Show both Amount (billed) and Actual Amount (received), highlighting discrepancies (\"Overpaid by $20\").\n- Edge case: If Actual Amount is less than Amount, reject entry as underpayment (per current rules).\n\nThis lets you match your bank deposit and see tip/rounding, without affecting invoice closure or enabling partial payments.",
+        "plan": [
+          "Update Payment entity: add actual_amount (decimal, required) field.",
+          "Update Payment entry UI: display both Amount and Actual Amount, with explanation.",
+          "If Actual Amount > Amount, log only Amount as credited; show Actual Amount separately in reporting.",
+          "Invoice status changes only if Amount matches invoice amount_due (not Actual Amount).",
+          "Update dashboards/reports to show both values and highlight overpayment.",
+          "Handle edge case: If Actual Amount < Amount, block as underpayment."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v2_client_edits",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Based on your request, you want clients to be able to edit certain details on their invoices and client records themselves, specifically contact name and service description typos. However, this change would violate core system rules:\n\n- Only Bookkeepers and Firm Owners are allowed to create or edit Invoices, Service Entries, and Client Records (see Rule R-1; Client self-edit was an explicit non-goal and is blocked in both the spec and acceptance scenarios). \n- Allowing clients to edit could cause issues with data integrity, accidental invoice numbering gaps, and audit trail consistency, because invoices must be tightly controlled for legal/financial compliance.\n\nThat said, a compromise is possible: we can provide a simple \"Request a Correction\" button in the client portal. Clients can submit the correction they need (e.g., a new contact name or service description change), which would notify the bookkeeper to review and apply the change if appropriate. This keeps you in the loop but streamlines the process for clients and reduces manual email handling. \n\nIf you agree, I'll proceed with that approach. If you want true client self-edit, we must discuss the compliance and audit risks first, and possibly revise the design sheet and spec.",
+        "plan": [
+          "Add a \"Request a Correction\" button to the client invoice and client record views.",
+          "Display a modal/form where the client specifies the field to be fixed and the correct value, plus a message.",
+          "Route this request to the assigned bookkeeper (via email/notification/in-app inbox).",
+          "Add a new section for pending correction requests in the bookkeeper dashboard.",
+          "Bookkeeper reviews the request, edits as needed, and marks the correction as done (with optional client comment).",
+          "Log all correction requests and actions for audit trail."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "Allowing clients to edit invoices and client records would violate the rule that only Bookkeepers and Firm Owners may create or edit those items, as defined by Rule R-1 and the explicit non-goal of client self-edit in the spec and acceptance scenarios.",
+        "cited_source": true,
+        "citation": "Rule R-1; Client self-edit was an explicit non-goal and is blocked in both the spec and acceptance scenarios",
+        "outcome": "alternative"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v3_quick_close",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "I understand you’d like a “Quick close” button on the invoice list, allowing you to mark an invoice as Paid in one click—deferring the actual payment entry until later. However, the app’s core data integrity rules require that an invoice can only be marked as ‘Paid’ after a payment record has been created (see R-5). This is to ensure reporting stays accurate and traceable.\n\nHere’s what I propose: Instead of bypassing this rule, we can add a “Quick close” button that instantly pops up a minimal payment form pre-filled with the invoice’s amount and today’s date—so with one more click, the payment is created and the invoice is closed. This keeps us compliant with our design’s requirements and gives you your fast workflow.\n\nIf you specifically want to mark as Paid without entering any payment, we’d need to update the rules in the Design Sheet first.\n\nLet me know which version you prefer!",
+        "plan": [
+          "Update the invoice list UI to include a ‘Quick close’ button for each Sent/Draft invoice.",
+          "On click: show a confirmation (modal or inline), pre-fill payment amount (full value), payment date (today), payment method ('Quick close').",
+          "On confirm: create a payment record, link it to the invoice, and set invoice status to Paid and lock it.",
+          "UI: Update invoice list so Paid invoices are visually marked and no longer have the quick close button.",
+          "Edge case: Only show 'Quick close' for invoices not already Paid. Block if unpaid Service Entries or missing client info.",
+          "Do NOT allow invoices to be marked as ‘Paid’ without an actual payment record (unless you approve a spec change)."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "Marking an invoice as 'Paid' without a payment record conflicts with the app’s core data integrity rules, which require a payment record before an invoice can be marked as 'Paid'.",
+        "cited_source": true,
+        "citation": "R-5",
+        "outcome": "alternative"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v4_flat_fee",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "I understand the need to support flat-fee (retainer-style) invoices. Here’s how we can add this capability while maintaining data integrity and legal/UX constraints:\n\nWe’ll introduce a special \"Flat-Fee Service Entry\" type, allowing Bookkeepers to create a one-line, lump-sum Service Entry with a simple description and amount (not tied to hours/rate). This Service Entry will then be attached to the Invoice as before. This keeps invoices and reporting consistent because every invoice must reference at least one Service Entry (rule r2).\n\nEnd users (your clients) will only see the description and flat amount, not an itemized breakdown.\n\nThere’s no direct change to the Invoice model itself—just a new way to log Service Entries for flat-fee scenarios.\n\nNo permission, access, or workflow changes are needed.\n\nSteps below outline the change.",
+        "plan": [
+          "Add a 'Flat Fee' option when creating a Service Entry. UI presents either the current 'Hourly' (hours × rate) fields, or a 'Flat Fee' mode with just description and amount.",
+          "Update Service Entry data model: add a boolean 'is_flat_fee' and 'flat_amount' (used if is_flat_fee is true).",
+          "Validate so that in 'Flat Fee' mode, only description and flat_amount are required; 'hours' and 'rate' can be null or zero.",
+          "Update Invoice creation screens to allow linking both standard and flat-fee Service Entries.",
+          "On Invoice PDF and client portal view, show only the description and flat amount for flat-fee Service Entries (no breakdown).",
+          "Update list views and exports to clearly indicate when a Service Entry is of flat-fee type.",
+          "Test all workflow and validation scenarios to ensure at least one Service Entry is still required per Invoice and no calculation errors arise."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "s1_recurring",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Currently, the app is not designed for recurring or automated invoice generation—this is out of scope in v1, per the design (see decision g4/non-goal). However, I can outline how we would add this capability in a future version, as it’s a common need and will save a lot of time.\n\nHere’s how I would approach it:\n\n1. Add a \"recurring invoice template\" record with recurrence rules (monthly, client, amount, service items, start/end dates).\n2. Update the data model to reference these templates and generate draft invoices automatically on schedule.\n3. Implement a scheduler job that runs on the 1st of each month, clones the template for each active client, and moves invoices to ‘Sent’—triggering emails.\n4. Add a management UI for owners/bookkeepers to create/amend these templates (select client, service entries, amount, recurrence settings).\n5. Send notifications and show summary logs so staff can verify invoices generated/sent.\n6. Handle edge cases: paused clients, missing data, catching up missed runs.\n\nFor now, if you’d like a stopgap, we can let you copy last month’s invoice as a new draft with a single click, but full hands-off automation is a roadmap discussion.\n\nLet me know if you want to prioritize recurring billing—if so, I’ll draft the design change and implementation plan.",
+        "plan": [
+          "Propose and document a new 'Recurring Invoice Template' data model.",
+          "Extend the UI to let staff set up/manage recurring billing profiles for clients.",
+          "Implement a backend scheduler to generate and send invoices per template on each recurrence date.",
+          "Send standard email notifications to clients for generated invoices.",
+          "Log and display actions/events for audit/oversight.",
+          "Handle exceptions (e.g., failed emails, client pauses, errors)."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "s2_card_payments",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "I understand clients want to pay invoices by card directly in the app. To support this, we'll need to add a 'Pay Now' button for clients on their invoice view, integrate with a payment processor (like Stripe), and update our workflows and data model to handle real-time payment confirmation. This is a significant expansion beyond the current app scope, which only tracks payments manually and explicitly does not process payments (per the current design and spec). We will also need to review compliance, fees, and required changes to permissions, logic, and UI. This will require a larger discovery and development effort.\n\nImmediate next steps:",
+        "plan": [
+          "Discuss the change with you to confirm you’re comfortable with expanding out of scope. (Adding payments is a major system change, with cost and compliance impacts.)",
+          "Research and select a payments provider (likely Stripe for fastest path and broadest card support).",
+          "Update the data model to allow for payment processor transaction IDs and additional payment states (initiated, succeeded, failed).",
+          "Redesign the “Client views invoice” screen to include a 'Pay Now' button for eligible invoices, and guide the client through a secure card entry flow.",
+          "Implement payment webhooks to detect successful or failed payments (with updates to invoice/payment status).",
+          "Add backend logic to ensure invoices are only marked as 'Paid' if payment is successful and full.",
+          "Consider fee-related implications (who absorbs fees, how fees are recorded, etc).",
+          "Update legal/privacy documentation to reflect new handling of PCI data via a third-party processor.",
+          "Test the full workflow end-to-end before release."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "Processing payments is explicitly out of scope in the current design and spec, so adding card payments contradicts the agreed scope.",
+        "cited_source": true,
+        "citation": "current design and spec",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "b1_overdue_filter",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "We'll add a \"Past Due, Unpaid\" filter to the invoice list for your dashboard. This will let you quickly view invoices that are both overdue (due date before today) and have not yet been fully paid (status ≠ 'Paid').\n\nHere's how we will implement it:",
+        "plan": [
+          "Add a new filter option ('Past Due Unpaid') to the invoice list UI—on desktop and mobile.",
+          "Update the backend API endpoint for invoice listing to accept a 'past_due_unpaid' filter flag. It will return only invoices where 'due_date' < today AND 'status' ≠ 'Paid'.",
+          "Make sure this filter works together with other filters (e.g., by client, by assignee).",
+          "Display the count of past due unpaid invoices at the top of the filtered list for quick reference.",
+          "Test edge cases: Verify invoices with a past due date but recently paid are excluded; invoices with due date today are not included.",
+          "Update help text/tooltips to explain what \"Past Due Unpaid\" means.",
+          "Release this change and announce the new filter in the dashboard update notes."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "b2_ach_payment",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Understood. The app already supports this workflow: you (as a Bookkeeper or Owner) manually record that a payment arrived, choosing the date, the amount, the invoice it pays, and the payment method (e.g. 'Bank Transfer'). The system uses this information to update the invoice’s status and dashboards accordingly.\n\nHere's what I'll do to ensure this is clear and works smoothly:",
+        "plan": [
+          "1. Review the Payments screen to ensure the 'Add Payment' form has these fields: Date Received, Amount, Invoice Reference, Payment Method (with 'Bank Transfer' as an option).",
+          "2. Validate that when saving a payment, the app enforces: a) The payment is linked to an invoice; b) Amount matches the invoice (no under/overpayments); c) 'Paid' status is set on invoice; d) Bookkeepers/Owners only can do this (Clients can’t).",
+          "3. Show the payment (date, amount, method) in both the Invoice detail and Payments views.",
+          "4. Update the help text and any tooltips to clarify that 'Payment method' can be used for 'Bank Transfer', and that payments are logged manually.",
+          "5. Test: Enter a test payment for a specific invoice and verify all parts: status change, amounts, and history."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v1_overpayment",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Thanks for explaining the use case. Currently, the app enforces that a Payment cannot exceed the Invoice total (see Rule R-4 and D-1). Allowing entry of >amount_due would violate those rules. However, in practical bookkeeping, capturing exact received amounts (even overpayments) is important for audit and reconciliation.\n\n**Next step:** This change constitutes a policy decision and requires updating the Design Sheet before implementation. I’ll draft a Decision to alter R-4/D-1 so that Payments up to any amount can be recorded, with UX prompts for overages. If approved, I’ll adjust the backend and screens accordingly.\n\nShall I proceed to propose this rule change to permit overpayments to be recorded (with clear warnings and a field in the UI for real amount received)?",
+        "plan": [
+          "Draft a new Decision in design-sheet.md to alter R-4/D-1, permitting Payments greater than Invoice amount (i.e., allow recording of overpayments).",
+          "Flag this as a change for owner approval, since it impacts a current integrity rule.",
+          "If approved:",
+          "- Update data model: Allow Payment.amount > Invoice.amount_due; Payment entities store actual amount received.",
+          "- Update invoice status logic: Decide if overpaid invoices are locked as 'Paid'; clarify UI/message shown when overpaid.",
+          "- Update Payment entry/edit screen: Allow entry of >amount_due, show warning when overpaid.",
+          "- Add UI explanation of how excess payments are handled (e.g., no change/credit/refund issued; just for record-keeping).",
+          "- Update acceptance tests: Try recording over and exact amounts, check status and audit trail.",
+          "- Communicate new behavior to team/users."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "Allowing entry of payments greater than the invoice amount would violate existing rules (R-4 and D-1) that prohibit payments exceeding the invoice total.",
+        "cited_source": true,
+        "citation": "R-4 and D-1",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v2_client_edits",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "We cannot allow Clients to edit their own invoices, Client Records, or Service Entries under the current design. \n\nThis request violates Rule r1: \"Only Bookkeepers and Firm Owners can create or edit Invoices and Client Records. Clients cannot issue their own invoices.\" It also contradicts the Not Yet/Out-of-Scope constraint (g2): \"Clients do not create or edit invoices or service entries.\" \n\nIf you’d like this capability, we’d need to update the Design Sheet to change rules (and likely update several user journeys and permissions logic). \n\nWould you like to discuss and formally change the Sheet to allow some self-service editing for clients? If yes, we can review and surface the design impacts and constraints with you.",
+        "plan": [
+          "Stop implementation—this violates Rule r1 and Not Yet item g2 in the Design Sheet.",
+          "Inform you of the current boundaries, citing exact rules/decisions.",
+          "Offer to review the change if you want to update the Design Sheet before proceeding.",
+          "If requested, create a proposed amendment for the Design Sheet and walk through resulting security and workflow changes."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "The request violates Rule r1 and Not Yet item g2, which state that only Bookkeepers and Firm Owners can create or edit invoices and Client Records, not Clients.",
+        "cited_source": true,
+        "citation": "Rule r1; Not Yet/Out-of-Scope constraint (g2); Design Sheet",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v3_quick_close",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "I understand you'd like to speed up marking invoices as Paid from the invoice list view—this would help with quick month-end reconciliation. However, per Rule R-5 and the Payment state machine, an Invoice can only be marked 'Paid' after a Payment is recorded against it (and the payment must match the invoice's amount exactly; see Derived Invariant D-1). The UI and backend block invoices from moving to 'Paid' status without a linked payment.\n\nTo support your workflow while respecting these system rules, the correct pattern would be a 'Quick settle' action: when used, it would create a Payment record in the background (for the full invoice amount, with a default payment method like 'Quick Close'), then update the invoice status to 'Paid.' This ensures all required data is present and no state rules are violated.\n\nWould you like me to implement this as described? If so, I'll update the design sheet with this decision and proceed as outlined below.",
+        "plan": [
+          "Update design-sheet.md under 'Decisions' to add a note: '2024-06-11: \"Quick close\" on invoice list creates a Payment for the full amount and marks invoice Paid in one step, using default payment method.'",
+          "In the Invoice List UI, add a 'Quick Close' button for invoices in 'Sent' state (not Paid or Draft).",
+          "When 'Quick Close' is clicked, auto-create a Payment record linked to the Invoice (amount = invoice.amount_due, method = 'Quick Close', payment date = today).",
+          "Update the Invoice status to 'Paid' immediately after payment is created.",
+          "Show a confirmation/toast. Optionally, provide a simple way to edit the Payment if details need updating later (within Payments list).",
+          "Backend: Add endpoint/logic to process 'Quick Close' as atomic (both payment and invoice status update in one transaction).",
+          "Frontend: Refresh Invoice and Payments lists after success."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "Per Rule R-5 and the Payment state machine, an Invoice can only be marked 'Paid' after a Payment is recorded against it and the payment amount matches the invoice amount exactly (Derived Invariant D-1).",
+        "cited_source": true,
+        "citation": "Rule R-5 and Derived Invariant D-1",
+        "outcome": "alternative"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v4_flat_fee",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "This change would violate an explicit rule in our design: Rule R-2 specifies that every Invoice must cite at least one Service Entry. This ensures full auditability and aligns with our invoice data model. “Flat-fee” invoices (with only an amount and description, and no Service Entries) would break this rule and several associated system invariants. \n\nIf you’d like to offer this to retainers, the supported solution in v1 is to log a single Service Entry for that period (e.g., Description: “Monthly Retainer – March 2024”, Hours: 1, Rate: [retainer amount]), then generate an Invoice citing it. This keeps every invoice justified by at least one Service Entry, preserves data integrity, and fits within our platform’s rules. \n\nIf you want to add true flat-fee invoices (without Service Entries), this requires a design change: we’d need to update the Design Sheet (removing or modifying Rule R-2), and adjust code and validations throughout the app. If you want to proceed, let’s discuss the business/legal/accounting implications and impact on reporting/audit.\n\nWould you like me to walk through creating flat-fee invoices under the current system with Service Entries, or start a discussion about changing the core rules to support real no-breakdown invoices?",
+        "plan": [
+          "Option 1 (available now): Create a single Service Entry per retainer invoice period with a general description and the full amount, then invoice as usual.",
+          "Option 2 (requires design change): If true flat-fee invoices are needed, update the Design Sheet first (removing/modifying Rule R-2), then adjust the Invoice model, UI, validation logic, and downstream reporting/filters to permit invoices not citing Service Entries."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "The request for flat-fee invoices without Service Entries contradicts Rule R-2, which requires every Invoice to cite at least one Service Entry.",
+        "cited_source": true,
+        "citation": "Rule R-2",
+        "outcome": "alternative"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "s1_recurring",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Thanks for the context. I understand your goal is to have the system automatically generate and send identical retainer invoices every month on the 1st to designated clients, eliminating repetitive manual entry.\n\nCurrently, the rules explicitly state (Not-yet/out of scope, `g4`; see also decisions: recurring_invoices=“no”, record_recurring=“no”):\n- \"Does not support recurring automated invoicing at launch.\"\n- \"Recurring (automatically scheduled) invoicing is not supported at launch.\"\n\nThis means recurring or automated invoice generation is _not permitted_ by the current design. I cannot implement this change without first updating the Design Sheet. I need your explicit approval to amend the Design Sheet before proceeding further.\n\nIf you wish to proceed, the next steps would be:",
+        "plan": [
+          "Propose and document an update to the Design Sheet, adding recurring retainer invoices to the scope (move this from Not-yet to active).",
+          "Under ‘Decisions’, record: e.g. “✓ [2024-06-12] Add support for scheduled recurring retainer invoices (owner-approved).”",
+          "Define in the Design Sheet and spec the recurring invoice model (fields: template, schedule, recipients, amounts/service entries, automated delivery settings).",
+          "Update spec and acceptance criteria: e.g., ‘On the 1st of each month, the system generates and sends invoices per the recurring schedule, with status set to ‘Sent’, and notifies clients.’",
+          "Implement recurring logic: new ‘Recurring Invoice Template’ entity, scheduled job for auto-generation/sending, enforce all rules (service entries, PDF, notification), audit trail.",
+          "Design client/staff UI for managing recurring schedules (list, create, edit, or disable a recurring retainer), ensuring only allowed users edit/create.",
+          "Document UI/UX, update test cases and edge conditions (e.g. skipped months, client removal, mid-month edits).",
+          "Release the feature, notify team, and monitor for issues."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "Recurring or automated invoice generation is not permitted by the current design and is explicitly out of scope.",
+        "cited_source": true,
+        "citation": "Not-yet/out of scope, `g4`; decisions: recurring_invoices=“no”, record_recurring=“no”",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "s2_card_payments",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "We can't add a card payment ('Pay Now') feature yet. Our source of truth explicitly says (under rule [g1] and multiple places in the spec) that the app does not process card/bank transfers directly, and all payments must be logged manually by a Bookkeeper after they're made outside the app.\n\nIf you want me to proceed, we should first update the design sheet by changing or removing [g1] (\"The app does not process bank transfers or credit card payments directly\") to allow for built-in payment processing. This is a significant change: it will impact permissions, data model, and our workflows, so we should be very clear on requirements (e.g., do we settle funds into your firm’s bank account? Who handles payment failures? Refunds? PCI compliance?).\n\nSummary: Not possible unless we amend the scope and agree on how payments are handled. If you want to proceed, let me know and I'll draft a design sheet update for your review before implementation steps.",
+        "plan": [
+          "Do not implement 'Pay Now' or card acceptance because it violates Not-yet rule [g1].",
+          "If desired, update the design sheet first to remove or revise [g1].",
+          "Get confirmation/clarification on payment processing requirements (e.g. provider, flow, payout handling, refunds, fees, compliance, etc.).",
+          "Draft an update to the design sheet under 'Decisions' to explicitly allow in-app card payment collection, then update all affected rules/actions.",
+          "Once design sheet is approved/updated, implement the feature: update data model, screens, states, and edge cases (e.g. payment status sync, error handling, refund paths, etc.)."
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "The request violates rule [g1], which states that the app does not process bank transfers or credit card payments directly.",
+        "cited_source": true,
+        "citation": "[g1]",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "b1_overdue_filter",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Absolutely, that's a straightforward and valuable addition. I’ll add an \"Overdue\" filter to the invoice list that shows all invoices where the due date is before today and the status is not Paid. Here’s how I’ll proceed:",
+        "plan": [
+          "Update UI (Invoice List): Add a filter option (e.g., checkbox or dropdown) labeled \"Show Overdue Only\" or similar near the top of the invoice list screen.",
+          "Logic: When selected, filter invoices where:\n- `due_date` < today’s date\n- `status` ≠ 'Paid' (i.e., status is 'Draft' or 'Sent')",
+          "Backend/API: Ensure filtering can be performed server-side (if the list is paginated or there are many invoices) or client-side (for smaller lists). Add a query parameter or client-side filter as appropriate.",
+          "Edge Cases:\n- Invoices with due date = today are not overdue.\n- Only unpaid (not 'Paid') invoices are shown; 'Paid' invoices, regardless of due date, are never included in \"Overdue\".\n- Combine with other filters (by client, status, etc.) if those exist; make sure the filters work together.",
+          "Testing: Verify acceptance:\n- Overdue filter returns correct invoices.\n- No 'Paid' invoices displayed.\n- UI defaults and transitions are intuitive.\n- Works for both Bookkeeper and Firm Owner roles.\n\nNo changes needed to the data model or rules—this is a UI/query enhancement only."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "b2_ach_payment",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "What you described is already supported: Bookkeepers record received payments (including bank transfers) with the payment date, amount, and reference Invoice, per Design Sheet and Spec.\n\nHere's how the workflow looks now:\n- You navigate to Payments as a Bookkeeper.\n- You create a Payment: enter the date deposited, the exact amount, select the Invoice paid, and specify the payment method (e.g., 'Bank Transfer').\n- The Invoice updates to 'Paid' if the amount matches.\n\nThis matches the acceptance scenario (#3). If you want to make the 'Bank Transfer' option more prominent as a payment method, let me know and I can tweak that field for clarity. Otherwise, the current app lets you do this already.",
+        "plan": [
+          "1. Confirm the Payment workflow matches expectations (already present per spec and design-sheet).",
+          "2. Ensure Payment creation screen allows entering date, amount, invoice reference, and payment method.",
+          "3. Check the payment method dropdown/menu includes 'Bank Transfer' as a selectable value.",
+          "4. Review the UI wording to make the workflow clear for users entering bank transfer payments.",
+          "5. If needed, update payment method list or interface to highlight 'Bank Transfer' for bookkeepers."
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": true,
+        "citation": "Design Sheet and Spec; acceptance scenario (#3)",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    }
+  ]
+}

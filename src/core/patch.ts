@@ -121,6 +121,8 @@ export const PatchOpSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("add_rule_with_id"), id: z.string(), text: z.string(), kind: RuleKind.optional(), example: z.string().optional() }),
   z.object({ op: z.literal("add_non_goal_with_id"), id: z.string(), text: z.string() }),
   z.object({ op: z.literal("remove_decision"), id: z.string() }),
+  // the exact inverse of add_decision_option, so undo can restore an option list byte-for-byte
+  z.object({ op: z.literal("remove_decision_option"), id: z.string(), option_id: z.string() }),
 ]);
 export type PatchOp = z.infer<typeof PatchOpSchema>;
 
@@ -275,8 +277,12 @@ function applyOne(s: Sheet, op: PatchOp, source: string, cascaded: PatchOp[]): v
     }
     case "modify_action": {
       const a = s.actions.find((x) => x.id === op.ref) ?? findActionByPhrase(s, op.ref) ?? notFound("action", op.ref, op);
-      if (op.actor !== undefined) a.actor = (byIdOrName(s.actors, op.actor) ?? invalidRef("actor", op.actor, op)).id;
-      if (op.object !== undefined) a.object = (byIdOrName(s.nouns, op.object) ?? invalidRef("noun", op.object, op)).id;
+      // Resolve BOTH references before touching the action: an op that is going to be rejected must leave no
+      // trace, or the Sheet stops being the sum of `applied` ops (Rule 1/2).
+      const newActor = op.actor !== undefined ? (byIdOrName(s.actors, op.actor) ?? invalidRef("actor", op.actor, op)).id : undefined;
+      const newObject = op.object !== undefined ? (byIdOrName(s.nouns, op.object) ?? invalidRef("noun", op.object, op)).id : undefined;
+      if (newActor !== undefined) a.actor = newActor;
+      if (newObject !== undefined) a.object = newObject;
       if (op.verb !== undefined) a.verb = op.verb.trim();
       setOpt(a, "description", op.description);
       setOpt(a, "example", op.example);
@@ -385,6 +391,14 @@ function applyOne(s: Sheet, op: PatchOp, source: string, cascaded: PatchOp[]): v
       delete d.implied_by;
       if (op.reason) d.rationale = `reopened: ${op.reason}`;
       d.source = source;
+      return;
+    }
+    case "remove_decision_option": {
+      const d = s.decisions.find((x) => x.id === op.id) ?? notFound("decision", op.id, op);
+      if (!d.options.some((o) => o.id === op.option_id)) throw new PatchError("invalid_option", `decision ${d.id} has no option ${op.option_id}`, op);
+      if (d.options.length <= 1) throw new PatchError("invalid", `decision ${d.id} must keep at least one option`, op);
+      if (d.chosen === op.option_id) throw new PatchError("invalid", `option ${op.option_id} is the chosen value of ${d.id}`, op);
+      d.options = d.options.filter((o) => o.id !== op.option_id);
       return;
     }
     case "remove_decision": {

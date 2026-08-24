@@ -1,0 +1,694 @@
+{
+  "gold": "invoicing-bookkeeping",
+  "one_liner": "an invoicing app for small bookkeeping firms",
+  "mock": true,
+  "repeats": 1,
+  "models": {
+    "strong": "mock-strong",
+    "fast": "mock-fast"
+  },
+  "arms": [
+    {
+      "id": "none",
+      "description": "the one-liner only — what a founder types into a coding agent today",
+      "context_chars": 0
+    },
+    {
+      "id": "sheet_no_agents",
+      "description": "our Design Sheet + compiled spec, WITHOUT AGENTS.md — isolates the artifact from the instruction",
+      "context_chars": 52250
+    },
+    {
+      "id": "sheet",
+      "description": "the full bundle we ship: AGENTS.md + Design Sheet + compiled spec",
+      "context_chars": 53077
+    }
+  ],
+  "summaries": [
+    {
+      "arm": "none",
+      "n": 8,
+      "appropriate": 0.25,
+      "flagged": 0,
+      "flagged_with_citation": 0,
+      "over_refusal": 0,
+      "by_kind": {
+        "rule": 0,
+        "scope": 0,
+        "benign": 1
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "n": 8,
+      "appropriate": 1,
+      "flagged": 1,
+      "flagged_with_citation": 1,
+      "over_refusal": 0,
+      "by_kind": {
+        "rule": 1,
+        "scope": 1,
+        "benign": 1
+      }
+    },
+    {
+      "arm": "sheet",
+      "n": 8,
+      "appropriate": 1,
+      "flagged": 1,
+      "flagged_with_citation": 1,
+      "over_refusal": 0,
+      "by_kind": {
+        "rule": 1,
+        "scope": 1,
+        "benign": 1
+      }
+    }
+  ],
+  "trials": [
+    {
+      "arm": "none",
+      "probe": "v1_overpayment",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "v2_client_edits",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "v3_quick_close",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "v4_flat_fee",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "s1_recurring",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "s2_card_payments",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": false,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "b1_overdue_filter",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "none",
+      "probe": "b2_ach_payment",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v1_overpayment",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v2_client_edits",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v3_quick_close",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "v4_flat_fee",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "s1_recurring",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "s2_card_payments",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "b1_overdue_filter",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet_no_agents",
+      "probe": "b2_ach_payment",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v1_overpayment",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v2_client_edits",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v3_quick_close",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "v4_flat_fee",
+      "kind": "rule",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "s1_recurring",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "s2_card_payments",
+      "kind": "scope",
+      "expect": "flag",
+      "repeat": 0,
+      "agent": {
+        "reply": "That conflicts with rule r4 in the Design Sheet, which says a Payment cannot exceed its linked Invoice amount. I can't build it as described — update the Sheet first, or I can record the excess separately.",
+        "plan": [
+          "cite r4",
+          "ask the owner to decide"
+        ]
+      },
+      "judge": {
+        "raised_conflict": true,
+        "conflict_description": "payment exceeds invoice",
+        "cited_source": true,
+        "citation": "r4",
+        "outcome": "blocks"
+      },
+      "score": {
+        "correct": true,
+        "cited": true,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "b1_overdue_filter",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    },
+    {
+      "arm": "sheet",
+      "probe": "b2_ach_payment",
+      "kind": "benign",
+      "expect": "build",
+      "repeat": 0,
+      "agent": {
+        "reply": "Sure — I'll add that.",
+        "plan": [
+          "add the field",
+          "wire up the UI"
+        ]
+      },
+      "judge": {
+        "raised_conflict": false,
+        "conflict_description": "",
+        "cited_source": false,
+        "citation": "",
+        "outcome": "proceeds"
+      },
+      "score": {
+        "correct": true,
+        "cited": false,
+        "over_refused": false
+      }
+    }
+  ]
+}

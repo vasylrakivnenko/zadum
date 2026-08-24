@@ -19,7 +19,9 @@
     "mine:concepts": "tsx src/mining/concepts.ts",
     "learn": "tsx src/learning/report.ts",
     "baselines": "tsx src/baselines/run.ts",
-    "mine:rules": "tsx src/mining/rule_bank.ts"
+    "mine:rules": "tsx src/mining/rule_bank.ts",
+    "thesis": "tsx src/thesis/run.ts",
+    "models": "tsx src/llm/check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

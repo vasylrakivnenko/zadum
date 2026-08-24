@@ -8,7 +8,9 @@ import { invoicingMockHandlers } from "../llm/mock_fixtures.js";
 import { loadCatalogs } from "./catalogs.js";
 import { Engine } from "./orchestrator.js";
 import { compileProject } from "./compile.js";
-import { DEFAULT_SELECTOR_CONFIG, DEFAULT_THETA } from "../core/selector.js";
+import { DEFAULT_SELECTOR_CONFIG, DEFAULT_THETA, impliedByUpdate } from "../core/selector.js";
+import { conditionHard, conditionSoft, distribution, maxOption, type Belief } from "../core/worlds.js";
+import { propagateHard } from "../core/catalog.js";
 
 // This file is about the general engine loop, not the rule bank — point at a guaranteed-empty directory so
 // these tests stay deterministic regardless of whether `catalogs/rule-bank/*.json` has been mined on disk
@@ -49,6 +51,78 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     const events = await store.listEvents("p1");
     expect(events.map((e) => e.type)).toEqual(["project_created", "draft_created", "plan_created", "worlds_sampled"]);
     expect(events[0]!.tags.catalog).toMatch(/core@/);
+  });
+
+  it("promises only the settlements the answer will really produce", async () => {
+    // Regression: the card preview used HARD conditioning at the looser tau (0.9) while the engine really
+    // applies soft ε-conditioning at softImplyTau (0.95) with a minImplyDelta rise (ADR-020). On this belief
+    // the old predicate previewed 71 settlements for one card where the engine settles none — the UI slices to
+    // 6, so every card showed six fabricated "this also settles …" promises.
+    const { engine, llm } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "pa1" });
+    const deal = await engine.startCards("pa1");
+    expect(deal.kind).toBe("card");
+    if (deal.kind !== "card") return;
+    const { sheet, session } = await engine.getState("pa1");
+    const node = session.belief.nodes.find((n) => n.id === deal.card.node_id)!;
+    const open = sheet.decisions.filter((d) => d.status === "open" && d.id !== node.id).map((d) => d.id);
+    const label = (nodeId: string, optionId: string) => {
+      const d = sheet.decisions.find((x) => x.id === nodeId);
+      return `${d?.topic ?? nodeId}: ${d?.options.find((o) => o.id === optionId)?.label ?? optionId}`;
+    };
+    // what the engine would REALLY settle, under any option the card offers
+    const real = new Set<string>();
+    const loose = new Set<string>();
+    for (const opt of deal.card.options.map((o) => o.option_id)) {
+      for (const [n, d] of Object.entries(propagateHard({ [node.id]: opt }, session.belief.nodes, [node.id]).derived)) if (open.includes(n)) real.add(label(n, d.option));
+      const after: Belief = { ...session.belief, worlds: conditionSoft(session.belief.worlds, node.id, opt, session.config.epsilon) };
+      for (const s of impliedByUpdate(session.belief, after, open, session.config.softImplyTau, session.config.minImplyDelta)) real.add(label(s.nodeId, s.option));
+      // the predicate this used to use, kept here to prove the guard is load-bearing rather than cosmetic
+      const hard: Belief = { ...session.belief, worlds: conditionHard(session.belief.worlds, node.id, opt) };
+      for (const n of open) {
+        const before = maxOption(distribution(session.belief, n)).p;
+        const a = maxOption(distribution(hard, n));
+        if (before < session.config.tau && a.p >= session.config.tau) loose.add(label(n, a.option));
+      }
+    }
+    const prompt = llm.calls.filter((c) => c.fn === "card").at(-1)!.user;
+    const promised = (prompt.split("WHAT ELSE THIS SETTLES (raw):")[1] ?? "")
+      .split("\n\n")[0]!
+      .split("\n")
+      .map((l) => l.replace(/^- /, "").trim())
+      .filter((l) => l && l !== "(nothing else)");
+    for (const p of promised) expect([...real]).toContain(p);
+    expect(loose.size).toBeGreaterThan(real.size); // the old predicate really did over-promise here
+  });
+
+  it("re-derives what a changed answer had implied (Rule 3's 'unless contradicted')", async () => {
+    // Regression: a hard edge that demanded a DIFFERENT option than a decision already carried was skipped
+    // whenever that decision was already `implied` — so changing your mind left the old consequence standing
+    // and the compiled spec shipped two contradictory decisions.
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "pc1" });
+    const first = await engine.overrideDefault("pc1", "payment_recording", "manual");
+    expect(first.implied.hard).toContainEqual({ node: "payments_in_app", option: "record_only" });
+    expect((await engine.getState("pc1")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "implied", chosen: "record_only" });
+    // the user changes their mind: the old implication must follow, not linger
+    const second = await engine.overrideDefault("pc1", "payment_recording", "online_auto");
+    expect(second.implied.hard).toContainEqual({ node: "payments_in_app", option: "collect_online" });
+    expect(second.implied.contradictions).toEqual([]);
+    expect((await engine.getState("pc1")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "implied", chosen: "collect_online", implied_by: "payment_recording" });
+  });
+
+  it("never overwrites a decision the user resolved themselves, and reports the collision", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "pc2" });
+    // the user settles payments_in_app directly, then answers something whose hard edge wants the opposite
+    await engine.overrideDefault("pc2", "payments_in_app", "record_only");
+    const r = await engine.overrideDefault("pc2", "payment_recording", "online_auto");
+    expect(r.implied.hard.map((h) => h.node)).not.toContain("payments_in_app");
+    expect(r.implied.contradictions).toEqual([{ node: "payments_in_app", had: "record_only", wants: "collect_online", because: "payment_recording=online_auto" }]);
+    // the user's own answer stands (Rule 3), and the collision is on the record rather than silently dropped
+    expect((await engine.getState("pc2")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "resolved", chosen: "record_only" });
+    const contradicted = (await store.listEvents("pc2")).filter((e) => e.type === "implications_applied" && Array.isArray(e.payload.contradictions) && (e.payload.contradictions as unknown[]).length);
+    expect(contradicted.length).toBe(1);
   });
 
   it("applies a plain-language correction as a commit and propagates implications", async () => {
@@ -130,6 +204,34 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect(types).toContain("card_loop_stopped");
     expect(types).toContain("default_overridden");
     expect(types).toContain("compile_done");
+  });
+
+  it("stamps a spec that failed its critic so it cannot pass for a delivered one (Rule 6)", async () => {
+    const store = new MemoryStore();
+    const failing = {
+      ...invoicingMockHandlers,
+      critic: () => ({
+        violations: [{ rule_id: "r1", severity: "high" as const, where: "Rules & invariants", why: "contradicts r1", fix_hint: "restate it" }],
+        omissions: [],
+        score: 4,
+        verdict: "fail" as const,
+      }),
+    };
+    const engine = new Engine(store, new MockLLM(failing), await loadCatalogs(), { precompute: false, ruleBankDir: emptyRuleBankDir });
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p9" });
+    await engine.finishCards("p9");
+    await engine.acceptDefaults("p9");
+    const c = await compileProject(engine, "p9", { story: false, roundTrip: false, criticLoops: 1 });
+    expect(c.critic.verdict).toBe("fail");
+    // the bundle is still written (a minute of compute is not thrown away) but is unmistakably a draft
+    const spec = c.bundle.find((b) => b.name === "spec.md")!.content;
+    const agents = c.bundle.find((b) => b.name === "AGENTS.md")!.content;
+    expect(spec).toMatch(/DID NOT PASS REVIEW/);
+    expect(spec).toContain("contradicts r1");
+    expect(agents).toMatch(/did not pass its critic review/);
+    expect(JSON.parse(c.bundle.find((b) => b.name === "compile-report.json")!.content).critic_passed).toBe(false);
+    // and phase must NOT advance to done
+    expect((await engine.getState("p9")).session.phase).not.toBe("done");
   });
 
   it("supports you-decide, skip, other, and undo", async () => {

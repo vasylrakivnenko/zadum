@@ -111,6 +111,47 @@ describe("commits + diff", () => {
     expect(none.result.rejected).toHaveLength(1);
   });
 
+  it("rejects a modify_action with a bad reference without applying any part of it", () => {
+    // Regression: `modify_action` used to assign the new actor BEFORE validating the object reference, so a
+    // rejected op still moved the action to a different actor — the Sheet stopped being the sum of `applied`.
+    const a = base();
+    const action = a.actions[0]!;
+    const before = { actor: action.actor, object: action.object, verb: action.verb };
+    const r = applyPatch(a, [{ op: "modify_action", ref: action.id, actor: "Client", object: "NoSuchNoun" }], { source: "user_edit:c1" });
+    expect(r.rejected).toHaveLength(1);
+    expect(r.rejected[0]!.code).toBe("invalid_ref");
+    expect(r.sheet.actions[0]).toMatchObject(before);
+  });
+
+  it("removes a decision option only when it is safe to", () => {
+    const a = base();
+    const withOpt = applyPatch(a, [{ op: "add_decision_option", id: "client_portal", option: { id: "sms", label: "SMS only" } }], { source: "card:c1", strict: true }).sheet;
+    expect(withOpt.decisions[0]!.options.map((o) => o.id)).toEqual(["email_only", "portal", "sms"]);
+    const removed = applyPatch(withOpt, [{ op: "remove_decision_option", id: "client_portal", option_id: "sms" }], { source: "undo", strict: true }).sheet;
+    expect(removed.decisions[0]!.options.map((o) => o.id)).toEqual(["email_only", "portal"]);
+    // never the chosen value, never the last one standing
+    const chosen = applyPatch(removed, [{ op: "resolve_decision", id: "client_portal", chosen: "portal" }], { source: "card:c2", strict: true }).sheet;
+    expect(() => applyPatch(chosen, [{ op: "remove_decision_option", id: "client_portal", option_id: "portal" }], { source: "undo", strict: true })).toThrow(PatchError);
+  });
+
+  it("reverts a decision with its provenance and option list intact", () => {
+    // Regression: re-adding a removed decision went through `add_decision`, which carries no rationale or
+    // implied_by, so undoing across a decision removal silently dropped why it was decided; and options added
+    // after the snapshot were never removed on the way back.
+    const a = applyPatch(base(), [{ op: "set_decision", id: "client_portal", status: "implied", chosen: "portal", confidence: 1, implied_by: "external_access", rationale: "follows from external_access=portal" }], {
+      source: "implied:external_access",
+      strict: true,
+    }).sheet;
+    const b = applyPatch(a, [
+      { op: "add_decision_option", id: "client_portal", option: { id: "sms", label: "SMS only" } },
+      { op: "remove_decision", id: "client_portal" },
+      { op: "add_decision", id: "client_portal", topic: "client access", question: "Do clients log in?", options: [{ id: "email_only", label: "Clients get invoices by email" }], consequence: 3 },
+    ], { source: "user_edit:c9", strict: true }).sheet;
+    const a2 = applyPatch(b, revertOps(b, a), { source: "undo", strict: true }).sheet;
+    expect(strip(a2)).toEqual(strip(a));
+    expect(a2.decisions.find((d) => d.id === "client_portal")).toMatchObject({ status: "implied", implied_by: "external_access", rationale: "follows from external_access=portal" });
+  });
+
   it("diffSheets produces ops that reproduce the target; revert restores an earlier snapshot", () => {
     const a = base();
     const ops: PatchOp[] = [

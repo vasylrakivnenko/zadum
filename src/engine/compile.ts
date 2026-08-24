@@ -70,8 +70,11 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
     usage.cache_read_input_tokens += u.cache_read_input_tokens;
     usage.cache_creation_input_tokens += u.cache_creation_input_tokens;
   };
+  // Same injected clock the Engine uses (`EngineOptions.now`), so compile events stay deterministic in tests
+  // and replays instead of being the one path that reaches for the wall clock.
+  const now = () => engine.opts.now?.() ?? new Date().toISOString();
   const emit = (type: Parameters<Engine["store"]["appendEvent"]>[0]["type"], payload: Record<string, unknown>) =>
-    engine.store.appendEvent({ id: randomUUID(), project_id: projectId, ts: new Date().toISOString(), type, payload, tags: { ...session.versions, phase: "compiling" } });
+    engine.store.appendEvent({ id: randomUUID(), project_id: projectId, ts: now(), type, payload, tags: { ...session.versions, phase: "compiling" } });
 
   await emit("compile_started", { candidates: N, sheet_version: sheet.version });
 
@@ -153,9 +156,13 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   }
 
   // ---- bundle ----
-  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds);
+  // Rule 6: the spec must pass the critic before delivery. We still WRITE the bundle after an exhausted repair
+  // loop (throwing away a minute of compute helps nobody), but a failing spec must be impossible to mistake
+  // for a passing one — it is stamped as a draft, in the two files a coding agent actually reads.
+  if (critic.verdict !== "pass") spec = withFailedCriticBanner(spec, critic);
+  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now());
   for (const b of bundle) {
-    const art: Artifact = { project_id: projectId, name: b.name, kind: kindOf(b.name), content: b.content, created_at: new Date().toISOString(), meta: { sheet_version: sheet.version } };
+    const art: Artifact = { project_id: projectId, name: b.name, kind: kindOf(b.name), content: b.content, created_at: now(), meta: { sheet_version: sheet.version } };
     await engine.store.saveArtifact(art);
   }
   if (opts.outDir) {
@@ -165,6 +172,20 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   await emit("compile_done", { verdict: critic.verdict, score: critic.score, rounds, roundtrip_overall: roundtrip?.recall.overall ?? null, usage, latency_ms: Date.now() - t0, out_dir: opts.outDir ?? null });
   if (critic.verdict === "pass") await engine.markDone(projectId);
   return { spec, sections, critic, critic_rounds: rounds, roundtrip, story, bundle, usage, latency_ms: Date.now() - t0, sheet_version: sheet.version };
+}
+
+/** Loud, unmissable header for a spec the critic rejected — see Rule 6 in CLAUDE.md. */
+export function withFailedCriticBanner(spec: string, critic: CriticOut): string {
+  const worst = critic.violations.filter((v) => v.severity === "high").slice(0, 5);
+  const listed = (worst.length ? worst : critic.violations.slice(0, 5)).map((v) => `> - ${v.rule_id} (${v.severity}) at "${v.where}": ${v.why}`);
+  return [
+    `> ⚠️ **DRAFT — THIS SPEC DID NOT PASS REVIEW.** The critic returned \`${critic.verdict}\` (score ${critic.score}) after ${critic.violations.length} violation(s) and ${critic.omissions.length} omission(s) survived the repair pass.`,
+    ">",
+    "> Do not treat it as the source of truth. The Design Sheet (`design-sheet.md`) still is; fix the findings below (full list in `compile-report.json`) and recompile.",
+    ...(listed.length ? [">", ...listed] : []),
+    "",
+    spec,
+  ].join("\n");
 }
 
 function assemble(sheet: Sheet, sections: CompileResult["sections"]): string {
@@ -245,11 +266,17 @@ function tokens(s: string): string[] {
 }
 const STOP = new Set(["the", "and", "for", "that", "this", "with", "from", "never", "must", "can", "cannot", "not", "are", "its", "their", "they", "has", "have", "any", "only", "all"]);
 
-function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number) {
+function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string) {
   const sheetMd = renderSheetMarkdown(sheet, { showIds: true, showDecisions: true, showOpenDecisions: true });
   const agents = [
     `# Working on: ${sheet.one_liner}`,
     "",
+    ...(critic.verdict !== "pass"
+      ? [
+          `⚠️ **\`spec.md\` did not pass its critic review** (verdict ${critic.verdict}, score ${critic.score}). Treat \`design-sheet.md\` as the only source of truth and ask before relying on a spec section; see \`compile-report.json\`.`,
+          "",
+        ]
+      : []),
     "This project has a Design Sheet (`design-sheet.md`) and a compiled specification (`spec.md`).",
     "",
     "Before any task:",
@@ -264,7 +291,7 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
     "- Prefer the spec's acceptance scenarios as the test list.",
     "",
   ].join("\n");
-  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), generated_at: new Date().toISOString() };
+  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", generated_at: generatedAt };
   const storyMd = story ? [`# ${story.title}`, "", ...story.steps.map((s, i) => `${i + 1}. ${s}`), "", "## Please confirm", ...story.checks.map((c) => `- ${c}`), ""].join("\n") : "";
   const out = [
     { name: "spec.md", content: spec },

@@ -113,10 +113,65 @@ export const DEFAULT_SELECTOR_CONFIG: SelectorConfig = {
   maxCardOptions: 4,
 };
 
-/** Fill in a partial config, keeping θ consistent with the chosen scoring unless θ was given explicitly. */
+/**
+ * Fill in a partial config, keeping θ consistent with the chosen scoring unless θ was given explicitly.
+ *
+ * Explicitly-undefined keys are dropped first: a caller spreading `{ theta: opts.theta }` where `opts.theta`
+ * is undefined would otherwise have `...partial` re-apply `theta: undefined` OVER the computed default, and
+ * `value1 < undefined` is false forever — the card loop would never converge, only ever hit the 12-card cap.
+ */
 export function resolveConfig(partial: Partial<SelectorConfig> = {}): SelectorConfig {
-  const scoring = partial.scoring ?? DEFAULT_SELECTOR_CONFIG.scoring;
-  return { ...DEFAULT_SELECTOR_CONFIG, scoring, theta: partial.theta ?? DEFAULT_THETA[scoring], ...partial };
+  const given = Object.fromEntries(Object.entries(partial).filter(([, v]) => v !== undefined)) as Partial<SelectorConfig>;
+  const scoring = given.scoring ?? DEFAULT_SELECTOR_CONFIG.scoring;
+  return { ...DEFAULT_SELECTOR_CONFIG, scoring, theta: given.theta ?? DEFAULT_THETA[scoring], ...given };
+}
+
+/**
+ * Merge a STORED session config with this run's overrides (CLI flags, harness arm, web request).
+ *
+ * θ is scoring-specific and calibrated in that scoring's own units (risk ≈ 7 vs weighted_entropy ≈ 24 — a 3×
+ * scale difference), so carrying a stored θ across a scoring change silently breaks stopping: a session
+ * created with `--scoring risk` and resumed under the default scoring would compare risk-scale values against
+ * weighted_entropy's θ and stop after one card. θ therefore follows the EFFECTIVE scoring unless this run
+ * asked for a specific θ:
+ *   1. explicit `overrides.theta` (a `--theta` flag / harness arm) always wins;
+ *   2. else `thetaMultiplier` (the thoroughness dial) scales the calibrated default of the effective scoring;
+ *   3. else the stored θ, but only while the stored scoring still applies;
+ *   4. else the calibrated default for the effective scoring.
+ */
+export function mergeConfig(
+  stored: Partial<SelectorConfig> = {},
+  overrides: Partial<SelectorConfig> = {},
+  opts: { thetaMultiplier?: number } = {},
+): SelectorConfig {
+  const defined = (o: Partial<SelectorConfig>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<SelectorConfig>;
+  const base = defined(stored);
+  const over = defined(overrides);
+  const scoring = over.scoring ?? base.scoring ?? DEFAULT_SELECTOR_CONFIG.scoring;
+  const storedThetaStillValid = base.theta !== undefined && (base.scoring ?? scoring) === scoring;
+  const theta =
+    over.theta ??
+    (opts.thetaMultiplier !== undefined
+      ? DEFAULT_THETA[scoring] * opts.thetaMultiplier
+      : storedThetaStillValid
+        ? base.theta!
+        : DEFAULT_THETA[scoring]);
+  return resolveConfig({ ...base, ...over, scoring, theta });
+}
+
+/**
+ * The hypothetical belief given `node = option`, for value-of-information search.
+ *
+ * When NO particle holds that option (its probability comes entirely from the α-prior mix), hard conditioning
+ * empties the particle set — and an empty set has zero world-entropy, which reads as "answering this way makes
+ * everything certain" and inflates the score of exactly those nodes whose options the sampler never produced.
+ * The honest fallback is the belief itself: the particle set cannot represent that posterior, so we credit the
+ * branch with no information. It also matches what the engine really does at answer time, where soft
+ * conditioning (ε on every disagreeing world) leaves the distribution unchanged when every world disagrees.
+ */
+function hypothetical(b: Belief, nodeId: string, optionId: string): Belief {
+  const worlds = conditionHard(b.worlds, nodeId, optionId);
+  return worlds.length ? { ...b, worlds } : b;
 }
 
 export function entropyBits(dist: Record<string, number>): number {
@@ -205,7 +260,7 @@ export function valueOfAsking(
     let exp = 0;
     for (const [opt, p] of Object.entries(dist)) {
       if (p <= 0) continue;
-      exp += p * worldEntropy({ ...b, worlds: conditionHard(b.worlds, nodeId, opt) });
+      exp += p * worldEntropy(hypothetical(b, nodeId, opt));
     }
     return Math.max(0, h0 - exp);
   }
@@ -216,8 +271,7 @@ export function valueOfAsking(
   let exp = 0;
   for (const [opt, p] of Object.entries(dist)) {
     if (p <= 0) continue;
-    const conditioned: Belief = { ...b, worlds: conditionHard(b.worlds, nodeId, opt) };
-    exp += p * measure(conditioned, others, consequenceOverride);
+    exp += p * measure(hypothetical(b, nodeId, opt), others, consequenceOverride);
   }
   const indirect = Math.max(0, base - exp);
   return direct + indirect;
@@ -244,7 +298,7 @@ export function valueWithLookahead(
   let future = 0;
   for (const [opt, p] of Object.entries(dist)) {
     if (p <= 0) continue;
-    const conditioned: Belief = { ...b, worlds: conditionHard(b.worlds, nodeId, opt) };
+    const conditioned = hypothetical(b, nodeId, opt);
     let best = 0;
     for (const m of others) {
       const v = valueOfAsking(conditioned, m, others, consequenceOverride, scoring);

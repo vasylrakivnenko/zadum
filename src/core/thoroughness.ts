@@ -24,6 +24,9 @@ export interface ThoroughnessPreset {
   criticLoops: number;
 }
 
+/** Rule 7's ceiling. Every preset is clamped to it by `thoroughnessSelectorOverrides`. */
+export const MAX_CARDS_HARD_CAP = 12;
+
 /**
  * quick: a rough draft fast — fewer, higher-bar questions, single-pass compile.
  * standard: today's shipped defaults (θ×1, maxCards 12, single-candidate compile) — unchanged behavior.
@@ -32,8 +35,13 @@ export interface ThoroughnessPreset {
 export const THOROUGHNESS_PRESETS: Record<Thoroughness, ThoroughnessPreset> = {
   quick: { thetaMultiplier: 1.4, maxCards: 6, compileCandidates: 1, criticLoops: 1 },
   standard: { thetaMultiplier: 1, maxCards: 12, compileCandidates: 1, criticLoops: 1 },
-  thorough: { thetaMultiplier: 0.55, maxCards: 20, compileCandidates: 3, criticLoops: 2 },
+  // `thorough` buys depth with a LOWER θ (ask while a question is still worth less), never with a higher cap:
+  // Rule 7 ("never more than 12 cards per session") is a product invariant asserted in the tests, and a preset
+  // is not the place to quietly amend it. Raising the ceiling needs the explicit user-continuation flow
+  // ("the next question settles very little — keep going?") plus an ADR, not a bigger number here.
+  thorough: { thetaMultiplier: 0.55, maxCards: MAX_CARDS_HARD_CAP, compileCandidates: 3, criticLoops: 2 },
 };
+
 
 /**
  * Calibration status (be honest, matching DEFAULT_THETA's own comment): these multipliers are a first-pass
@@ -56,7 +64,7 @@ export function isThoroughness(v: string): v is Thoroughness {
  */
 export function thoroughnessSelectorOverrides(level: Thoroughness, scoring: Scoring, explicitTheta?: number): { theta: number; maxCards: number } {
   const preset = THOROUGHNESS_PRESETS[level];
-  return { theta: explicitTheta ?? DEFAULT_THETA[scoring] * preset.thetaMultiplier, maxCards: preset.maxCards };
+  return { theta: explicitTheta ?? DEFAULT_THETA[scoring] * preset.thetaMultiplier, maxCards: Math.min(preset.maxCards, MAX_CARDS_HARD_CAP) };
 }
 
 /** Compile-side overrides for one thoroughness level. Explicit `--candidates`/criticLoops passed by the caller should still win — same pattern. */

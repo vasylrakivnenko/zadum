@@ -30,6 +30,8 @@ export interface DecidedEntry {
 export interface ImpliedLabels {
   hard: { node: string; topic: string; label: string }[];
   soft: { node: string; topic: string; label: string; p: number }[];
+  /** hard edges this answer implies that clash with a decision the user already resolved: their answer stands */
+  contradictions: { node: string; topic: string; label: string; had: string }[];
 }
 
 export interface ProjectState {

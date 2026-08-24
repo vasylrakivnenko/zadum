@@ -7,6 +7,7 @@ import {
   impliedByUpdate,
   settledness,
   resolveConfig,
+  mergeConfig,
   valueOfAsking,
   valueWithLookahead,
   DEFAULT_SELECTOR_CONFIG,
@@ -256,6 +257,72 @@ describe("selector config", () => {
     // partial/legacy configs are filled in
     expect(resolveConfig({ theta: 2 }).lookahead).toBe(1);
     expect(resolveConfig().maxCards).toBe(12);
+  });
+
+  it("ignores explicitly-undefined keys instead of erasing the computed default", () => {
+    // Regression: `{...partial}` re-applied `theta: undefined` OVER the computed default, and `value1 <
+    // undefined` is false forever — the card loop could then only ever stop at the 12-card cap.
+    const cfg = resolveConfig({ scoring: "risk", theta: undefined, maxCards: undefined });
+    expect(cfg.theta).toBe(DEFAULT_THETA.risk);
+    expect(cfg.maxCards).toBe(12);
+    const b = belief();
+    expect(decideNext(b, ["theme"], cfg, 0).action).toBe("stop");
+  });
+});
+
+describe("mergeConfig (stored session + this run's overrides)", () => {
+  const stored = resolveConfig({ scoring: "risk" }); // a project created with --scoring risk: theta 7
+
+  it("keeps theta in the units of whichever scoring ends up in force", () => {
+    // Regression: resuming a `risk` project with no flags used to compare risk-scale values (θ≈7) against
+    // weighted_entropy's θ=24, stopping the session after a single card.
+    expect(mergeConfig(stored, {}).scoring).toBe("risk");
+    expect(mergeConfig(stored, {}).theta).toBe(DEFAULT_THETA.risk);
+    // switching scoring mid-project re-bases theta rather than carrying the old scoring's number over
+    const switched = mergeConfig(stored, { scoring: "weighted_entropy" });
+    expect(switched.theta).toBe(DEFAULT_THETA.weighted_entropy);
+  });
+
+  it("lets an explicit theta win over both the stored value and the thoroughness dial", () => {
+    expect(mergeConfig(stored, { theta: 3 }).theta).toBe(3);
+    expect(mergeConfig(stored, { theta: 3 }, { thetaMultiplier: 1.4 }).theta).toBe(3);
+  });
+
+  it("scales the effective scoring's calibrated theta with the thoroughness multiplier", () => {
+    expect(mergeConfig(stored, {}, { thetaMultiplier: 1.4 }).theta).toBeCloseTo(DEFAULT_THETA.risk * 1.4, 9);
+    expect(mergeConfig({}, {}, { thetaMultiplier: 0.55 }).theta).toBeCloseTo(DEFAULT_THETA.weighted_entropy * 0.55, 9);
+  });
+
+  it("carries other stored fields forward and lets overrides win", () => {
+    expect(mergeConfig({ ...stored, lookahead: 2 }, {}).lookahead).toBe(2);
+    expect(mergeConfig({ ...stored, lookahead: 2 }, { lookahead: 1 }).lookahead).toBe(1);
+    expect(mergeConfig(stored, { scoring: undefined, theta: undefined }).theta).toBe(DEFAULT_THETA.risk);
+  });
+});
+
+describe("options no particle holds", () => {
+  it("does not credit an unsupported option with perfect certainty", () => {
+    // Regression: hard-conditioning on an option no world holds empties the particle set, and an empty set has
+    // zero world-entropy — which read as "answering this way makes everything certain" and inflated the score
+    // of exactly those nodes whose options the sampler never produced. `hypothetical()` now falls back to the
+    // unchanged belief, which is also what soft ε-conditioning really does at answer time.
+    const { nodes } = mergeCatalogs([catalog], []);
+    // every world says currency=single, so "multi" survives only through the alpha-prior mix
+    const worlds = [
+      makeWorld("w1", { client_login: "yes", client_portal: "portal", currency: "single", theme: "yes" }, 0.5, "sampled"),
+      makeWorld("w2", { client_login: "no", client_portal: "none", currency: "single", theme: "no" }, 0.5, "sampled"),
+    ];
+    const b: Belief = { nodes, worlds, alpha: 0.08 };
+    const open = ["client_login", "client_portal", "currency", "theme"];
+    expect(distribution(b, "currency").multi).toBeGreaterThan(0);
+    for (const scoring of ["joint_entropy", "weighted_entropy", "risk"] as const) {
+      const currency = valueOfAsking(b, "currency", open, undefined, scoring);
+      const login = valueOfAsking(b, "client_login", open, undefined, scoring);
+      // asking about a decision every world agrees on must be worth less than the genuinely contested one
+      expect(currency).toBeLessThan(login);
+    }
+    // and specifically: joint_entropy gain stays bounded by the belief's own world-entropy (1 bit here)
+    expect(valueOfAsking(b, "currency", open, undefined, "joint_entropy")).toBeLessThan(0.5);
   });
 });
 

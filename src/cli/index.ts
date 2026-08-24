@@ -17,8 +17,7 @@ import { buildEngine } from "../engine/bootstrap.js";
 import { compileProject } from "../engine/compile.js";
 import { renderSheetMarkdown } from "../core/render.js";
 import type { DealResult, Engine } from "../engine/orchestrator.js";
-import { DEFAULT_SELECTOR_CONFIG, type Scoring } from "../core/selector.js";
-import { isThoroughness, thoroughnessSelectorOverrides, thoroughnessCompileOverrides, THOROUGHNESS_LEVELS } from "../core/thoroughness.js";
+import { isThoroughness, thoroughnessCompileOverrides, THOROUGHNESS_LEVELS, THOROUGHNESS_PRESETS } from "../core/thoroughness.js";
 import type { Store } from "../store/store.js";
 
 const program = new Command();
@@ -44,15 +43,27 @@ function thoroughnessLevel(o: { thoroughness?: string }): "quick" | "standard" |
 async function engineFromOpts(): Promise<{ engine: Engine; store: Store }> {
   const o = program.opts();
   const config: Record<string, unknown> = {};
-  const scoring: Scoring = (o.scoring as Scoring | undefined) ?? DEFAULT_SELECTOR_CONFIG.scoring;
   if (o.scoring) config.scoring = o.scoring;
   if (o.lookahead === 1 || o.lookahead === 2) config.lookahead = o.lookahead;
+  // Only ever pass a θ the user actually asked for. Computing one here from the CLI-side scoring would
+  // override the stored session's θ on every resumed command — a project created with `--scoring risk`
+  // (θ 7) and continued with a bare `cards <id>` would be judged against weighted_entropy's θ 24 and stop
+  // immediately. Everything else is resolved against the EFFECTIVE scoring inside the engine (mergeConfig).
   const explicitTheta = o.theta !== undefined && !Number.isNaN(o.theta) ? (o.theta as number) : undefined;
+  if (explicitTheta !== undefined) config.theta = explicitTheta;
   const level = thoroughnessLevel(o);
-  const sel = thoroughnessSelectorOverrides(level, scoring, explicitTheta);
-  config.theta = sel.theta;
-  if (level !== "standard") config.maxCards = sel.maxCards; // "standard"'s maxCards already matches the shipped default
-  const { engine, store } = await buildEngine({ mock: !!o.mock, cache: !!o.cache, dataDir: o.dataDir, engine: { config: config as never, log: o.quiet ? undefined : (l) => console.error(`  · ${l}`) } });
+  const preset = THOROUGHNESS_PRESETS[level];
+  if (level !== "standard") config.maxCards = preset.maxCards; // "standard"'s maxCards already matches the shipped default
+  const { engine, store } = await buildEngine({
+    mock: !!o.mock,
+    cache: !!o.cache,
+    dataDir: o.dataDir,
+    engine: {
+      config: config as never,
+      ...(level !== "standard" ? { thetaMultiplier: preset.thetaMultiplier } : {}),
+      log: o.quiet ? undefined : (l) => console.error(`  · ${l}`),
+    },
+  });
   return { engine, store };
 }
 
@@ -112,6 +123,7 @@ program
     console.log(`→ ${r.notes}`);
     console.log(`  applied ${r.applied.length} change(s)${r.rejected.length ? `, rejected ${r.rejected.length}: ${r.rejected.map((x) => x.error).join("; ")}` : ""}${r.dropped.length ? `, dropped ${r.dropped.length}` : ""} · now v${r.version}`);
     if (r.implied.hard.length || r.implied.soft.length) console.log(`  this also decided: ${[...r.implied.hard.map((h) => `${h.node}=${h.option}`), ...r.implied.soft.map((s) => `${s.node}≈${s.option}`)].join(", ")}`);
+    for (const c of r.implied.contradictions) console.log(`  ⚠ that normally implies ${c.node}=${c.wants}, but ${c.had} was already chosen — keeping it`);
     const { sheet } = await engine.getState(id);
     console.log(renderSheetMarkdown(sheet));
     await store.close();
@@ -162,6 +174,7 @@ program
       }
       const also = [...ans.implied.hard.map((h) => `✓ ${h.node} = ${h.option}`), ...ans.implied.soft.map((s) => `≈ ${s.node} = ${s.option} (${Math.round(s.p * 100)}%)`)];
       if (also.length) console.log(`  this also decided: ${also.join(" · ")}`);
+      for (const c of ans.implied.contradictions) console.log(`  ⚠ this normally implies ${c.node} = ${c.wants}, but you already chose ${c.had} — keeping your answer`);
       res = ans.next;
       n += 1;
     }

@@ -149,32 +149,29 @@ export function diffSheets(a: Sheet, b: Sheet): PatchOp[] {
   }
   for (const y of b.decisions) {
     const x = a.decisions.find((z) => z.id === y.id);
+    // Re-adding a decision goes through `open` and then one `set_decision`, rather than adding it in its final
+    // status directly: `add_decision` carries no rationale/implied_by (so an undo used to silently drop the
+    // provenance of an implied decision), and `open → <status>` is legal for every status while e.g.
+    // `delegated → delegated` is not. Restoring is then just the normal status transition.
+    const restore = (d: Decision): PatchOp => ({
+      op: "set_decision",
+      id: d.id,
+      status: d.status,
+      ...(d.chosen ? { chosen: d.chosen } : {}),
+      ...(d.confidence !== undefined ? { confidence: d.confidence } : {}),
+      ...(d.rationale !== undefined ? { rationale: d.rationale } : {}),
+      ...(d.implied_by !== undefined ? { implied_by: d.implied_by } : {}),
+      consequence: d.consequence,
+    });
     if (!x) {
-      ops.push({
-        op: "add_decision",
-        id: y.id,
-        topic: y.topic,
-        question: y.question,
-        options: y.options,
-        consequence: y.consequence,
-        status: y.status,
-        ...(y.chosen ? { chosen: y.chosen } : {}),
-        ...(y.confidence !== undefined ? { confidence: y.confidence } : {}),
-      });
+      ops.push({ op: "add_decision", id: y.id, topic: y.topic, question: y.question, options: y.options, consequence: y.consequence, status: "open" });
+      if (y.status !== "open") ops.push(restore(y));
     } else if (!sameDecision(x, y)) {
       for (const o of y.options) if (!x.options.some((p) => p.id === o.id)) ops.push({ op: "add_decision_option", id: y.id, option: o });
       if (y.status === "open") ops.push({ op: "reopen_decision", id: y.id });
-      else
-        ops.push({
-          op: "set_decision",
-          id: y.id,
-          status: y.status,
-          ...(y.chosen ? { chosen: y.chosen } : {}),
-          ...(y.confidence !== undefined ? { confidence: y.confidence } : {}),
-          ...(y.rationale !== undefined ? { rationale: y.rationale } : {}),
-          ...(y.implied_by !== undefined ? { implied_by: y.implied_by } : {}),
-          consequence: y.consequence,
-        });
+      else ops.push(restore(y));
+      // after the status is back (so the target's `chosen` is in place), drop options the target never had
+      for (const o of x.options) if (!y.options.some((p) => p.id === o.id)) ops.push({ op: "remove_decision_option", id: y.id, option_id: o.id });
     }
   }
   return ops;

@@ -6,11 +6,16 @@ import { settledness } from "@engine/core/selector";
 import type { EngineHandle } from "./engine";
 import type { DecidedEntry, ImpliedLabels, ProjectState, ProjectSummary } from "./types";
 
-type RawImplied = { hard: { node: string; option: string }[]; soft: { node: string; option: string; p: number }[] };
+type RawImplied = {
+  hard: { node: string; option: string }[];
+  soft: { node: string; option: string; p: number }[];
+  contradictions: { node: string; had: string; wants: string; because: string }[];
+};
 
 /**
- * The engine's speculative precompute saves session.json in the background (FileStore writes are not atomic),
- * so a read that lands mid-write sees a truncated JSON file. Reads are cheap: retry a few times.
+ * FileStore writes are atomic (tmp + rename), so a mid-write read should be impossible — but background
+ * precompute writes session.json outside the request path, and a retry on a malformed parse costs nothing
+ * next to a 500. Kept as belt-and-braces for non-atomic stores and partial-write edge cases.
  */
 export async function retryRead<T>(fn: () => Promise<T>, tries = 5, delayMs = 30): Promise<T> {
   for (let i = 0; ; i++) {
@@ -86,5 +91,6 @@ export function labelImplied(sheet: Sheet, implied: RawImplied): ImpliedLabels {
   return {
     hard: implied.hard.map((h) => ({ node: h.node, topic: topicOf(sheet, h.node), label: labelOf(sheet, h.node, h.option) })),
     soft: implied.soft.map((s) => ({ node: s.node, topic: topicOf(sheet, s.node), label: labelOf(sheet, s.node, s.option), p: s.p })),
+    contradictions: (implied.contradictions ?? []).map((c) => ({ node: c.node, topic: topicOf(sheet, c.node), label: labelOf(sheet, c.node, c.wants), had: labelOf(sheet, c.node, c.had) })),
   };
 }
