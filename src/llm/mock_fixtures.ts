@@ -4,7 +4,7 @@
  * (the same text the real model sees) so they exercise the real plumbing.
  */
 import type { LLMRequest, MockHandler } from "./client.js";
-import type { Draft, Plan, WorldsOut, CardOut, PatchOut, SectionOut, CriticOut, ReverseOut, StoryOut, SimAnswer } from "./functions.js";
+import type { Draft, Plan, WorldsOut, CardOut, PatchOut, SpecFeedbackOut, SectionOut, CriticOut, ReverseOut, StoryOut, SimAnswer } from "./functions.js";
 
 /** Tiny deterministic PRNG (mulberry32). */
 export function rng(seed: number): () => number {
@@ -179,6 +179,38 @@ function patcher(req: LLMRequest<unknown>): PatchOut {
   }
 }
 
+/**
+ * Spec feedback (the refine loop). Keyed off marker words in the diff + comments so a test can drive each of
+ * the four classifications deterministically: "wrong"/"not true"/"we don't" → a wrong assumption on the named
+ * decision, "we also"/"missing" → a missing element, "correct"/"right" → a confirmation, "?" → a new question.
+ */
+function specFeedback(req: LLMRequest<unknown>): SpecFeedbackOut {
+  const feedback = req.user.split("THE OWNER'S EDITS TO THE SPEC (diff):")[1] ?? req.user.split("THE OWNER'S COMMENTS:")[1] ?? "";
+  const text = feedback.toLowerCase();
+  const blank = { ref: "", name: "", description: "", fields_hint: [] as string[], example: "", actor: "", verb: "", object: "", text: "", kind: "" as const, id: "", chosen: "", rationale: "", option_id: "", option_label: "" };
+  const ops: SpecFeedbackOut["ops"] = [];
+  const wrong: SpecFeedbackOut["wrong_assumptions"] = [];
+  const missing: SpecFeedbackOut["missing_elements"] = [];
+  const confirmed: string[] = [];
+  const questions: SpecFeedbackOut["new_questions"] = [];
+  if (/never log|don't log|do not log|no portal/.test(text)) {
+    wrong.push({ node: "external_access", should_be: "none", why: "the owner says clients never log in" });
+    ops.push({ ...blank, op: "resolve_decision", id: "external_access", chosen: "none", rationale: "corrected on the spec" });
+  }
+  const trigger = /we also|missing|forgot/.exec(text);
+  if (trigger) {
+    // the thing they name is the capitalized phrase after the trigger ("we also track a Purchase order" →
+    // "Purchase order"); indices line up because `text` is `feedback` lowercased, not reshaped
+    const rest = feedback.slice(trigger.index + trigger[0].length);
+    const name = /\b([A-Z][a-z]{2,}(?: [a-z]{2,})?)\b/.exec(rest)?.[1] ?? "Purchase order";
+    missing.push({ kind: "noun", text: name });
+    ops.push({ ...blank, op: "add_noun", name, description: "added from spec feedback" });
+  }
+  if (/refund/.test(text)) questions.push({ topic: "refunds", question: "Who can issue a refund?", option_a: "Only the owner", option_b: "Anyone on the team" });
+  if (/correct|that's right|looks right|confirm/.test(text)) confirmed.push("payments_in_app");
+  return { ops, wrong_assumptions: wrong, missing_elements: missing, confirmed_elements: confirmed, new_questions: questions, notes: `understood ${ops.length} change(s)` };
+}
+
 function section(req: LLMRequest<unknown>): SectionOut {
   const sec = /SECTION TO WRITE: (\w+)/.exec(req.user)?.[1] ?? "section";
   const sheetBlock = (req.user.split("DESIGN SHEET:")[1] ?? "").split("\n\nDECISION LOG:")[0] ?? "";
@@ -306,6 +338,7 @@ export const invoicingMockHandlers: Record<string, MockHandler> = {
   sampler: (req, i) => sampler(req, i),
   card: (req) => card(req),
   patcher: (req) => patcher(req),
+  spec_feedback: (req) => specFeedback(req),
   // neutral likelihoods: evidence absorption becomes a no-op unless a test overrides this handler
   world_likelihoods: (req) => ({
     likelihoods: [...req.user.matchAll(/^- ([\w.]+): /gm)].map((m) => ({ world_id: m[1]!, fit: "neutral" as const })),

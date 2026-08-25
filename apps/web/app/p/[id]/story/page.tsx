@@ -98,7 +98,7 @@ export default function StoryPage() {
               <p className="muted">The story appears after the spec compiles.</p>
               <p>
                 <Link href={`/p/${id}/defaults`} className="btn primary">
-                  Go to the defaults review →
+                  Go to the assumptions review →
                 </Link>
               </p>
             </section>
@@ -164,9 +164,15 @@ export default function StoryPage() {
               )}
               <Toast toast={toast} />
               <div className="row">
-                <Link href={`/p/${id}/defaults`} className={`btn ${corrected ? "primary" : ""}`}>
-                  {corrected ? "Recompile the spec →" : "← back to the spec"}
-                </Link>
+                {corrected ? (
+                  <Link href={`/p/${id}/defaults`} className="btn primary">
+                    Recompile the spec →
+                  </Link>
+                ) : (
+                  <Link href={`/p/${id}/spec`} className="btn">
+                    ← back to the spec
+                  </Link>
+                )}
                 <Link href={`/p/${id}/artifacts/${encodeURIComponent("story.md")}`} className="btn ghost">
                   story.md
                 </Link>

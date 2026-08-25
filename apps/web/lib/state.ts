@@ -5,7 +5,7 @@ import type { Commit } from "@engine/core/commit";
 import { settledness } from "@engine/core/selector";
 import type { ZEvent } from "@engine/core/session";
 import type { EngineHandle } from "./engine";
-import type { CurvePoint, DecidedEntry, ImpliedLabels, ProjectState, ProjectSummary } from "./types";
+import type { CurvePoint, DecidedEntry, ImpliedLabels, ProjectState, ProjectSummary, ShiftLabel, VerificationSummary } from "./types";
 
 type RawImplied = {
   hard: { node: string; option: string }[];
@@ -43,7 +43,19 @@ export async function projectState(h: EngineHandle, id: string): Promise<Project
     card: card ?? (stopped ? { kind: "stop", reason: session.last_stop_reason ?? "stopped", settledness: settled } : null),
     decided: decidedEntries(sheet, commits),
     curve: gainCurve(sheet, session, events),
+    verification: verificationSummary(sheet, session),
   };
+}
+
+/**
+ * Mirrors the candidate filter in Engine.getVerification: a story check can only be composed over decisions
+ * that were ASSUMED (not asked, not resolved) and still live in the belief. Lets the defaults page decide
+ * whether to render the story-check panel at all before it spends an LLM call composing scenarios.
+ */
+function verificationSummary(sheet: Sheet, session: SessionState): VerificationSummary {
+  const nodeIds = new Set(session.belief.nodes.map((n) => n.id));
+  const checkable = sheet.decisions.filter((d) => d.status === "defaulted" && d.chosen && nodeIds.has(d.id)).length;
+  return { pending: session.pending_verification?.length ?? 0, checkable };
 }
 
 function draftAssumptions(events: ZEvent[]): string[] {
@@ -116,6 +128,16 @@ function labelOf(sheet: Sheet, nodeId: string, optionId: string | undefined): st
 
 function topicOf(sheet: Sheet, nodeId: string): string {
   return sheet.decisions.find((x) => x.id === nodeId)?.topic ?? nodeId;
+}
+
+/** Node/option ids from a belief shift → the topic and option labels a person can read. */
+export function labelShifts(sheet: Sheet, shifts: { node: string; from: string; to: string; p_from: number; p_to: number }[]): ShiftLabel[] {
+  return shifts.map((s) => ({ node: s.node, topic: topicOf(sheet, s.node), from: labelOf(sheet, s.node, s.from), to: labelOf(sheet, s.node, s.to), p_from: s.p_from, p_to: s.p_to }));
+}
+
+/** Node ids confirmed by a story check → topic + the label that was confirmed. */
+export function labelNodes(sheet: Sheet, nodes: string[]): { node: string; topic: string; label: string }[] {
+  return nodes.map((n) => ({ node: n, topic: topicOf(sheet, n), label: labelOf(sheet, n, sheet.decisions.find((d) => d.id === n)?.chosen) }));
 }
 
 export function labelImplied(sheet: Sheet, implied: RawImplied): ImpliedLabels {

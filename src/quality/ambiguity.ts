@@ -3,7 +3,10 @@
  *
  * Operational definition: a spec is precise exactly to the degree that two independent competent readers
  * derive the SAME design from it. Two "implementer" calls (different cacheSalts, temperature 1) each read
- * ONLY the spec text and commit to a concrete design, aspect by aspect. A blind "aligner" judge then matches
+ * ONLY the spec text and commit to a concrete design, aspect by aspect. The two readers may be DIFFERENT
+ * MODEL FAMILIES (`--reader-models a,b`): two samples of one model share a blind spot — they resolve the same
+ * silence the same way — which inflates agreement and understates the spec's true entropy. Whichever models
+ * play the readers is recorded on every trial. A blind "aligner" judge then matches
  * the two derivations (presented in salt-randomized order as FIRST/SECOND — it never learns which reader is
  * which, let alone which system produced the spec) and classifies each matched design question as
  * agree / diverge_cosmetic / diverge_material / unmatched, with a 1-5 consequence estimate per pair.
@@ -102,11 +105,26 @@ export interface AlignedPair {
   note: string;
 }
 
-/** Deterministic per-salt coin so presentation order carries no signal across a run (same trick as run_decisions). */
+/**
+ * Deterministic per-salt coin so presentation order carries no signal across a run (same trick as
+ * run_decisions), now with an avalanche finalizer.
+ *
+ * The previous rolling `h*31 + c` was reduced mod 2, and 31 is odd — so the coin was exactly the PARITY OF THE
+ * CHARACTER SUM of the salt. Presentation order therefore tracked trivial features of the salt string (all
+ * even-length repeat indices fell the same way; a `--seed` prefix could only ever flip the whole run at once,
+ * never reshuffle it). For a randomizer whose entire job is to carry no signal, that is too much structure.
+ * FNV-1a plus an xorshift-multiply finalizer makes every bit of the salt change the coin independently.
+ */
 export function saltCoin(salt: string): boolean {
-  let h = 0;
-  for (const ch of salt) h = (h * 31 + ch.charCodeAt(0)) | 0;
-  return (h & 1) === 1;
+  let h = 0x811c9dc5;
+  for (let i = 0; i < salt.length; i++) {
+    h ^= salt.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x2545f491);
+  h ^= h >>> 13;
+  return ((h >>> 0) & 1) === 1;
 }
 
 export function clampConsequence(x: number): number {
@@ -138,7 +156,9 @@ export async function alignDerivations(
     user: `DERIVATION FIRST:\n${renderDerivation(first)}\n\nDERIVATION SECOND:\n${renderDerivation(second)}`,
     schema: AlignOutSchema,
     effort: "medium",
-    maxTokens: 4000,
+    // headroom: up to 25 aspects per side, each pair quoting two decisions plus a note — a truncated aligner
+    // silently drops pairs off the END of the list, which would bias the metric toward whatever it did emit
+    maxTokens: 6000,
     cacheSalt: salt,
   });
   const pairs: AlignedPair[] = res.data.pairs.map((p) => ({
@@ -204,6 +224,9 @@ export interface MaterialDivergence {
 
 export interface AmbiguityTrial {
   swapped: boolean;
+  /** which model played each reader — same id twice means same-family readers (distinct salts only) */
+  reader_a_model: string;
+  reader_b_model: string;
   derivation_a: Derivation;
   derivation_b: Derivation;
   pairs: AlignedPair[];
@@ -211,14 +234,28 @@ export interface AmbiguityTrial {
   material_divergences: MaterialDivergence[];
 }
 
-export async function runAmbiguity(reader: LLM, judge: LLM, specText: string, salt: string): Promise<AmbiguityTrial> {
+/** A reader identified by model id, so every trial records WHO read the spec. */
+export interface Reader {
+  id: string;
+  llm: LLM;
+}
+
+export async function runAmbiguity(
+  readerA: Reader,
+  readerB: Reader,
+  judge: LLM,
+  specText: string,
+  salt: string,
+): Promise<AmbiguityTrial> {
   const [a, b] = await Promise.all([
-    deriveDesign(reader, specText, `${salt}:reader1`),
-    deriveDesign(reader, specText, `${salt}:reader2`),
+    deriveDesign(readerA.llm, specText, `${salt}:reader1`),
+    deriveDesign(readerB.llm, specText, `${salt}:reader2`),
   ]);
   const { swapped, pairs } = await alignDerivations(judge, a, b, `${salt}:align`);
   return {
     swapped,
+    reader_a_model: readerA.id,
+    reader_b_model: readerB.id,
     derivation_a: a,
     derivation_b: b,
     pairs,

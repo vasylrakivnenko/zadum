@@ -4,8 +4,15 @@
  * newline-delimited JSON framing (one message per line; the simpler of MCP's two stdio framings — no
  * Content-Length headers), protocol version 2024-11-05, tools capability only.
  *
- * Rule 1 (CLAUDE.md) extends to coding agents: nothing here writes the Sheet directly. `propose_amendment`
- * goes through `engine.applyUserEdit` → patcher → validated patch ops → commit, exactly like a human edit.
+ * Rule 1 (CLAUDE.md) extends to coding agents: nothing here writes the Sheet. It is stronger than Rule 1 now —
+ * `propose_amendment` does not write the Sheet even through the patcher. It STAGES the proposal on an
+ * amendment queue (./amendments.ts) and the project's owner approves or rejects it; approval is the only path
+ * to `engine.applyUserEdit`. Before this, any connected coding agent could rewrite the contract the business
+ * owner is supposed to control — validated patch ops, but no human in the loop.
+ *
+ * That gate is also the flywheel's best data: docs/LEARNING.md ranks post-session edits as source of truth #1,
+ * and approved-vs-rejected agent amendments are exactly that, labeled — an approved one is a real post-session
+ * edit, a rejected one is a labeled example of an agent misreading the contract.
  *
  * Event choices (EventType in src/core/session.ts is a closed union we must not edit):
  *  - `check_task` appends an "llm_call" event — honest: the tool IS one structured LLM call, and the
@@ -13,6 +20,9 @@
  *  - `record_event` has no fitting EventType (an agent's free-form note is none of the listed moments), so
  *    rather than mislabel it, notes are appended to an `agent-events.jsonl` artifact through the store's own
  *    artifact surface (kind "other") — append-only in spirit, portable across File/Memory/Pg stores.
+ *  - `propose_amendment` / `list_amendments` likewise fabricate no ZEvent: the queue is the `amendments.json`
+ *    artifact and each transition appends a line to the same `agent-events.jsonl` trail. Only approval emits
+ *    real typed events, via `applyUserEdit`, because only then was an edit really applied.
  *
  * Error contract: every failure becomes a JSON-RPC error response (unknown method -32601, bad params -32602,
  * tool execution failure -32000 with the tool name in `data`); the process never crashes on a bad request.
@@ -23,7 +33,6 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { z } from "zod";
 import { renderSheetMarkdown } from "../core/render.js";
-import type { Artifact } from "../core/session.js";
 import type { Sheet } from "../core/sheet.js";
 import { PROMPTS_VERSION } from "../llm/prompts.js";
 import { MockLLM } from "../llm/client.js";
@@ -31,6 +40,7 @@ import { invoicingMockHandlers } from "../llm/mock_fixtures.js";
 import { buildEngine } from "../engine/bootstrap.js";
 import type { Engine } from "../engine/orchestrator.js";
 import { checkTask, withMcpMockHandlers } from "./check_task.js";
+import { amendmentSummary, appendAgentEvent, listAmendments, queueAmendment } from "./amendments.js";
 
 export const PROTOCOL_VERSION = "2024-11-05";
 export const SERVER_INFO = { name: "zadum", version: "0.1.0" };
@@ -58,7 +68,13 @@ const err = (id: number | string | null, code: number, message: string, data?: u
 
 const GetSheetArgs = z.object({ project_id: z.string().min(1) });
 const CheckTaskArgs = z.object({ project_id: z.string().min(1), task: z.string().min(1) });
-const ProposeAmendmentArgs = z.object({ project_id: z.string().min(1), text: z.string().min(1) });
+const ProposeAmendmentArgs = z.object({
+  project_id: z.string().min(1),
+  text: z.string().min(1),
+  proposed_by: z.string().optional(),
+  rationale: z.string().optional(),
+});
+const ListAmendmentsArgs = z.object({ project_id: z.string().min(1), status: z.enum(["pending", "approved", "rejected"]).optional() });
 const RecordEventArgs = z.object({ project_id: z.string().min(1), note: z.string().min(1), payload: z.record(z.string(), z.unknown()).optional() });
 
 const pid = { type: "string", description: "zadum project id" };
@@ -78,8 +94,27 @@ export const TOOLS = [
   {
     name: "propose_amendment",
     description:
-      "Propose a design change in plain language. The change is applied to the Sheet as validated patch ops (never raw writes) and committed; do this BEFORE writing code that changes the design.",
-    inputSchema: { type: "object", properties: { project_id: pid, text: { type: "string", description: "the design change, in plain language" } }, required: ["project_id", "text"] },
+      "Propose a design change in plain language. The proposal is QUEUED for the project's owner to approve or reject — it does NOT change the Sheet. Do not assume the Sheet changed, and do not write code that depends on the change until the owner approves it (re-read get_sheet to confirm). Propose BEFORE writing code that changes the design.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: pid,
+        text: { type: "string", description: "the design change, in plain language the owner can judge" },
+        rationale: { type: "string", description: "optional: why the change is needed (what you hit in the code)" },
+        proposed_by: { type: "string", description: "optional: who is proposing, e.g. your agent/tool name (default \"coding agent\")" },
+      },
+      required: ["project_id", "text"],
+    },
+  },
+  {
+    name: "list_amendments",
+    description:
+      "List amendments proposed for this project and where each one stands: pending (waiting on the owner), approved (applied to the Sheet), or rejected (with the owner's reason). Use it to check whether a proposal of yours has been decided.",
+    inputSchema: {
+      type: "object",
+      properties: { project_id: pid, status: { type: "string", enum: ["pending", "approved", "rejected"], description: "optional filter; omit for all" } },
+      required: ["project_id"],
+    },
   },
   {
     name: "record_event",
@@ -144,13 +179,28 @@ async function callTool(engine: Engine, name: string, args: unknown): Promise<{ 
     }
     case "propose_amendment": {
       const a = ProposeAmendmentArgs.parse(args);
-      await loadSheet(engine, a.project_id); // clean "unknown project" before the LLM call
-      const r = await engine.applyUserEdit(a.project_id, a.text); // Rule 1: patcher → validated ops → commit
+      const sheet = await loadSheet(engine, a.project_id); // clean "unknown project" first
+      // Staged, not applied: the owner's approval is the only path to the Sheet (see ./amendments.ts).
+      const am = await queueAmendment(engine.store, a.project_id, {
+        text: a.text,
+        ...(a.rationale ? { rationale: a.rationale } : {}),
+        ...(a.proposed_by ? { proposed_by: a.proposed_by } : {}),
+        sheet_version: sheet.version,
+      });
       return {
         content: [
           text(
             JSON.stringify(
-              { applied: r.applied, rejected: r.rejected.map((x) => ({ op: x.op.op, error: x.error })), dropped: r.dropped, notes: r.notes, sheet_version: r.version, implied: r.implied },
+              {
+                queued: true,
+                applied: false,
+                sheet_changed: false,
+                amendment_id: am.id,
+                status: am.status,
+                sheet_version: sheet.version, // unchanged
+                message:
+                  "QUEUED for the project owner, not applied. The Design Sheet is unchanged and this proposal may be rejected. Do not assume the change is in effect: keep building to the current Sheet, and check list_amendments (or re-read get_sheet) before relying on it.",
+              },
               null,
               2,
             ),
@@ -158,13 +208,16 @@ async function callTool(engine: Engine, name: string, args: unknown): Promise<{ 
         ],
       };
     }
+    case "list_amendments": {
+      const a = ListAmendmentsArgs.parse(args);
+      await loadSheet(engine, a.project_id);
+      const list = await listAmendments(engine.store, a.project_id, a.status);
+      return { content: [text(JSON.stringify({ count: list.length, amendments: list.map(amendmentSummary) }, null, 2))] };
+    }
     case "record_event": {
       const a = RecordEventArgs.parse(args);
       await loadSheet(engine, a.project_id);
-      const line = JSON.stringify({ ts: new Date().toISOString(), note: a.note, ...(a.payload ? { payload: a.payload } : {}) });
-      const prev = (await engine.store.listArtifacts(a.project_id)).find((x) => x.name === "agent-events.jsonl");
-      const artifact: Artifact = { project_id: a.project_id, name: "agent-events.jsonl", kind: "other", content: (prev?.content ?? "") + line + "\n", created_at: prev?.created_at ?? new Date().toISOString() };
-      await engine.store.saveArtifact(artifact);
+      await appendAgentEvent(engine.store, a.project_id, { ts: new Date().toISOString(), note: a.note, ...(a.payload ? { payload: a.payload } : {}) });
       return { content: [text(JSON.stringify({ recorded: true, where: "artifact agent-events.jsonl" }))] };
     }
     default:

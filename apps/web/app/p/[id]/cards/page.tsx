@@ -20,6 +20,8 @@ export default function CardsPage() {
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastData | null>(null);
   const [busy, setBusy] = useState<Busy>("start");
+  /** which control is in flight, so only that one shows the spinner and the rest simply dim */
+  const [pending, setPending] = useState<string | null>(null);
   const [otherOpen, setOtherOpen] = useState(false);
   const [otherText, setOtherText] = useState("");
   const shownAt = useRef<number>(Date.now());
@@ -53,6 +55,7 @@ export default function CardsPage() {
   async function answer(body: { kind: "option" | "you_decide" | "skip" | "other"; option_id?: string; text?: string }) {
     if (busy || !state) return;
     setBusy("answer");
+    setPending(body.kind === "option" ? `opt:${body.option_id}` : body.kind);
     try {
       const r = await api.answer(id, { ...body, think_ms: Date.now() - shownAt.current });
       const ids = diffSheetIds(state.sheet, r.state.sheet);
@@ -67,12 +70,14 @@ export default function CardsPage() {
       setToast({ kind: "error", text: errorMessage(e) });
     } finally {
       setBusy(null);
+      setPending(null);
     }
   }
 
   async function undo() {
     if (busy) return;
     setBusy("undo");
+    setPending("undo");
     try {
       const r = await api.undo(id);
       setState(r.state);
@@ -85,6 +90,7 @@ export default function CardsPage() {
       setToast({ kind: "error", text: errorMessage(e) });
     } finally {
       setBusy(null);
+      setPending(null);
     }
   }
 
@@ -106,6 +112,31 @@ export default function CardsPage() {
 
   const canUndo = (state?.session.answers ?? 0) > 0;
   const phase = state?.session.phase;
+  const answering = busy === "answer";
+
+  /** 1–9 pick an option; the numbers are printed on the buttons, so make them work. */
+  const answerRef = useRef(answer);
+  answerRef.current = answer;
+  const options = deal?.kind === "card" ? deal.card.options : null;
+  useEffect(() => {
+    if (!options || options.length === 0 || busy !== null) return;
+    const opts = options;
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const n = Number(e.key);
+      if (!Number.isInteger(n) || n < 1 || n > opts.length) return;
+      const picked = opts[n - 1];
+      if (!picked) return;
+      e.preventDefault();
+      void answerRef.current({ kind: "option", option_id: picked.option_id });
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [options, busy]);
+
+  const remaining = deal?.kind === "card" && state ? Math.min(deal.remaining_estimate, Math.max(0, MAX_CARDS - state.session.cards)) : 0;
 
   return (
     <>
@@ -120,58 +151,95 @@ export default function CardsPage() {
             ) : phase === "defaults_review" || phase === "compiling" || phase === "done" ? (
               <div className="stop">
                 <h2>Decision cards are finished.</h2>
-                <p className="muted">{state.session.cards} cards answered · {pct(state.session.settledness)} of the design settled.</p>
-                <p style={{ marginTop: 16 }}>
+                <p className="muted">
+                  {state.session.cards} cards answered · {pct(state.session.settledness)} of the design settled.
+                </p>
+                <p style={{ marginTop: "var(--s-5)" }}>
                   <Link href={`/p/${id}/defaults`} className="btn primary">
-                    Review defaults →
+                    Review what was assumed →
                   </Link>
                 </p>
               </div>
             ) : deal?.kind === "card" ? (
               <>
-                <div className="small muted">Decision card {state.session.cards}</div>
-                <p className="context">{deal.card.context}</p>
-                <div className="options">
-                  {deal.card.options.map((o, i) => (
-                    <button key={o.option_id} className="btn big" disabled={busy !== null} onClick={() => answer({ kind: "option", option_id: o.option_id })}>
-                      {busy === "answer" ? <span className="spinner" /> : <span className="muted">{i + 1}</span>}
-                      <span>{o.scenario}</span>
-                    </button>
+                <div className="cardhead">
+                  <span className="eyebrow">Decision card {state.session.cards}</span>
+                  <span className="remaining">{remainingText(remaining)}</span>
+                </div>
+                <div className="cardsteps" aria-hidden="true">
+                  {Array.from({ length: Math.max(1, Math.min(MAX_CARDS, state.session.cards + remaining)) }, (_, i) => (
+                    <i key={i} className={i < state.session.cards - 1 ? "done" : i === state.session.cards - 1 ? "now" : ""} />
                   ))}
                 </div>
+                <p className="context">{deal.card.context}</p>
+                <div className="options">
+                  {deal.card.options.map((o, i) => {
+                    const mine = pending === `opt:${o.option_id}`;
+                    const note = sameText(o.label, o.scenario) ? null : o.scenario;
+                    return (
+                      <button key={o.option_id} className="btn big" data-pending={mine ? "true" : undefined} disabled={busy !== null} onClick={() => answer({ kind: "option", option_id: o.option_id })}>
+                        <span className="key" aria-hidden="true">
+                          {mine ? <span className="spinner" style={{ width: 12, height: 12 }} /> : i + 1}
+                        </span>
+                        <span className="choice-body">
+                          <span className="choice-label">{o.label}</span>
+                          {note ? <span className="choice-note">{note}</span> : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {deal.card.options.length > 1 && (
+                  <p className="keyhint">
+                    Press 1–{deal.card.options.length} to choose.
+                  </p>
+                )}
                 <div className="secondary">
                   <button className="btn ghost" disabled={busy !== null} onClick={() => answer({ kind: "you_decide" })}>
-                    You decide
+                    {pending === "you_decide" ? <span className="spinner" /> : null} You decide
                   </button>
                   <button className="btn ghost" disabled={busy !== null} onClick={() => answer({ kind: "skip" })}>
-                    Skip
+                    {pending === "skip" ? <span className="spinner" /> : null} Skip
                   </button>
-                  <button className="btn ghost" disabled={busy !== null} onClick={() => setOtherOpen((v) => !v)}>
+                  <button className="btn ghost" disabled={busy !== null} onClick={() => setOtherOpen((v) => !v)} aria-expanded={otherOpen}>
                     Something else…
                   </button>
+                  <span className="spacer" />
                   <button className="btn ghost" disabled={busy !== null || !canUndo} onClick={undo}>
-                    {busy === "undo" ? <span className="spinner" /> : null} Undo
+                    {pending === "undo" ? <span className="spinner" /> : null} Undo
                   </button>
                 </div>
                 {otherOpen && (
                   <form
                     className="stack"
-                    style={{ marginTop: 10 }}
+                    style={{ marginTop: "var(--s-3)" }}
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (otherText.trim()) void answer({ kind: "other", text: otherText.trim() });
                     }}
                   >
-                    <textarea value={otherText} onChange={(e) => setOtherText(e.target.value)} placeholder="Say it in your own words — e.g. 'only the owner can, and only after month end'" rows={2} autoFocus disabled={busy !== null} />
+                    <textarea value={otherText} onChange={(e) => setOtherText(e.target.value)} placeholder="Say it in your own words — e.g. 'only the owner can, and only after month end'" rows={2} autoFocus disabled={busy !== null} aria-label="Answer in your own words" />
                     <div className="row">
                       <button type="submit" className="btn" disabled={busy !== null || !otherText.trim()}>
-                        Use this
+                        {pending === "other" ? <span className="spinner" /> : null} Use this
+                      </button>
+                      <button type="button" className="btn ghost" disabled={busy !== null} onClick={() => setOtherOpen(false)}>
+                        Never mind
                       </button>
                     </div>
                   </form>
                 )}
-                {deal.card.also_sets.length > 0 && <div className="also">Answering also settles: {deal.card.also_sets.join(" · ")}</div>}
-                <SettleMeter settledness={deal.settledness} note={`about ${Math.min(deal.remaining_estimate, Math.max(0, MAX_CARDS - state.session.cards))} more worth asking`} />
+                {deal.card.also_sets.length > 0 && (
+                  <div className="also">
+                    <span className="also-head">Answering this also settles</span>
+                    <span className="also-list">
+                      {deal.card.also_sets.map((a, i) => (
+                        <span key={i}>{a}</span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+                <SettleMeter settledness={deal.settledness} />
                 <GainBars curve={state.curve} />
               </>
             ) : deal?.kind === "stop" && deal.reason === "converged" ? (
@@ -180,7 +248,7 @@ export default function CardsPage() {
                 <p className="muted">The next question would settle very little — everything that matters is settled or safely assumed.</p>
                 <SettleMeter settledness={deal.settledness} note={`${state.session.cards} cards answered`} center />
                 <GainBars curve={state.curve} />
-                <div className="row" style={{ justifyContent: "center", marginTop: 16 }}>
+                <div className="row" style={{ justifyContent: "center", marginTop: "var(--s-6)" }}>
                   <Link href={`/p/${id}/defaults`} className="btn primary">
                     Stop here (recommended) →
                   </Link>
@@ -194,13 +262,13 @@ export default function CardsPage() {
               </div>
             ) : deal?.kind === "stop" ? (
               <div className="stop">
-                <h2>No more cards</h2>
+                <h2>No more cards.</h2>
                 <p className="muted">
                   {stopReason(deal.reason)} · {state.session.cards} cards
                 </p>
                 <SettleMeter settledness={deal.settledness} note={deal.reason === "max_cards" ? "everything left will be assumed and shown for review" : `${state.session.answers} answers`} center />
                 <GainBars curve={state.curve} />
-                <div className="row" style={{ justifyContent: "center", marginTop: 16 }}>
+                <div className="row" style={{ justifyContent: "center", marginTop: "var(--s-6)" }}>
                   <Link href={`/p/${id}/defaults`} className="btn primary">
                     Review what was assumed →
                   </Link>
@@ -212,15 +280,29 @@ export default function CardsPage() {
             ) : (
               <p className="muted">No card.</p>
             )}
-            <div style={{ marginTop: 14 }}>
-              <Toast toast={toast} />
-            </div>
+            {toast && (
+              <div style={{ marginTop: "var(--s-4)" }} aria-live="polite">
+                <Toast toast={toast} />
+              </div>
+            )}
+            {answering && (
+              <p className="small faint" style={{ marginTop: "var(--s-3)" }} aria-live="polite">
+                Saving your answer and lining up the next card…
+              </p>
+            )}
           </section>
           {state && <SheetView sheet={state.sheet} decided={state.decided} fresh={fresh} />}
         </div>
       </main>
     </>
   );
+}
+
+/** Honest, never precise: the estimate is an estimate and says so. */
+function remainingText(remaining: number): string {
+  if (remaining <= 0) return "last one";
+  if (remaining === 1) return "about 1 more";
+  return `about ${remaining} more`;
 }
 
 /** The big, non-technical progress statement: "Your design is 87% settled." */
@@ -259,9 +341,19 @@ function GainBars({ curve }: { curve: CurvePoint[] }) {
           </div>
         );
       })}
-      <div className="small muted faint">Rough shares — each bar is how much of the remaining open ground that card covered.</div>
+      <div className="small faint">Rough shares — each bar is how much of the remaining open ground that card covered.</div>
     </div>
   );
+}
+
+/** The card writer sometimes has nothing to add to the plain label; don't print it twice. */
+function sameText(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  return norm(a) === norm(b);
 }
 
 function stopReason(reason: string): string {

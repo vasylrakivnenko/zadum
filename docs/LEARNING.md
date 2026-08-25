@@ -5,6 +5,13 @@ structures the deterministic core reads, not in model weights.** Every tunable h
 human-behavior signal; every change is an experiment gated by the harness.
 
 ## Sources of truth (ranked by how true they are)
+0. **Spec refinement** (`Engine.refineFromSpecFeedback`, `spec_refined` events — built 2026-08-25, ADR-038).
+   The owner reads the compiled spec and corrects it; the correction is classified into four labelled lists —
+   `wrong_assumptions` (a miss WITH its correction attached), `missing_elements`, `confirmed_elements`,
+   `new_questions` — and applied to the Sheet as patch ops. This outranks everything below it: no other moment
+   in the product produces a labelled miss and its fix in the same breath, on a document the owner had a real
+   reason to read carefully. Feeds the same observation store as §2 (`collectObservations`), and is the row
+   source the design-graph work needs (rows = completed sessions, not just corpus documents).
 1. **Post-session edits** via the change protocol (AGENTS.md: "update the Sheet first"). An edit to a *defaulted*
    decision = the prior was wrong; to an *asked* one = the card was misunderstood; a new noun/rule = draft/catalog
    omission. → keep the Sheet hosted (coding agent reads through us) so these flow back. (Not built yet.)

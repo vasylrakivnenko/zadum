@@ -4,15 +4,22 @@
  *
  * Behaviour is keyed off marker strings embedded in test spec texts:
  *   MOCK_PRECISE           — both readers derive the identical design; no builder questions
- *   MOCK_VAGUE             — the readers diverge on two aspects; builder asks 3 questions (2 blocking)
+ *   MOCK_LEDGER            — a spec that DECLARES its assumptions: readers agree (entropy 0), but the builder
+ *                            asks 4 questions — MORE raw questions than the vague spec — of which only 1 is a
+ *                            genuine gap. The fixture that proves the taxonomy fixes the raw count's inversion.
+ *   MOCK_VAGUE             — the readers diverge on two aspects; builder asks 3 questions (2 blocking), all
+ *                            genuine gaps
  *   MOCK_ERROR_IMPLEMENTER — the implementer call throws (error-containment path)
  *   MOCK_ERROR_BUILDER     — the builder call throws
+ *   MOCK_ERROR_CLASSIFIER  — question classification (pass 2) throws; the raw questions must survive
  *   MOCK_ERROR_PAIRWISE    — the pairwise call throws
  *
  * The mock aligner does the real work of a fixture: it PARSES the FIRST/SECOND derivation blocks it is shown
  * (the same rendered format the live aligner sees) and reports first_decision/second_decision faithfully from
  * the presented order — so tests can verify that alignDerivations maps FIRST/SECOND back to reader A/B
- * correctly under both salt-coin outcomes.
+ * correctly under both salt-coin outcomes. The mock classifier likewise parses the numbered question list and
+ * labels each question AGAINST THE SPEC BLOCK it is shown, so the same question text can be a genuine gap in
+ * one spec and a flagged assumption in another — exactly the distinction the live instrument must draw.
  */
 import type { MockHandler } from "../llm/client.js";
 
@@ -29,12 +36,14 @@ function parseBlock(block: string): ParsedAspect[] {
   return out;
 }
 
+const DETERMINED = /MOCK_PRECISE|MOCK_LEDGER/;
+
 export const qualityMockHandlers: Record<string, MockHandler> = {
   quality_implementer: (req) => {
     const user = req.user;
     if (/MOCK_ERROR_IMPLEMENTER/.test(user)) throw new Error("mock implementer failure");
     const second = /reader2/.test(req.cacheSalt ?? "");
-    if (/MOCK_PRECISE/.test(user)) {
+    if (DETERMINED.test(user)) {
       return {
         aspects: [
           { aspect: "invoice numbering", decision: "sequential integers per year", forced: true },
@@ -78,6 +87,18 @@ export const qualityMockHandlers: Record<string, MockHandler> = {
   quality_builder: (req) => {
     const user = req.user;
     if (/MOCK_ERROR_BUILDER/.test(user)) throw new Error("mock builder failure");
+    if (/MOCK_LEDGER/.test(user)) {
+      // The ledger makes assumptions visible, so a diligent reader asks about them: MORE questions than the
+      // vague spec, and the raw count would rank this good spec last.
+      return {
+        questions: [
+          { q: "Which identity provider should sign-in use?", category: "permissions", blocking: true },
+          { q: "Should late fees compound monthly?", category: "lifecycle", blocking: false },
+          { q: "How should invoices be numbered?", category: "data_model", blocking: false },
+          { q: "What happens when a payment is reversed after reconciliation?", category: "edge_case", blocking: true },
+        ],
+      };
+    }
     if (/MOCK_VAGUE/.test(user)) {
       return {
         questions: [
@@ -90,20 +111,43 @@ export const qualityMockHandlers: Record<string, MockHandler> = {
     return { questions: [] };
   },
 
+  quality_question_classifier: (req) => {
+    const user = req.user;
+    const specBlock = user.split("THE QUESTIONS:")[0] ?? "";
+    const questionBlock = user.split("THE QUESTIONS:")[1] ?? "";
+    if (/MOCK_ERROR_CLASSIFIER/.test(specBlock)) throw new Error("mock classifier failure");
+    const ledger = /MOCK_LEDGER/.test(specBlock);
+    const labels = [...questionBlock.matchAll(/^(\d+)\. (.+)$/gm)].map((m) => {
+      const index = Number(m[1]);
+      const q = m[2]!;
+      // Labels are a property of the SPEC, not of the question text: "how should invoices be numbered?" is a
+      // genuine gap against the vague spec and an answered question against the ledger spec.
+      if (ledger && /identity provider|late fees/i.test(q))
+        return { index, label: "flagged_assumption" as const, evidence: "assumed · 37% confidence" };
+      if (ledger && /numbered/i.test(q)) return { index, label: "answered_in_spec" as const, evidence: "sequential integers per year" };
+      return { index, label: "genuine_gap" as const, evidence: "" };
+    });
+    return { labels };
+  },
+
   quality_pairwise: (req) => {
     const user = req.user;
     if (/MOCK_ERROR_PAIRWISE/.test(user)) throw new Error("mock pairwise failure");
     const firstBlock = user.split("SPECIFICATION SECOND:")[0] ?? "";
     const secondBlock = user.split("SPECIFICATION SECOND:")[1] ?? "";
-    const firstPrecise = /MOCK_PRECISE/.test(firstBlock);
-    const secondPrecise = /MOCK_PRECISE/.test(secondBlock);
-    const winner = firstPrecise === secondPrecise ? "tie" : firstPrecise ? "first" : "second";
-    const dim = { winner, evidence: "mock evidence" };
+    const firstDetermined = DETERMINED.test(firstBlock);
+    const secondDetermined = DETERMINED.test(secondBlock);
+    const winner = firstDetermined === secondDetermined ? "tie" : firstDetermined ? "first" : "second";
+    // flat fields, matching PairwiseOutSchema (nested objects were exactly what the live judge got wrong)
     return {
-      completeness_edge_cases: dim,
-      unambiguity: dim,
-      implementability: dim,
-      internal_consistency: dim,
+      completeness_edge_cases_winner: winner,
+      completeness_edge_cases_evidence: "mock evidence",
+      unambiguity_winner: winner,
+      unambiguity_evidence: "mock evidence",
+      implementability_winner: winner,
+      implementability_evidence: "mock evidence",
+      internal_consistency_winner: winner,
+      internal_consistency_evidence: "mock evidence",
     };
   },
 };

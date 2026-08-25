@@ -4,7 +4,7 @@
  *
  * Style: the reader of anything user-facing is a non-technical business owner. Consequences, not concepts.
  */
-export const PROMPTS_VERSION = "2026.08.24-2";
+export const PROMPTS_VERSION = "2026.08.25-1";
 
 /**
  * The finite taxonomy of edge-case classes CRUD-family apps share. Fed to the planner so systematic edge-case
@@ -85,6 +85,29 @@ Rules:
 - actions need actor and object to match existing actors/nouns by exact name (add the actor/noun first in the same list if missing).
 - Keep the Sheet one page: do not add things the user did not ask for.
 Return JSON only: { ops: [...], notes: "one line on what you understood" }.`;
+
+export const SPEC_FEEDBACK_SYSTEM = `You read a business owner's feedback on a compiled specification and turn it into changes to the DESIGN SHEET, which is the source of truth the spec is generated from. Editing the spec text itself would be overwritten by the next compile; changing the Sheet is what makes a correction stick.
+
+You receive the Sheet (with ids), its decisions (ids, options, current answers), the owner's EDITS as a diff of the spec, and their COMMENTS (each may quote the passage it refers to).
+
+Classify every piece of feedback into exactly one of four kinds, then emit the patch ops that realize it:
+- wrong_assumption — the spec states something the owner says is not true of their business, and it traces to a decision they can name (its \`node\` is a decision id from the list). If they say what it SHOULD be, put the option id or exact option label in should_be, and ALSO emit resolve_decision for it. If they only say it is wrong without saying what is right, leave should_be empty and raise a new_question instead.
+- missing_element — something their business does that the spec never mentions: a person, a thing, an action, a rule, or something explicitly out of scope. Emit the matching add_actor / add_noun / add_action / add_rule / add_non_goal op.
+- confirmed_element — they explicitly approved or reinforced something already in the spec. Emit no op; just record the decision id or item name. Deleting text is NOT confirmation.
+- new_question — their feedback opens a real choice that neither the Sheet nor their comment settles ("we do refunds" → who may issue one?). Give a short topic, the question in plain language, and two concrete answer options. Do not raise a question the decision list already covers.
+
+Op mechanics (the same discipline the Sheet patcher uses — an op that breaks these is rejected and the correction is silently lost):
+- add_actor / add_noun put the thing's name in \`name\`; add_rule puts the sentence in \`text\` with a \`kind\` (access/state/integrity/scope/other); add_non_goal puts it in \`text\`.
+- add_action needs \`actor\`, \`verb\` and \`object\`, where actor and object are the EXACT names of actors and nouns that exist on the Sheet. If the action involves a thing the Sheet does not have yet, emit add_noun (or add_actor) for it FIRST, in the same list, then the add_action referring to it by that exact name. Never name a noun the Sheet has not got.
+- Prefer modify over remove+add. Reference existing items by their exact id or exact name.
+
+Rules:
+- Only ops that are justified by the feedback. A rewording that changes no meaning produces nothing.
+- Never invent ids. Reference existing items by exact id or exact name; new items get no id.
+- Ignore edits to trace markers (⟨src: …⟩), headings, and formatting: they carry no design intent.
+- If the owner deletes a whole section, that usually means "we do not do this" — an explicit non_goal, not silence.
+- ${VOCAB_GUARD}
+Return JSON only: { ops, wrong_assumptions, missing_elements, confirmed_elements, new_questions, notes }.`;
 
 export const COMPILER_SYSTEM = `You compile one section of a software specification from a Design Sheet and its decision log, for a coding agent that will build the app. Write precise, implementation-ready markdown. Every substantive line that derives from a specific decision, rule, action, or noun ends with a trace marker like  ⟨src: d:client_portal, r:r3⟩  using these prefixes: d: decision id, r: rule id, a: action id, n: noun id, p: actor id, g: non-goal id. Use only ids that exist in the input. Do not invent requirements that the Sheet and decisions do not support; when the Sheet is silent, say "(default)" and choose the simplest reasonable option, marking it ⟨src: default⟩.
 Section guides:

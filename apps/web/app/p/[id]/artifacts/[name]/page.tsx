@@ -18,20 +18,35 @@ export default async function ArtifactPage({ params }: { params: Promise<{ id: s
     <>
       <TopBar id={id} oneLiner={project.one_liner} phase={project.phase} current="compile" />
       <main className="page">
-        <div className="spread" style={{ marginBottom: 14 }}>
-          <h2>{name}</h2>
-          <div className="row">
+        <div className="artifact-head">
+          <div className="spread">
+            <div>
+              <h2>{name}</h2>
+              <p className="small muted">The raw file, exactly as it will be handed to a coding agent.</p>
+            </div>
+            <div className="row">
+              <Link href={`/p/${id}/defaults`} className="btn ghost">
+                ← Assumptions
+              </Link>
+              <a className="btn ghost" href={`/api/projects/${id}/artifacts/${encodeURIComponent(name)}`} target="_blank" rel="noreferrer">
+                Download ↗
+              </a>
+              {name === "spec.md" && (
+                <Link href={`/p/${id}/defaults#tighten`} className="btn">
+                  Tighten the spec →
+                </Link>
+              )}
+              <Link href={`/p/${id}/spec`} className="btn primary">
+                Back to the spec →
+              </Link>
+            </div>
+          </div>
+          <div className="filerow">
             {artifacts.map((a) => (
-              <Link key={a.name} href={`/p/${id}/artifacts/${encodeURIComponent(a.name)}`} className={`btn ${a.name === name ? "primary" : ""}`}>
+              <Link key={a.name} href={`/p/${id}/artifacts/${encodeURIComponent(a.name)}`} className={`btn ${a.name === name ? "primary" : ""}`} aria-current={a.name === name ? "page" : undefined}>
                 {a.name}
               </Link>
             ))}
-            <a className="btn ghost" href={`/api/projects/${id}/artifacts/${encodeURIComponent(name)}`} target="_blank" rel="noreferrer">
-              raw ↗
-            </a>
-            <Link href={`/p/${id}/defaults`} className="btn ghost">
-              ← back
-            </Link>
           </div>
         </div>
         <pre className="artifact">{art.content}</pre>

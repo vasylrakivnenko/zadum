@@ -17,6 +17,8 @@ export const CommitSourceKind = z.enum([
   "defaults_review",
   "verification", // scenario check accepted/corrected (group-testing elicitation)
   "story_correction",
+  "spec_feedback", // the owner edited or commented on the compiled spec; the correction lands on the Sheet
+
   "system",
   "undo",
 ]);

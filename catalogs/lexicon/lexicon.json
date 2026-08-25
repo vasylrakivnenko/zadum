@@ -1,0 +1,3383 @@
+{
+  "version": "2026.08.25-1",
+  "description": "Evidence-layer feature lexicon: the columns of the repos-vs-specs evidence matrix. Each feature is a binary observable with declared witness loci per document type; `maps_to` is the catalog decision the observation is evidence for, or null for a catalog-gap candidate.",
+  "categories": [
+    {
+      "id": "identity_access",
+      "label": "Who logs in, and as what",
+      "context_loci": {
+        "repo": [
+          "auth_code",
+          "dependency_manifest",
+          "routes"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "permissions_section"
+        ]
+      }
+    },
+    {
+      "id": "tenancy_sharing",
+      "label": "Whose data is whose",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "permissions_section",
+          "data_model_section"
+        ]
+      }
+    },
+    {
+      "id": "payments",
+      "label": "Money moving through the app",
+      "context_loci": {
+        "repo": [
+          "payment_code",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "pricing_section"
+        ]
+      }
+    },
+    {
+      "id": "invoicing",
+      "label": "Invoice lifecycle and chasing",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section",
+          "data_model_section"
+        ]
+      }
+    },
+    {
+      "id": "commerce_catalog",
+      "label": "Products, stock, cart and orders",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "orders_section"
+        ]
+      }
+    },
+    {
+      "id": "marketplace",
+      "label": "Two-sided supply, fees and disputes",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "catalog_section",
+          "payments_section"
+        ]
+      }
+    },
+    {
+      "id": "booking_scheduling",
+      "label": "Slots, availability and no-shows",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "workflow_section"
+        ]
+      }
+    },
+    {
+      "id": "records_workflow",
+      "label": "Records, fields, stages and automation",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      }
+    },
+    {
+      "id": "notifications_messaging",
+      "label": "Reaching people outside the screen",
+      "context_loci": {
+        "repo": [
+          "email_templates",
+          "background_jobs",
+          "integration_code"
+        ],
+        "spec_doc": [
+          "notifications_section"
+        ]
+      }
+    },
+    {
+      "id": "data_lifecycle",
+      "label": "Getting data in, out and gone",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "config_env"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "settings_section",
+          "compliance_section"
+        ]
+      }
+    },
+    {
+      "id": "integrations_sync",
+      "label": "Other systems",
+      "context_loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "integrations_section"
+        ]
+      }
+    },
+    {
+      "id": "reporting_analytics",
+      "label": "Seeing what happened",
+      "context_loci": {
+        "repo": [
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "reporting_section",
+          "admin_section"
+        ]
+      }
+    },
+    {
+      "id": "localization_platform",
+      "label": "Where and how it is used",
+      "context_loci": {
+        "repo": [
+          "framework_config",
+          "config_env",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "settings_section",
+          "overview"
+        ]
+      }
+    },
+    {
+      "id": "compliance_governance",
+      "label": "Approvals, sensitivity and scale",
+      "context_loci": {
+        "repo": [
+          "db_schema",
+          "auth_code",
+          "config_env"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "permissions_section"
+        ]
+      }
+    }
+  ],
+  "features": [
+    {
+      "id": "no_login_at_all",
+      "label": "Nobody logs in — one person uses it on their own device",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "user_accounts",
+        "option": "none"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "actors_section",
+          "permissions_section",
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "multi_user_accounts",
+      "label": "Several named people log in",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "user_accounts",
+        "option": "multi_user"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "role_based_permissions",
+      "label": "An owner/admin plus staff with fewer powers",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "roles",
+        "option": "owner_staff"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "custom_roles_admin_defined",
+      "label": "Admins define their own roles and permissions",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "roles",
+        "option": "custom"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "db_schema",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "customer_portal_login",
+      "label": "Outside parties get their own accounts and log in",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "external_access",
+        "option": "portal"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "permissions_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "secure_link_access_no_account",
+      "label": "Outsiders act through a secure link with no account",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "external_access",
+        "option": "secure_link"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invite_by_admin",
+      "label": "People are added by an admin invitation",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "invite_flow",
+        "option": "invite_by_admin"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "email_templates",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "public_self_signup",
+      "label": "Anyone can sign themselves up",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "invite_flow",
+        "option": "self_signup"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "email_password_login",
+      "label": "Email and password credentials",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "identity_provider",
+        "option": "email_password"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "dependency_manifest",
+          "routes"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "magic_link_login",
+      "label": "Passwordless magic-link sign-in",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "identity_provider",
+        "option": "magic_link"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "email_templates",
+          "routes"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "social_login_google_microsoft",
+      "label": "Sign in with Google/Microsoft",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "identity_provider",
+        "option": "google_microsoft"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "dependency_manifest",
+          "config_env"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "integrations_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "enterprise_sso_saml",
+      "label": "Enterprise SSO (SAML/OIDC against a company directory)",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "identity_provider",
+        "option": "enterprise_sso"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "dependency_manifest",
+          "config_env"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "integrations_section",
+          "compliance_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "two_factor_authentication",
+      "label": "Second factor / TOTP / recovery codes",
+      "category": "identity_access",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "auth_code",
+          "dependency_manifest",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "actors_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "support_impersonation_login",
+      "label": "Staff can log in as a user for support",
+      "category": "identity_access",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "auth_code",
+          "admin_ui",
+          "routes"
+        ],
+        "spec_doc": [
+          "admin_section",
+          "compliance_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "multi_tenant_org_scoping",
+      "label": "Many separate businesses, each seeing only its own data",
+      "category": "tenancy_sharing",
+      "maps_to": {
+        "node": "tenancy",
+        "option": "multi_org"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "auth_code",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "permissions_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "single_org_deployment",
+      "label": "One business only — no tenant boundary",
+      "category": "tenancy_sharing",
+      "maps_to": {
+        "node": "tenancy",
+        "option": "single_org"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "overview",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "workspaces_or_projects",
+      "label": "Records live in projects/workspaces with members",
+      "category": "tenancy_sharing",
+      "maps_to": {
+        "node": "workspace_structure",
+        "option": "projects_with_members"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "per_record_ownership",
+      "label": "Each record has an owner who shares it explicitly",
+      "category": "tenancy_sharing",
+      "maps_to": {
+        "node": "record_ownership",
+        "option": "owner_plus_shared"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "per_record_permission_rules",
+      "label": "Permissions are set per record, not per person",
+      "category": "tenancy_sharing",
+      "maps_to": {
+        "node": "record_edit_rights",
+        "option": "per_record_roles"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "edit_conflict_guarded",
+      "label": "Concurrent edits are guarded (locking/versioning), not last-write-wins",
+      "category": "tenancy_sharing",
+      "maps_to": {
+        "node": "concurrency",
+        "option": "guarded"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "portal_self_service_actions",
+      "label": "The portal lets outsiders act, not just look",
+      "category": "tenancy_sharing",
+      "maps_to": {
+        "node": "client_portal_scope",
+        "option": "self_service"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "online_payment_collection",
+      "label": "Money is collected inside the app",
+      "category": "payments",
+      "maps_to": {
+        "node": "payments_in_app",
+        "option": "collect_online"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "dependency_manifest",
+          "routes",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "no_money_in_app",
+      "label": "No money moves through the app at all",
+      "category": "payments",
+      "maps_to": {
+        "node": "payments_in_app",
+        "option": "none"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "payments_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "payouts_to_third_parties",
+      "label": "The app pays money out to other people",
+      "category": "payments",
+      "maps_to": {
+        "node": "payments_in_app",
+        "option": "payouts_too"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "dependency_manifest",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "card_payment_provider_integration",
+      "label": "A card payment provider is wired in",
+      "category": "payments",
+      "maps_to": {
+        "node": "shop_payment_methods",
+        "option": "cards_online"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "dependency_manifest",
+          "config_env",
+          "integration_code"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "offline_payment_methods",
+      "label": "Offline payment methods (cash, bank transfer) alongside online",
+      "category": "payments",
+      "maps_to": {
+        "node": "shop_payment_methods",
+        "option": "online_and_offline"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "escrow_funds_held_then_released",
+      "label": "Funds are held and released on completion",
+      "category": "payments",
+      "maps_to": {
+        "node": "mp_payment_flow",
+        "option": "held_then_released"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "db_schema",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "scheduled_payout_batches",
+      "label": "Payouts go out on a schedule, in batches",
+      "category": "payments",
+      "maps_to": {
+        "node": "mp_payout_timing",
+        "option": "scheduled_batches"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "background_jobs",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "deposit_taken_online",
+      "label": "A deposit is taken online up front",
+      "category": "payments",
+      "maps_to": {
+        "node": "booking_prepayment",
+        "option": "deposit_online"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "partial_payments_allowed",
+      "label": "An invoice can be settled in instalments",
+      "category": "payments",
+      "maps_to": {
+        "node": "partial_payments",
+        "option": "allowed"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "refunds_via_provider",
+      "label": "Refunds are pushed back through the payment provider",
+      "category": "payments",
+      "maps_to": {
+        "node": "credit_notes",
+        "option": "refunds_via_provider"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "routes",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "credit_notes_issued",
+      "label": "Credit notes are issued as documents",
+      "category": "payments",
+      "maps_to": {
+        "node": "credit_notes",
+        "option": "credit_notes"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "late_fees_automatic",
+      "label": "Late fees are applied automatically",
+      "category": "payments",
+      "maps_to": {
+        "node": "late_fees",
+        "option": "automatic"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "pricing_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "tax_by_destination",
+      "label": "Tax is computed from the buyer's location",
+      "category": "payments",
+      "maps_to": {
+        "node": "shop_tax",
+        "option": "by_destination"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "dependency_manifest",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "multi_currency_transactions",
+      "label": "Transactions happen in more than one currency",
+      "category": "payments",
+      "maps_to": {
+        "node": "currencies",
+        "option": "multi"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code",
+          "framework_config"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "payments_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "gift_cards_or_store_credit",
+      "label": "Gift cards / store credit as a balance",
+      "category": "payments",
+      "maps_to": {
+        "node": "shop_gift_cards",
+        "option": "gift_cards_credit"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code",
+          "routes"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "catalog_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "commission_fee_taken",
+      "label": "The platform takes a commission on each transaction",
+      "category": "payments",
+      "maps_to": {
+        "node": "mp_fee_model",
+        "option": "commission"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "pricing_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "payment_sandbox_test_mode",
+      "label": "A sandbox/test mode for payments",
+      "category": "payments",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "config_env",
+          "payment_code",
+          "tests"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sequential_invoice_numbering",
+      "label": "Invoice numbers run in a gapless sequence",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoice_numbering",
+        "option": "sequential"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_locked_after_send",
+      "label": "A sent invoice can no longer be edited",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoice_edit_after_send",
+        "option": "locked"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "recurring_invoices",
+      "label": "Invoices are raised on a repeating schedule",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "recurring_invoices",
+        "option": "yes"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs",
+          "routes"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "automatic_overdue_reminders",
+      "label": "Overdue invoices are chased automatically",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "overdue_reminders",
+        "option": "auto_reminders"
+      },
+      "loci": {
+        "repo": [
+          "background_jobs",
+          "email_templates",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "estimates_or_quotes_convert",
+      "label": "Estimates/quotes convert into invoices",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "estimates",
+        "option": "yes_convert"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "billable_expenses",
+      "label": "Expenses are recorded and rebilled to a client",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "expenses",
+        "option": "billable_expenses"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "billable_time_tracking",
+      "label": "Hours are tracked and billed",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "time_tracking",
+        "option": "billable_hours"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_pdf_email_delivery",
+      "label": "Invoices go out as a PDF by email",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoice_delivery",
+        "option": "pdf_email"
+      },
+      "loci": {
+        "repo": [
+          "email_templates",
+          "dependency_manifest",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "hosted_invoice_link",
+      "label": "Invoices are viewed at a hosted link",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoice_delivery",
+        "option": "hosted_link"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "accounting_system_sync",
+      "label": "Two-way sync with an accounting system",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "accounting_sync",
+        "option": "sync"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "purchase_order_reference_required",
+      "label": "A PO reference is required on invoices",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoice_po_reference",
+        "option": "required_and_deduplicated"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "net_payment_terms",
+      "label": "Net payment terms (net 14/30/60)",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "payment_terms",
+        "option": "net_terms"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "pricing_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "dunning_escalation_schedule",
+      "label": "A fixed escalating reminder schedule",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "auto_reminder_schedule",
+        "option": "firm_weekly"
+      },
+      "loci": {
+        "repo": [
+          "background_jobs",
+          "email_templates",
+          "framework_config"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_branding_templates",
+      "label": "Invoice look is template-customisable",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "branding",
+        "option": "full_templates"
+      },
+      "loci": {
+        "repo": [
+          "email_templates",
+          "admin_ui",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "settings_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "product_variants",
+      "label": "Products come in variants (size/colour)",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_product_variants",
+        "option": "variants"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "inventory_tracked",
+      "label": "Stock is tracked and sales stop at zero",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_inventory",
+        "option": "tracked_stop_at_zero"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "guest_checkout",
+      "label": "Buyers can check out without an account",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_checkout_accounts",
+        "option": "guest_only"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "calculated_shipping_rates",
+      "label": "Shipping is rate-calculated (carrier/weight/zone)",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_shipping",
+        "option": "calculated"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "coupon_codes",
+      "label": "Discount codes buyers type in",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_discounts",
+        "option": "coupon_codes"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "automatic_promotions",
+      "label": "Promotions that apply themselves at checkout",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_discounts",
+        "option": "automatic_promotions"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "self_service_returns_rma",
+      "label": "Buyers start their own returns",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_returns",
+        "option": "self_service_rma"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "subscription_products",
+      "label": "Products can be subscribed to",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_subscriptions",
+        "option": "subscribe_and_save"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "pricing_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "product_reviews_moderated",
+      "label": "Reviews are moderated before showing",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_reviews",
+        "option": "moderated"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "abandoned_cart_emails",
+      "label": "Abandoned carts trigger reminder emails",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_abandoned_cart",
+        "option": "email_reminders"
+      },
+      "loci": {
+        "repo": [
+          "background_jobs",
+          "email_templates",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "notifications_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "wholesale_pricing_tier",
+      "label": "A wholesale/trade price tier",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_wholesale",
+        "option": "wholesale_tier"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "third_party_fulfilment",
+      "label": "Fulfilment by a third party or dropshipper",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_fulfilment",
+        "option": "third_party_or_dropship"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "digital_goods_delivery",
+      "label": "Digital goods are delivered by the app",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_goods_type",
+        "option": "digital"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "category_tree_taxonomy",
+      "label": "A category tree with multi-assignment",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_category_structure",
+        "option": "tree_multi_assign"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "seller_application_and_approval",
+      "label": "Sellers apply and are approved",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_seller_onboarding",
+        "option": "apply_and_approve"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "admin_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "listing_moderation_before_live",
+      "label": "Listings are reviewed before going live",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_listing_approval",
+        "option": "reviewed_first"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "admin_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "seller_sets_own_prices",
+      "label": "Sellers set their own prices",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_pricing_control",
+        "option": "seller_sets"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "seller_accepts_before_order",
+      "label": "The seller must accept before an order is real",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_transaction_mode",
+        "option": "seller_accepts"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "platform_mediated_disputes",
+      "label": "The platform mediates disputes",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_disputes",
+        "option": "platform_mediates"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "admin_section",
+          "workflow_section",
+          "compliance_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "two_way_reviews",
+      "label": "Both sides review each other",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_reviews",
+        "option": "two_way"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "catalog_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "in_app_messaging_between_parties",
+      "label": "Buyers and sellers message inside the app",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_messaging",
+        "option": "in_app_anytime"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "geo_search_with_distance",
+      "label": "Discovery by map/distance",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_discovery",
+        "option": "map_location"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "dependency_manifest",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "faceted_search_filters",
+      "label": "Search with structured filters/facets",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_discovery",
+        "option": "search_with_filters"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "dependency_manifest",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "seller_identity_verification",
+      "label": "Sellers are identity-verified",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_identity_verification",
+        "option": "sellers_verified"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "db_schema",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "platform_issued_tax_forms",
+      "label": "The platform issues invoices/tax forms for sellers",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_seller_tax_docs",
+        "option": "platform_invoices_and_tax_forms"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "integration_code",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "seller_earnings_dashboard",
+      "label": "Sellers get an earnings dashboard",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_seller_dashboard",
+        "option": "earnings_dashboard"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "admin_ui",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "reporting_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "customer_self_booking_no_account",
+      "label": "Customers book themselves without an account",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_who_books",
+        "option": "customers_no_account"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "staff_time_resource_model",
+      "label": "What is booked is a person's time",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_resource_model",
+        "option": "staff_time"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "service_menu_with_addons",
+      "label": "A service menu with add-ons",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_service_catalog",
+        "option": "menu_with_addons"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "per_resource_schedules",
+      "label": "Each resource has its own working schedule",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_availability_rules",
+        "option": "per_resource_schedule"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "external_calendar_availability",
+      "label": "Availability comes from an external calendar",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_availability_rules",
+        "option": "external_calendar"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "integrations_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "group_capacity_slots",
+      "label": "Slots hold several people (classes/tables)",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_slot_capacity",
+        "option": "group_capacity"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "recurring_booking_series",
+      "label": "Bookings repeat as a series",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_recurring",
+        "option": "series"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "waitlist_auto_offer",
+      "label": "A waitlist offers freed slots automatically",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_waitlist",
+        "option": "auto_offer"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs",
+          "email_templates"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "notifications_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "cancellation_cutoff_window",
+      "label": "Cancellation is free only before a cutoff",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_cancellation_policy",
+        "option": "cutoff_window"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "framework_config",
+          "routes"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "no_show_fee_charged",
+      "label": "No-shows are charged a fee",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_no_show",
+        "option": "charge_fee"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "request_then_approve_booking",
+      "label": "A booking is a request until staff approve it",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_confirmation",
+        "option": "request_approve"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sms_and_email_booking_reminders",
+      "label": "Reminders go out by SMS as well as email",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_reminders",
+        "option": "email_sms_confirm"
+      },
+      "loci": {
+        "repo": [
+          "background_jobs",
+          "email_templates",
+          "integration_code",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "two_way_calendar_sync",
+      "label": "Two-way sync with an external calendar",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_calendar_sync",
+        "option": "two_way"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "integrations_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "per_service_intake_form",
+      "label": "Each service asks its own intake questions",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_intake_form",
+        "option": "per_service_form"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "multi_location_booking",
+      "label": "Bookings happen at more than one location",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_locations",
+        "option": "multi_location"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "admin_defined_custom_fields",
+      "label": "Admins add their own fields to records",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_custom_fields",
+        "option": "admin_custom_fields"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "fixed_stage_pipeline",
+      "label": "Records move through fixed stages",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_pipeline",
+        "option": "fixed_stages"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "assignee_and_due_date",
+      "label": "Records have an assignee and a due date",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_assignment",
+        "option": "single_assignee_due"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "comments_and_mentions_feed",
+      "label": "Comments, @mentions and an activity feed",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_activity_feed",
+        "option": "comments_mentions_activity"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "email_templates"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "linked_record_types",
+      "label": "Record types link to each other",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_relationships",
+        "option": "linked_types"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "board_and_calendar_views",
+      "label": "Board/kanban view beside the list",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_views",
+        "option": "list_and_board"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "admin_ui",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "reporting_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "workflow_automation_rules",
+      "label": "When-this-then-that automation rules",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_automation",
+        "option": "simple_rules"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "duplicate_prevention_unique_key",
+      "label": "Duplicates are blocked by a unique key",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_duplicates",
+        "option": "unique_key_enforced"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "global_full_text_search",
+      "label": "Full-text search across everything",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_search",
+        "option": "full_text_everything"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "dependency_manifest",
+          "routes"
+        ],
+        "spec_doc": [
+          "reporting_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "bulk_actions_on_records",
+      "label": "Act on many records at once",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_bulk_edit",
+        "option": "bulk_actions"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "approval_before_effect",
+      "label": "Something must be approved before it takes effect",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "approval_workflow",
+        "option": "single_approver"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "transactional_email_sending",
+      "label": "The app sends transactional email",
+      "category": "notifications_messaging",
+      "maps_to": {
+        "node": "notifications",
+        "option": "email"
+      },
+      "loci": {
+        "repo": [
+          "email_templates",
+          "dependency_manifest",
+          "background_jobs",
+          "integration_code"
+        ],
+        "spec_doc": [
+          "notifications_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sms_notifications",
+      "label": "The app sends SMS",
+      "category": "notifications_messaging",
+      "maps_to": {
+        "node": "notifications",
+        "option": "email_sms"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "config_env"
+        ],
+        "spec_doc": [
+          "notifications_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "in_app_notification_centre",
+      "label": "In-app notifications with a read state",
+      "category": "notifications_messaging",
+      "maps_to": {
+        "node": "notifications",
+        "option": "in_app"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "notifications_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "scheduled_reminder_jobs",
+      "label": "Scheduled jobs send reminders",
+      "category": "notifications_messaging",
+      "maps_to": {
+        "node": "recurring_scheduled",
+        "option": "reminders_only"
+      },
+      "loci": {
+        "repo": [
+          "background_jobs",
+          "framework_config",
+          "email_templates"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "spreadsheet_import",
+      "label": "Data is imported from a spreadsheet",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "data_import",
+        "option": "import_spreadsheet"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "dependency_manifest",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "integrations_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "migration_from_other_tool",
+      "label": "Data is migrated from a named other tool",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "data_import",
+        "option": "migrate_from_tool"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "file_tree",
+          "routes"
+        ],
+        "spec_doc": [
+          "integrations_section",
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "csv_export",
+      "label": "Data can be exported as CSV",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "data_export",
+        "option": "csv_export"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "reporting_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "full_export_or_public_api",
+      "label": "Everything can be exported / read via API",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "data_export",
+        "option": "full_export_api"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "dependency_manifest",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "integrations_section",
+          "reporting_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "soft_delete_recoverable",
+      "label": "Deletes are soft and recoverable",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "deletion",
+        "option": "soft_delete"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "compliance_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "file_attachments_basic",
+      "label": "Files can be attached to records",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "attachments",
+        "option": "basic"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "dependency_manifest",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "audit_trail_full",
+      "label": "A full audit trail of who changed what",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "audit_trail",
+        "option": "full"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "file_tree",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "retention_policy_purge",
+      "label": "Old data is purged on a retention policy",
+      "category": "data_lifecycle",
+      "maps_to": {
+        "node": "retention",
+        "option": "policy_based"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs",
+          "config_env"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "gdpr_data_subject_request_flow",
+      "label": "A data-subject export/erasure request flow",
+      "category": "data_lifecycle",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "routes",
+          "file_tree",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "file_upload_virus_scanning",
+      "label": "Uploaded files are scanned before storage",
+      "category": "data_lifecycle",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "config_env"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "a_few_key_integrations",
+      "label": "A handful of named third-party integrations",
+      "category": "integrations_sync",
+      "maps_to": {
+        "node": "integrations",
+        "option": "a_few_key"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "config_env"
+        ],
+        "spec_doc": [
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "public_api_for_customers",
+      "label": "A public API customers build against",
+      "category": "integrations_sync",
+      "maps_to": {
+        "node": "integrations",
+        "option": "many_via_api"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "file_tree",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "outbound_webhooks",
+      "label": "Outbound webhooks to customer endpoints",
+      "category": "integrations_sync",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "integration_code",
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "customer_api_keys",
+      "label": "Customer-managed API keys/tokens",
+      "category": "integrations_sync",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "db_schema",
+          "auth_code",
+          "routes"
+        ],
+        "spec_doc": [
+          "integrations_section",
+          "compliance_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "basic_dashboard",
+      "label": "A dashboard of headline numbers",
+      "category": "reporting_analytics",
+      "maps_to": {
+        "node": "reporting",
+        "option": "basic_dashboard"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "admin_ui",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "reporting_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "custom_report_builder",
+      "label": "Users build their own reports",
+      "category": "reporting_analytics",
+      "maps_to": {
+        "node": "reporting",
+        "option": "custom_reports"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "db_schema",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "reporting_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "multi_language_ui",
+      "label": "The interface exists in several languages",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "localization",
+        "option": "multi_language"
+      },
+      "loci": {
+        "repo": [
+          "framework_config",
+          "dependency_manifest",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "settings_section",
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "mobile_first_web",
+      "label": "Web, designed phone-first",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "platform",
+        "option": "web_mobile_first"
+      },
+      "loci": {
+        "repo": [
+          "framework_config",
+          "dependency_manifest",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "overview",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "native_mobile_app",
+      "label": "A native mobile app",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "platform",
+        "option": "native_mobile"
+      },
+      "loci": {
+        "repo": [
+          "dependency_manifest",
+          "framework_config",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "offline_tolerant_client",
+      "label": "It keeps working without a connection",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "offline",
+        "option": "offline_tolerant"
+      },
+      "loci": {
+        "repo": [
+          "dependency_manifest",
+          "framework_config",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "overview",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "public_marketing_pages",
+      "label": "Public pages anyone can see",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "public_facing",
+        "option": "public_pages"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "overview",
+          "catalog_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "branding_customization",
+      "label": "Customers can brand it as their own",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "customization",
+        "option": "branding_templates"
+      },
+      "loci": {
+        "repo": [
+          "admin_ui",
+          "framework_config",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "settings_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sensitive_personal_data_handling",
+      "label": "Sensitive personal data is handled deliberately",
+      "category": "compliance_governance",
+      "maps_to": {
+        "node": "compliance_sensitivity",
+        "option": "personal_sensitive"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "config_env",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "compliance_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "regulated_domain_controls",
+      "label": "Controls for a regulated domain (health/finance/children)",
+      "category": "compliance_governance",
+      "maps_to": {
+        "node": "compliance_sensitivity",
+        "option": "regulated"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "config_env",
+          "file_tree"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "multi_step_approval_chain",
+      "label": "Approval passes through several steps",
+      "category": "compliance_governance",
+      "maps_to": {
+        "node": "approval_workflow",
+        "option": "multi_step"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "large_data_scale_design",
+      "label": "Designed for large data volumes",
+      "category": "compliance_governance",
+      "maps_to": {
+        "node": "data_scale",
+        "option": "large"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "framework_config",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "overview",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "rate_limiting_or_abuse_controls",
+      "label": "Rate limiting / abuse controls",
+      "category": "compliance_governance",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "framework_config",
+          "dependency_manifest",
+          "routes"
+        ],
+        "spec_doc": [
+          "compliance_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "feature_flags_or_staged_rollout",
+      "label": "Feature flags / staged rollout",
+      "category": "compliance_governance",
+      "maps_to": null,
+      "loci": {
+        "repo": [
+          "dependency_manifest",
+          "config_env",
+          "framework_config"
+        ],
+        "spec_doc": [
+          "non_goals_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    }
+  ]
+}

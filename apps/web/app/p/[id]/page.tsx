@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { SheetView, diffSheetIds } from "@/components/SheetView";
+import { EvidenceBox } from "@/components/EvidenceBox";
 import { Toast, impliedText, type ToastData } from "@/components/Toast";
 import { api, errorMessage } from "@/lib/client";
 import type { ProjectState } from "@/lib/types";
@@ -55,17 +56,21 @@ export default function SheetPage() {
       <TopBar id={id} oneLiner={state?.project.one_liner} phase={state?.session.phase} current="sheet" />
       <main className="page">
         {!state ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">
+            <span className="spinner" /> Loading your Design Sheet…
+          </p>
         ) : (
           <div className="split">
             <div className="stack">
               <section className="panel stack">
-                <h2>Here&apos;s what I understood — correct me.</h2>
-                <p className="muted">Read the Sheet like a list about your own business. Anything wrong or missing? Say it in plain English; the Sheet updates, nothing is decided behind your back.</p>
+                <div>
+                  <h2>Here&apos;s what I understood — correct me.</h2>
+                  <p className="muted">Read the Sheet like a list about your own business. Anything wrong or missing? Say it in plain English; the Sheet updates, nothing is decided behind your back.</p>
+                </div>
                 {state.assumptions.length > 0 && (
                   <div>
-                    <div className="small muted" style={{ marginBottom: 6 }}>
-                      I assumed:
+                    <div className="eyebrow" style={{ marginBottom: "var(--s-2)" }}>
+                      I assumed
                     </div>
                     <div className="assumptions">
                       {state.assumptions.map((a, i) => (
@@ -75,7 +80,14 @@ export default function SheetPage() {
                   </div>
                 )}
                 <form onSubmit={submitEdit} className="stack">
-                  <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Clients log into a portal to see and pay their invoices. We never send invoices on behalf of clients." rows={3} disabled={busy} />
+                  <textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="e.g. Clients log into a portal to see and pay their invoices. We never send invoices on behalf of clients."
+                    rows={3}
+                    disabled={busy}
+                    aria-label="Correct the Design Sheet in plain English"
+                  />
                   <div className="row">
                     <button type="submit" className="btn" disabled={busy || !text.trim()}>
                       {busy ? <span className="spinner" /> : null}
@@ -88,6 +100,7 @@ export default function SheetPage() {
                 </form>
                 <Toast toast={toast} />
               </section>
+              <EvidenceBox id={id} onAbsorbed={load} />
             </div>
             <SheetView sheet={state.sheet} decided={state.decided} fresh={fresh} />
           </div>

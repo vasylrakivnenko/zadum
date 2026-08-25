@@ -6,11 +6,14 @@ import { MemoryStore } from "../store/file_store.js";
 import { MockLLM } from "../llm/client.js";
 import { invoicingMockHandlers } from "../llm/mock_fixtures.js";
 import { loadCatalogs } from "./catalogs.js";
-import { Engine } from "./orchestrator.js";
+import { Engine, fixedAssignments } from "./orchestrator.js";
 import { compileProject } from "./compile.js";
 import { DEFAULT_SELECTOR_CONFIG, DEFAULT_THETA, impliedByUpdate } from "../core/selector.js";
-import { conditionHard, conditionSoft, distribution, maxOption, type Belief } from "../core/worlds.js";
-import { propagateHard } from "../core/catalog.js";
+import { conditionHard, conditionSoft, distribution, ess, maxOption, type Belief } from "../core/worlds.js";
+import { ledgerConflicts, propagateHard, type NodeDef } from "../core/catalog.js";
+import { emptySheet, type Decision } from "../core/sheet.js";
+import { makeCommit } from "../core/commit.js";
+import { collectObservations } from "../learning/population_priors.js";
 
 // This file is about the general engine loop, not the rule bank — point at a guaranteed-empty directory so
 // these tests stay deterministic regardless of whether `catalogs/rule-bank/*.json` has been mined on disk
@@ -42,7 +45,12 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect(r.sheet.decisions.find((d) => d.id === "payments_in_app")?.consequence).toBe(5);
     // worlds
     expect(r.session.belief.worlds.length).toBe(12);
-    expect(r.session.belief.worlds.every((w) => Object.keys(w.assignment).length === r.session.belief.nodes.length)).toBe(true);
+    // Worlds are complete apart from decisions that cannot arise in them (every option would contradict a hard
+    // edge that world already holds — e.g. how payments are recorded, in a world that takes no payments).
+    // Those are left unassigned rather than filled with a contradiction; see resolveAssignment.
+    const assignedCounts = r.session.belief.worlds.map((w) => Object.keys(w.assignment).length);
+    expect(Math.max(...assignedCounts)).toBe(r.session.belief.nodes.length);
+    expect(Math.min(...assignedCounts)).toBeGreaterThanOrEqual(r.session.belief.nodes.length - 2);
     expect(r.session.belief.worlds.every((w) => w.assignment.tenancy === "single_org")).toBe(true);
     expect(r.session.phase).toBe("correcting");
     const commits = await store.listCommits("p1");
@@ -111,18 +119,25 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect((await engine.getState("pc1")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "implied", chosen: "collect_online", implied_by: "payment_recording" });
   });
 
-  it("never overwrites a decision the user resolved themselves, and reports the collision", async () => {
+  it("a later answer that contradicts an earlier one reopens it — the ledger never holds both (Rule 3)", async () => {
     const { engine, store } = await makeEngine();
     await engine.createProject("an invoicing app for small bookkeeping firms", { id: "pc2" });
     // the user settles payments_in_app directly, then answers something whose hard edge wants the opposite
     await engine.overrideDefault("pc2", "payments_in_app", "record_only");
     const r = await engine.overrideDefault("pc2", "payment_recording", "online_auto");
-    expect(r.implied.hard.map((h) => h.node)).not.toContain("payments_in_app");
+    expect(r.implied.hard.map((h) => h.node)).not.toContain("payments_in_app"); // an explicit answer is never silently flipped
     expect(r.implied.contradictions).toEqual([{ node: "payments_in_app", had: "record_only", wants: "collect_online", because: "payment_recording=online_auto" }]);
-    // the user's own answer stands (Rule 3), and the collision is on the record rather than silently dropped
-    expect((await engine.getState("pc2")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "resolved", chosen: "record_only" });
+    // the collision is on the record AND the contradicted answer is reopened — Rule 3's sanctioned re-ask
+    const { sheet, session } = await engine.getState("pc2");
+    expect(sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "open" });
+    expect(sheet.decisions.find((d) => d.id === "payments_in_app")?.chosen).toBeUndefined();
+    expect(ledgerConflicts(sheet.decisions, session.belief.nodes)).toEqual([]); // the ledger itself is consistent
     const contradicted = (await store.listEvents("pc2")).filter((e) => e.type === "implications_applied" && Array.isArray(e.payload.contradictions) && (e.payload.contradictions as unknown[]).length);
     expect(contradicted.length).toBe(1);
+    // never revisited → the next defaulting pass settles it consistently with the newer answer's edge
+    await engine.finishCards("pc2");
+    expect((await engine.getState("pc2")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "defaulted", chosen: "collect_online" });
+    expect((await engine.getState("pc2")).sheet.decisions.find((d) => d.id === "payments_in_app")?.rationale).toMatch(/follows from payment_recording=online_auto/);
   });
 
   it("applies a plain-language correction as a commit and propagates implications", async () => {
@@ -189,6 +204,8 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     const ov = await engine.overrideDefault("p3", target.id, other.id);
     expect(ov.version).toBeGreaterThan(state.sheet.version);
     expect((await engine.getState("p3")).sheet.decisions.find((d) => d.id === target.id)).toMatchObject({ status: "resolved", chosen: other.id });
+    // the override may contradict an earlier card answer — the engine reports it and reopens that answer, and
+    // acceptDefaults settles anything reopened consistently, so the flow below needs no manual alignment
     await engine.acceptDefaults("p3");
 
     const c = await compileProject(engine, "p3", { story: true, roundTrip: true });
@@ -479,6 +496,447 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     expect(types.filter((t) => t === "verification_answered").length).toBe(2);
     const commits = await store.listCommits("p16");
     expect(commits.map((c) => c.source.kind)).toContain("verification");
+  });
+
+  it("a run of story-check accepts does not deplete the belief (bounded ε + rejuvenation)", async () => {
+    // Regression: a flat accept-ε made one 6-node accept six times the evidence of a 1-node accept, and there
+    // was no ESS guard — six accepts drove ESS 5.98 → 1.01 (minEss 4), collapsing the belief every later
+    // probe, default and gap card reads.
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p17" });
+    await engine.finishCards("p17");
+    for (let i = 0; i < 6; i++) {
+      const v = await engine.getVerification("p17", { maxProbes: 1 });
+      if (!v.probes.length) break;
+      await engine.answerVerification("p17", { probe_id: v.probes[0]!.id, ok: true });
+      const s = (await store.getSession("p17"))!;
+      expect(ess(s.belief.worlds)).toBeGreaterThanOrEqual(s.config.minEss);
+    }
+  });
+
+  it("gap mining opens a NEW card round when the session already spent its 12 (Rule 7 caps a sitting)", async () => {
+    // Regression: cards.length is a lifetime counter, so a user who spent all 12 cards, compiled, and then
+    // asked for the spec's own gaps got STOP max_cards — the questions they explicitly requested were never
+    // asked and shipped as silent 50% assumptions.
+    const { engine } = await makeEngine({ config: { theta: 0.0001 } as never });
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p18" });
+    let res = await engine.startCards("p18");
+    let n = 0;
+    while (res.kind === "card" && n++ < 30) res = (await engine.answerCard("p18", { kind: "option", option_id: res.card.options[0]!.option_id })).next;
+    expect(n).toBe(12);
+    expect(res.kind === "stop" && res.reason).toBe("max_cards");
+    await engine.finishCards("p18");
+    await engine.acceptDefaults("p18");
+    await compileProject(engine, "p18", { story: false, roundTrip: false });
+    const g = await engine.mineSpecGaps("p18", { apply: 2 });
+    expect(g.applied.length).toBe(2);
+    const next = await engine.startCards("p18");
+    expect(next.kind).toBe("card"); // the requested questions are actually asked
+    if (next.kind === "card") expect(g.applied).toContain(next.card.node_id);
+    // the new round is capped at what was asked for, and never exceeds Rule 7
+    const s = (await engine.getState("p18")).session;
+    expect(s.round_max_cards).toBe(2);
+    expect(s.round_max_cards!).toBeLessThanOrEqual(s.config.maxCards);
+  });
+
+  it("resolving a parent in review reopens its stale gated children and defaults them conditionally", async () => {
+    // Regression: gated children were defaulted from the UNCONDITIONAL belief while their parent pointed
+    // elsewhere, and a review-time parent resolution (exactly where wrong parents get fixed) left them frozen.
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p19" });
+    await engine.finishCards("p19");
+    const child = (await engine.getState("p19")).sheet.decisions.find((d) => d.id === "link_expiry")!;
+    expect(child.status).toBe("defaulted");
+    // conditional defaulting: the child's default is taken under its parent's settled value, not the average
+    const s = (await store.getSession("p19"))!;
+    const sheetNow = (await engine.getState("p19")).sheet;
+    const parentChosen = sheetNow.decisions.find((d) => d.id === "invoice_delivery")!.chosen!;
+    const conditioned = maxOption(distribution({ ...s.belief, worlds: conditionHard(s.belief.worlds, "invoice_delivery", parentChosen) }, "link_expiry"));
+    expect(child.chosen).toBe(conditioned.option);
+    expect(child.rationale).toMatch(/for this kind of app|defaulted from belief/);
+    // a later parent RESOLUTION reopens the stale child so it can be asked/verified/reviewed
+    await engine.overrideDefault("p19", "invoice_delivery", "hosted_link");
+    expect((await engine.getState("p19")).sheet.decisions.find((d) => d.id === "link_expiry")?.status).toBe("open");
+    const implied = (await store.listEvents("p19")).filter((e) => e.type === "implications_applied" && Array.isArray(e.payload.unlocked) && (e.payload.unlocked as string[]).includes("link_expiry"));
+    expect(implied.length).toBe(1);
+  });
+
+  it("gap mining applies EXACTLY the selected candidates when ids are given (a prefix is not a selection)", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p20" });
+    await engine.finishCards("p20");
+    await engine.acceptDefaults("p20");
+    await compileProject(engine, "p20", { story: false, roundTrip: false });
+    const preview = await engine.mineSpecGaps("p20");
+    expect(preview.candidates.length).toBeGreaterThan(1);
+    const second = preview.candidates[1]!.id; // deliberately NOT the top-ranked one
+    const applied = await engine.mineSpecGaps("p20", { applyIds: [second] });
+    expect(applied.applied).toEqual([second]);
+    const ids = (await engine.getState("p20")).sheet.decisions.map((d) => d.id);
+    expect(ids).toContain(second);
+    expect(ids).not.toContain(preview.candidates[0]!.id); // the unchecked top candidate did NOT ride along
+  });
+
+  it("planNext ranks a card, a story check and a review tap on one scale", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "p21" });
+    await engine.finishCards("p21"); // 0 cards → everything defaulted, all three instruments available
+    const plan = await engine.planNext("p21");
+    expect(plan.length).toBeGreaterThan(0);
+    expect(plan.map((p) => p.kind)).toContain("verify");
+    for (let i = 1; i < plan.length; i++) expect(plan[i - 1]!.value).toBeGreaterThanOrEqual(plan[i]!.value);
+  });
+
+  it("sampled worlds never violate a hard edge (no impossible worlds in the belief)", async () => {
+    // Regression: `fixed` constraints were forced ON TOP of a repaired sample, so a world could keep a
+    // logically impossible pair — repairAssignment reports collisions but never overwrites. Measured on real
+    // session logs: 971 surviving violations across 39 sampling calls. Those worlds carried weight in every
+    // marginal the selector, the defaults and the soft implications read.
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "w1" });
+    const check = async () => {
+      const { session } = await engine.getState("w1");
+      for (const w of session.belief.worlds) {
+        const conflicts = propagateHard(w.assignment, session.belief.nodes).conflicts;
+        expect({ world: w.id, conflicts }).toEqual({ world: w.id, conflicts: [] });
+        // complete except decisions that do not ARISE in this world (every option would contradict it)
+        const missing = session.belief.nodes.filter((n) => w.assignment[n.id] === undefined);
+        for (const n of missing) expect(n.options.every((o) => propagateHard({ ...w.assignment, [n.id]: o.id }, session.belief.nodes, [n.id]).conflicts.length > 0)).toBe(true);
+      }
+      return session.belief.worlds.length;
+    };
+    expect(await check()).toBe(12);
+    // …and after answers force more constraints, and after a resample
+    let res = await engine.startCards("w1");
+    let n = 0;
+    while (res.kind === "card" && n++ < 4) res = (await engine.answerCard("w1", { kind: "option", option_id: res.card.options[0]!.option_id })).next;
+    await check();
+    await engine.sampleWorlds("w1", "resample");
+    await check();
+  });
+
+  it("a soft implication is never written against a hard edge (a likelihood cannot outrank a rule)", () => {
+    // Direct guard on what we WRITE: the Sheet can hold a value no world does (a user's typed answer), so
+    // ledger consistency cannot rely on the belief being consistent.
+    const nodes: NodeDef[] = [
+      { id: "A", topic: "a", question: "a?", options: [{ id: "a1", label: "a1" }, { id: "a2", label: "a2" }], consequence: 3, prior: { a1: 0.5, a2: 0.5 }, implies: { a1: [{ node: "B", option: "b1" }], a2: [] }, sections: [], bespoke: false, archetype: "core" },
+      { id: "B", topic: "b", question: "b?", options: [{ id: "b1", label: "b1" }, { id: "b2", label: "b2" }], consequence: 3, prior: { b1: 0.5, b2: 0.5 }, implies: { b1: [], b2: [] }, sections: [], bespoke: false, archetype: "core" },
+    ];
+    // A=a1 forces B=b1, so a "very likely B=b2" must be dropped, not written beside it
+    expect(propagateHard({ A: "a1", B: "b2" }, nodes).conflicts).toHaveLength(1);
+    expect(propagateHard({ A: "a1", B: "b1" }, nodes).conflicts).toEqual([]);
+  });
+
+  it("settling the TARGET of a hard edge reopens a source that now implies something else", async () => {
+    // Regression: hard edges are directional and propagateHard only walks FORWARD from what was just settled,
+    // so answering a decision that is the target of an edge left the source standing with a value implying
+    // something else. Found live: correcting payments_in_app → none in a story check while
+    // payment_recording=online_auto stood (which implies collect_online) shipped a contradictory ledger that
+    // only the compile gate caught.
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q10" });
+    await engine.overrideDefault("q10", "payment_recording", "online_auto");
+    expect((await engine.getState("q10")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ chosen: "collect_online" });
+    // now settle the TARGET the other way — nothing propagates backward, so the source must be reopened
+    await engine.overrideDefault("q10", "payments_in_app", "none");
+    const { sheet, session } = await engine.getState("q10");
+    expect(sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "resolved", chosen: "none" });
+    expect(sheet.decisions.find((d) => d.id === "payment_recording")?.status).toBe("open");
+    expect(ledgerConflicts(sheet.decisions, session.belief.nodes)).toEqual([]);
+    // and a decision with no option left compatible is dropped as not applicable, not forced to contradict
+    await engine.finishCards("q10");
+    const after = await engine.getState("q10");
+    expect(after.sheet.decisions.some((d) => d.id === "payment_recording")).toBe(false);
+    expect(ledgerConflicts(after.sheet.decisions, after.session.belief.nodes)).toEqual([]);
+    expect(after.sheet.decisions.every((d) => d.status !== "open" && d.status !== "skipped")).toBe(true);
+  });
+
+  it("finishCards ships a jointly consistent ledger (external review claim 1)", async () => {
+    // Regression: per-node marginal argmax over a mixed particle set is jointly inconsistent — a normal
+    // 5-card mock session shipped user_accounts=none beside a default whose hard edge demands multi_user,
+    // and nothing between defaulting and delivery re-checked the edges.
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q1" });
+    let res = await engine.startCards("q1");
+    let n = 0;
+    while (res.kind === "card" && n++ < 5) res = (await engine.answerCard("q1", { kind: "option", option_id: res.card.options[0]!.option_id })).next;
+    await engine.finishCards("q1");
+    const { sheet, session } = await engine.getState("q1");
+    expect(sheet.decisions.every((d) => d.status !== "open" && d.status !== "skipped")).toBe(true);
+    expect(ledgerConflicts(sheet.decisions, session.belief.nodes)).toEqual([]);
+    expect(await engine.checkConsistency("q1")).toEqual([]);
+    // and the same holds for the 0-card pure-defaults regime
+    const zero = await makeEngine();
+    await zero.engine.createProject("an invoicing app for small bookkeeping firms", { id: "q1z" });
+    await zero.engine.finishCards("q1z");
+    expect(await zero.engine.checkConsistency("q1z")).toEqual([]);
+  });
+
+  it("ledgerConflicts reports hard-edge contradictions between settled decisions", () => {
+    const nodes: NodeDef[] = [
+      { id: "A", topic: "a", question: "a?", options: [{ id: "a1", label: "a1" }, { id: "a2", label: "a2" }], consequence: 3, prior: { a1: 0.5, a2: 0.5 }, implies: { a1: [{ node: "B", option: "b1" }], a2: [] }, sections: [], bespoke: false, archetype: "core" },
+      { id: "B", topic: "b", question: "b?", options: [{ id: "b1", label: "b1" }, { id: "b2", label: "b2" }], consequence: 3, prior: { b1: 0.5, b2: 0.5 }, implies: { b1: [], b2: [] }, sections: [], bespoke: false, archetype: "core" },
+    ];
+    const contradictory = [
+      { id: "A", chosen: "a1", status: "defaulted" },
+      { id: "B", chosen: "b2", status: "defaulted" },
+    ];
+    expect(ledgerConflicts(contradictory, nodes)).toEqual([{ node: "B", have: "b2", want: "b1", because: "A=a1" }]);
+    // an open decision is not part of the settled ledger, and a consistent ledger is clean
+    expect(ledgerConflicts([{ id: "A", chosen: "a1", status: "defaulted" }, { id: "B", status: "open" }], nodes)).toEqual([]);
+    expect(ledgerConflicts([{ id: "A", chosen: "a1", status: "resolved" }, { id: "B", chosen: "b1", status: "defaulted" }], nodes)).toEqual([]);
+  });
+
+  it("fixedAssignments locks only user-grade and planner-stated decisions (external review claim 2)", async () => {
+    // Regression: soft implications write confidence ≥ softImplyTau (0.95) by construction, so a
+    // confidence-only filter froze belief-derived guesses as hard sampling constraints — measured: 17 of 27
+    // "fixed" after a 9-card session were pure belief guesses, unfixable by any later resample.
+    const sheet = emptySheet("t", "test");
+    const dec = (id: string, status: Decision["status"], source: string, confidence?: number): Decision => ({
+      id, topic: id, question: `${id}?`, options: [{ id: "x", label: "x" }, { id: "y", label: "y" }], chosen: "x", status, ...(confidence !== undefined ? { confidence } : {}), consequence: 3, source,
+    });
+    sheet.decisions = [
+      dec("user_answered", "resolved", "card:c1"),
+      dec("logically_implied", "implied", "implied:user_answered", 1),
+      dec("user_delegated", "delegated", "card:c2", 0.8),
+      dec("planner_stated", "defaulted", "plan", 0.95),
+      dec("soft_implication", "defaulted", "implied:user_answered", 0.97), // the regression: a guess implied by an answer
+      dec("belief_guess", "defaulted", "default", 0.99), // and a finishCards default, however confident
+      dec("planner_low", "defaulted", "plan", 0.7),
+      dec("still_open", "open", "plan"),
+    ];
+    expect(Object.keys(fixedAssignments(sheet)).sort()).toEqual(["logically_implied", "planner_stated", "user_answered", "user_delegated"]);
+    // engine-level: after a pure-defaults session, no belief-derived default is a sampling constraint
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q2" });
+    await engine.finishCards("q2");
+    const s = (await engine.getState("q2")).sheet;
+    const fixed = fixedAssignments(s);
+    const byId = new Map(s.decisions.map((d) => [d.id, d]));
+    for (const id of Object.keys(fixed)) {
+      const d = byId.get(id)!;
+      expect(d.status !== "defaulted" || d.source === "plan").toBe(true);
+    }
+    // non-vacuous: confident belief-derived defaults exist and are NOT locked
+    const guesses = s.decisions.filter((d) => d.status === "defaulted" && (d.confidence ?? 0) >= 0.95 && d.source !== "plan");
+    expect(guesses.length).toBeGreaterThan(0);
+    for (const g of guesses) expect(fixed[g.id]).toBeUndefined();
+  });
+
+  it("undo of a card keeps the work committed after it (external review claim 3)", async () => {
+    // Regression: undo reverted the WHOLE sheet to the pre-answer snapshot, deleting an edit made between
+    // the answer and the undo (measured: a noun added by an edit vanished when the card was undone).
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q3" });
+    const first = await engine.startCards("q3");
+    expect(first.kind).toBe("card");
+    if (first.kind !== "card") return;
+    await engine.answerCard("q3", { kind: "option", option_id: first.card.options[0]!.option_id });
+    // an interleaved user edit: resolves external_access=portal, whose hard edge implies user_accounts
+    await engine.applyUserEdit("q3", "Clients log into a portal to see and pay their invoices");
+    const back = await engine.undoLast("q3");
+    expect(back?.kind).toBe("card");
+    if (back?.kind === "card") expect(back.card.node_id).toBe(first.card.node_id);
+    const s = (await engine.getState("q3")).sheet;
+    // the undone answer is gone…
+    expect(s.decisions.find((d) => d.id === first.card.node_id)?.status).toBe("open");
+    // …but the edit made AFTER it survives, implication and all
+    expect(s.decisions.find((d) => d.id === "external_access")).toMatchObject({ status: "resolved", chosen: "portal" });
+    expect(s.decisions.find((d) => d.id === "user_accounts")).toMatchObject({ status: "implied", chosen: "multi_user" });
+    // and the follow-up card is still un-shown (the clean-path behavior holds)
+    expect((await engine.getState("q3")).session.cards.length).toBe(1);
+  });
+
+  it("compile refuses an unfinished ledger; draft compiles are stamped and never done (claim 4a)", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q4" });
+    // straight to compile with dozens of open decisions: refused with an actionable message
+    await expect(compileProject(engine, "q4", { story: false, roundTrip: false })).rejects.toThrow(/cannot compile: .*open/);
+    // the escape hatch compiles, but the result is unmistakably a draft and the phase never reaches done
+    const r = await compileProject(engine, "q4", { story: false, roundTrip: false, draft: true });
+    expect(r.spec).toMatch(/UNFINISHED LEDGER/);
+    expect(r.bundle.find((b) => b.name === "AGENTS.md")!.content).toMatch(/is a draft/);
+    const report = JSON.parse(r.bundle.find((b) => b.name === "compile-report.json")!.content) as { open_decisions: number };
+    expect(report.open_decisions).toBeGreaterThan(0);
+    expect((await engine.getState("q4")).session.phase).not.toBe("done");
+  });
+
+  it("contradictory answers self-heal: reopen → consistent default → clean compile, no manual alignment", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q5" });
+    // the user creates a real contradiction: resolves payments_in_app, then an answer whose edge wants the opposite
+    await engine.overrideDefault("q5", "payments_in_app", "record_only");
+    const r = await engine.overrideDefault("q5", "payment_recording", "online_auto");
+    expect(r.implied.contradictions.length).toBe(1);
+    await engine.finishCards("q5");
+    await engine.acceptDefaults("q5");
+    const c = await compileProject(engine, "q5", { story: false, roundTrip: false });
+    expect(c.conflicts).toEqual([]);
+    expect((await engine.getState("q5")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ chosen: "collect_online" });
+    expect((await engine.getState("q5")).session.phase).toBe("done");
+  });
+
+  it("compile's conflict gate is the backstop for a ledger corrupted outside the engine's own paths", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q5b" });
+    await engine.finishCards("q5b");
+    await engine.acceptDefaults("q5b");
+    // write two contradictory resolutions directly (no propagation ran — simulating older data / a raw import)
+    const { sheet } = await engine.getState("q5b");
+    const { commit } = makeCommit(
+      sheet,
+      [
+        { op: "resolve_decision", id: "payment_recording", chosen: "online_auto", rationale: "raw" },
+        { op: "resolve_decision", id: "payments_in_app", chosen: "record_only", rationale: "raw" },
+      ],
+      { id: "raw1", source: { kind: "system" }, message: "raw import", now: new Date().toISOString() },
+    );
+    await store.appendCommit(commit!);
+    await expect(compileProject(engine, "q5b", { story: false, roundTrip: false })).rejects.toThrow(/contradicts itself/);
+    expect((await engine.getState("q5b")).session.phase).not.toBe("done");
+  });
+
+  it("reopening a contradicted answer also reopens what it had implied (no stale derivations)", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q8" });
+    // user_accounts=none implies roles/invite_flow/identity_provider/concurrency — a whole derived subtree
+    await engine.overrideDefault("q8", "user_accounts", "none");
+    const before = (await engine.getState("q8")).sheet;
+    const derived = before.decisions.filter((d) => d.implied_by === "user_accounts" && d.status === "implied").map((d) => d.id);
+    expect(derived.length).toBeGreaterThanOrEqual(3);
+    // …then the user answers something whose edge demands the opposite of that root
+    const r = await engine.overrideDefault("q8", "external_access", "portal");
+    expect(r.implied.contradictions).toEqual([{ node: "user_accounts", had: "none", wants: "multi_user", because: "external_access=portal" }]);
+    const after = (await engine.getState("q8")).sheet;
+    expect(after.decisions.find((d) => d.id === "user_accounts")?.status).toBe("open");
+    for (const id of derived) expect(after.decisions.find((d) => d.id === id)?.status).toBe("open"); // stale subtree reopened with it
+    // the whole thing settles consistently at the next defaulting pass
+    await engine.finishCards("q8");
+    const { sheet, session } = await engine.getState("q8");
+    expect(sheet.decisions.find((d) => d.id === "user_accounts")).toMatchObject({ status: "defaulted", chosen: "multi_user" });
+    expect(ledgerConflicts(sheet.decisions, session.belief.nodes)).toEqual([]);
+  });
+
+  it("a delegated ('you decide') value contradicted by a later answer is re-derived, not silently left", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q9" });
+    const { sheet } = await engine.getState("q9");
+    const { commit } = makeCommit(sheet, [{ op: "set_decision", id: "payments_in_app", status: "delegated", chosen: "record_only", confidence: 0.6, rationale: "user: you decide" }], { id: "del1", source: { kind: "system" }, message: "delegate", now: new Date().toISOString() });
+    await store.appendCommit(commit!);
+    const r = await engine.overrideDefault("q9", "payment_recording", "online_auto");
+    expect(r.implied.contradictions).toEqual([]); // no user opinion was at stake — nothing to report as a conflict
+    expect(r.implied.hard).toContainEqual({ node: "payments_in_app", option: "collect_online" });
+    expect((await engine.getState("q9")).sheet.decisions.find((d) => d.id === "payments_in_app")).toMatchObject({ status: "implied", chosen: "collect_online", implied_by: "payment_recording" });
+  });
+
+  it("a compile the Sheet moved under is stamped stale and not marked done (claim 4b)", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q6" });
+    await engine.finishCards("q6");
+    await engine.acceptDefaults("q6");
+    // simulate a mid-compile edit: after compile's initial read, the latest sheet is one version ahead
+    let calls = 0;
+    const realGet = store.getLatestSheet.bind(store);
+    store.getLatestSheet = async (id: string) => {
+      const s = await realGet(id);
+      calls += 1;
+      return s && calls > 1 ? { ...s, version: s.version + 1 } : s;
+    };
+    const r = await compileProject(engine, "q6", { story: false, roundTrip: false });
+    expect(r.stale).toBe(true);
+    expect(r.spec).toMatch(/STALE/);
+    expect(JSON.parse(r.bundle.find((b) => b.name === "compile-report.json")!.content).stale).toBe(true);
+    expect((await engine.getState("q6")).session.phase).not.toBe("done");
+  });
+
+  it("acceptDefaults re-defaults children reopened during review, so compiling never starts open", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q7" });
+    await engine.finishCards("q7");
+    // a review-time parent resolution reopens its stale gated child…
+    await engine.overrideDefault("q7", "invoice_delivery", "hosted_link");
+    expect((await engine.getState("q7")).sheet.decisions.find((d) => d.id === "link_expiry")?.status).toBe("open");
+    // …and accepting the review must not carry that open decision into compiling
+    await engine.acceptDefaults("q7");
+    const { sheet, session } = await engine.getState("q7");
+    expect(session.phase).toBe("compiling");
+    expect(sheet.decisions.find((d) => d.id === "link_expiry")?.status).toBe("defaulted");
+    expect(sheet.decisions.every((d) => d.status !== "open" && d.status !== "skipped")).toBe(true);
+  });
+
+  it("spec feedback lands on the SHEET, not the spec text, and survives the next compile", async () => {
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "r1" });
+    await engine.finishCards("r1");
+    await engine.acceptDefaults("r1");
+    await compileProject(engine, "r1", { story: false, roundTrip: false });
+    const before = (await engine.getState("r1")).sheet;
+
+    const r = await engine.refineFromSpecFeedback("r1", { comments: [{ quote: "Clients sign in to a portal", text: "This is wrong — our clients never log in, we email everything." }] });
+    // the correction is a Sheet change, with provenance
+    expect(r.extraction.wrong_assumptions[0]).toMatchObject({ node: "external_access", should_be: expect.any(String) });
+    expect(r.version).toBeGreaterThan(before.version);
+    const after = (await engine.getState("r1")).sheet;
+    expect(after.decisions.find((d) => d.id === "external_access")).toMatchObject({ status: "resolved", chosen: "none" });
+    const commits = await store.listCommits("r1");
+    expect(commits.at(-1)!.source.kind).toBe("spec_feedback");
+    // and it is recorded as learning signal, with the four classified lists…
+    const ev = (await store.listEvents("r1")).filter((e) => e.type === "spec_refined");
+    expect(ev).toHaveLength(1);
+    expect((ev[0]!.payload.extraction as { wrong_assumptions: unknown[] }).wrong_assumptions).toHaveLength(1);
+    // …and a machine-readable correction (validated option id) that reaches the observation store
+    expect(ev[0]!.payload.corrections).toEqual([{ node: "external_access", option: "none" }]);
+    const obs = await collectObservations(store, ["r1"]);
+    expect(obs.filter((o) => o.source === "refinement")).toEqual([expect.objectContaining({ node: "external_access", option: "none" })]);
+    // the correction survives a recompile because it changed the source of truth
+    await engine.acceptDefaults("r1");
+    const c2 = await compileProject(engine, "r1", { story: false, roundTrip: false });
+    expect(c2.sheet_version).toBeGreaterThan(before.version);
+  });
+
+  it("feedback that opens a real choice becomes an open QUESTION, not a fresh guess", async () => {
+    const { engine } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "r2" });
+    await engine.finishCards("r2");
+    await engine.acceptDefaults("r2");
+    await compileProject(engine, "r2", { story: false, roundTrip: false });
+    const r = await engine.refineFromSpecFeedback("r2", { comments: [{ text: "we also handle refunds sometimes" }] });
+    expect(r.added_decisions.length).toBeGreaterThan(0);
+    const id = r.added_decisions[0]!;
+    const { sheet, session } = await engine.getState("r2");
+    expect(sheet.decisions.find((d) => d.id === id)).toMatchObject({ status: "open" });
+    expect(session.belief.nodes.some((n) => n.id === id)).toBe(true); // askable, not stranded
+    expect(r.extraction.new_questions[0]!.question).toMatch(/refund/i);
+    // a new round is opened so the loop actually deals it (Rule 7 caps a sitting, not a lifetime)
+    expect(session.phase).toBe("cards");
+    const next = await engine.startCards("r2");
+    expect(next.kind).toBe("card");
+    if (next.kind === "card") expect(r.added_decisions).toContain(next.card.node_id);
+    // …and compile now refuses until that question is settled — the honest consequence, not an error
+    await expect(compileProject(engine, "r2", { story: false, roundTrip: false })).rejects.toThrow(/cannot compile/);
+  });
+
+  it("an edited spec is understood as a diff of what changed, not as two whole documents", async () => {
+    const { engine, llm } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "r3" });
+    await engine.finishCards("r3");
+    await engine.acceptDefaults("r3");
+    const c = await compileProject(engine, "r3", { story: false, roundTrip: false });
+    const edited = `${c.spec}\n\nWe also track a Purchase order for every job.\n`;
+    const r = await engine.refineFromSpecFeedback("r3", { edited });
+    const sent = llm.calls.filter((x) => x.fn === "spec_feedback").at(-1)!.user;
+    expect(sent).toContain("@@ line"); // hunks, not the whole spec
+    expect(sent.length).toBeLessThan(c.spec.length); // the 45k-char document was never re-sent
+    expect(r.extraction.missing_elements[0]).toMatchObject({ kind: "noun" });
+    expect((await engine.getState("r3")).sheet.nouns.map((n) => n.name)).toContain("Purchase order");
+  });
+
+  it("refining with nothing to say is refused rather than burning a model call", async () => {
+    const { engine, llm } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "r4" });
+    const before = llm.calls.length;
+    await expect(engine.refineFromSpecFeedback("r4", { comments: [{ text: "   " }] })).rejects.toThrow(/no feedback/);
+    expect(llm.calls.length).toBe(before);
   });
 
   it("stops immediately when theta is huge and asks more when theta is tiny (bounded by 12)", async () => {

@@ -199,6 +199,21 @@ export interface PropagationResult {
   conflicts: { node: string; have: string; want: string; because: string }[];
 }
 
+/**
+ * Hard-edge contradictions in a SETTLED ledger (empty = consistent). Cards, defaults and reviews each keep
+ * themselves consistent locally, but only a joint pass over the final assignment can certify the whole —
+ * per-node marginal defaulting once shipped `user_accounts=none` beside a default whose edge demands
+ * `multi_user`. Compile refuses on these; finishCards avoids creating them.
+ */
+export function ledgerConflicts(
+  decisions: { id: string; chosen?: string; status: string }[],
+  nodes: NodeDef[],
+): PropagationResult["conflicts"] {
+  const assignment: Record<string, string> = {};
+  for (const d of decisions) if (d.chosen && d.status !== "open" && d.status !== "skipped") assignment[d.id] = d.chosen;
+  return propagateHard(assignment, nodes).conflicts;
+}
+
 /** Deterministic fixpoint over hard edges. Existing assignments are never overwritten (conflicts are reported). */
 export function propagateHard(assignment: Record<string, string>, nodes: NodeDef[], roots?: string[]): PropagationResult {
   const byId = new Map(nodes.map((n) => [n.id, n]));

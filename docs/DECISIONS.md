@@ -546,3 +546,215 @@ IR path; regression gate regenerated once, deliberately, for the catalog change.
 of the new compiler recorded in docs/EVALS.md. Queued next: per-section IR expansion (permissions matrix is
 the obvious second), verification in the web UI, a second reader family for builder-questions, and
 canonicalizing section/edge-case pattern names in the idiom miner.
+
+## ADR-035 — Fourth-pass self-critique: belief hygiene, per-sitting budgets, the guided flow, and the interaction planner (2026-08-24)
+**Context.** A fourth review pass, aimed at the two overnight builds and at the PRODUCT they created, verified
+eleven issues by scripted probe or citation before proposing anything. Three were real defects in machinery
+shipped hours earlier; two were product gaps that would have hit the first real user in their first session;
+the rest were trust, metric-honesty, and the last step of the discriminative-question idea.
+
+**Decisions.**
+1. **Verification must not eat the belief it depends on.** Measured: six accepted story checks drove ESS
+   5.98 → 1.01 (minEss 4) — a flat accept-ε made one 6-node accept six times the evidence of a 1-node accept,
+   and `answerVerification` lacked the rejuvenation guard `answerCard` has. Fixed both: accept-ε is now the
+   k-th root (total weight a scenario can strip is bounded regardless of bundle size) and the ESS resample
+   guard runs after every verification answer. Re-measured: ESS stays 4.45–10.25 over the same six accepts.
+2. **Rule 7 caps a SITTING, not a lifetime** (`round_base`, `round_max_cards`). Measured: a user who spent
+   all 12 cards, compiled, then asked for the spec's own gaps got `STOP max_cards` — the questions they had
+   explicitly requested were never asked and shipped as silent 50% assumptions. Gap-apply now opens a round
+   capped at the number of questions the user asked for, never above Rule 7's 12.
+3. **Gated children are conditioned, not stranded.** Measured: resolving a parent in the defaults review left
+   its child frozen at a default computed while the parent pointed elsewhere. Two fixes: `propagateResolution`
+   reopens stale never-asked children whose `requires` a resolution newly satisfies (reported as `unlocked`),
+   and `finishCards` defaults every gated child from the belief CONDITIONED on its settled parents — the joint
+   structure was already in the particles; using it makes child assumptions coherent by construction.
+4. **The product got a guided flow** (`src/engine/advisor.ts`, `zadum next`, and a hint at the end of every
+   command). Eight interactions had accumulated with no path between them, and the best new instrument
+   (story checks) appeared in no hint anywhere. The advisor is pure and deterministic over a state snapshot —
+   the same recommendation renders in the CLI and (next) the web rail — and it always names ONE next action
+   with a reason. Ordering rules that matter: a coding agent's pending amendment outranks everything (it is
+   blocking someone else); an explicit `accept` is respected rather than looped back into checks; a stale
+   spec is flagged ahead of any new work.
+5. **Web parity shipped** — verification, gap mining, and evidence now have routes and surfaces (story-check
+   panel above the defaults table, "Tighten the spec", evidence box beside the correction box), 21 web tests.
+6. **The correction moment does double duty**: `applyUserEdit`/`applyStoryCorrection` now also absorb the
+   text as belief evidence (behind ZADUM_EVIDENCE) — patch ops for what is explicit, likelihood reweight for
+   what is implied. Never fails an edit if absorption errors.
+7. **One vocabulary, one mechanism for narrative confirmation**: the walkthrough's "Please confirm" items are
+   now composed by the same 0.5-targeted group-testing machinery as interactive story checks (deterministic,
+   no extra LLM call). Self-caught during the build: at the interactive `maxSize` of 6 the static bullets
+   became six-clause run-ons nobody would answer honestly — capped to 2 for written checks.
+8. **MCP amendments are queued, not applied** (`src/mcp/amendments.ts`, `npm run amendments`): a coding agent
+   proposing a Sheet change stages it; only owner approval writes. Rule 1 was already honored mechanically —
+   this closes the *authority* hole. Approved/rejected amendments are the flywheel's top-ranked signal, kept
+   with enough context to learn from.
+9. **`mineSpecGaps` takes ids, not just a count** — a checkbox UI means "exactly these"; a prefix silently
+   pulled unchecked candidates along (found by the web agent, fixed in the engine).
+10. **The ruler's builder-questions metric now separates "spec is ambiguous" from "reader didn't read"**
+    (two-pass: flagged_assumption › answered_in_spec › genuine_gap, headline = genuine gaps), plus repeats
+    defaulting to 4, `--reader-models a,b` for cross-family readers, per-repeat spread, `--seed`, and a CI
+    self-check (`npm run quality:ci`). Live: the reversal reproduced — our specs rank LAST on raw question
+    count and FIRST on genuine gaps, with `flagged` separating cleanly (6.0/5.5 vs 1.0/0.0). Two consequences
+    recorded honestly: the ruler's own `saltCoin` was parity-of-character-sum (presentation order was never
+    randomized — fixed, avalanche-tested), and under the better conditions **the compiler A/B's −25% claim is
+    withdrawn pending a same-conditions re-run** (cross-family readers raised entropy everywhere; the two
+    specs now overlap). The us-vs-baselines gap is unaffected and large.
+11. **The unified interaction planner** (`src/core/planner.ts`, `zadum plan`, `Engine.planNext`): cards,
+    story checks and review taps ranked on ONE consequence-weighted bits-equivalent scale, with explicit,
+    harness-tunable conversion factors (review taps discounted by attention — a skim is not an answer).
+    Advisory only: it does not drive the card loop until the harness's `--mix` arm says it should. This is the
+    most-discriminative-question principle taken to its end — the most discriminative INTERACTION.
+
+**Consequences.** Root tests 364 → 400+; the three defect fixes each carry the probe that found them as a
+regression test. Deliberately NOT done: renaming `story.md` (blast radius across web, thesis harness and
+artifact kinds for a naming win); wiring the planner into `deal` (needs the harness gate).
+
+## ADR-036 — The external review: consistency as a gate, provenance as the lock, and honest metrics (2026-08-25)
+
+**Context.** The founder asked an outside reviewer for a critical read. They returned six claims. Per the
+working agreement (verify before believing), every claim was reproduced by a scripted probe BEFORE any fix:
+(1) a normal 5-card mock session compiled with a hard-edge contradiction in its settled ledger; (2) after a
+9-card session, 17 of 27 sampling constraints were pure belief guesses (soft implications write confidence ≥
+softImplyTau = 0.95 *by construction*, and the lock filter was confidence-only); (3) undoing a card reverted
+the whole sheet snapshot, deleting an edit made after the answer; (4) a project with 69 open decisions
+compiled successfully and was marked done, and compile never re-checked the sheet version it read ~70s
+earlier; (5) `recovery()` skipped gold decisions the session never surfaced — an empty design scored 1.0;
+(6) the web app has no access control. All six confirmed.
+
+**Decisions.**
+1. **Consistency is certified jointly, not assumed locally** (claim 1). Each subsystem was locally consistent
+   (answers propagate hard edges; worlds are repaired) but the FINAL ledger was never checked as a whole —
+   and per-node marginal argmax over a mixed particle set is jointly inconsistent. `finishCards` now settles
+   open decisions one at a time in consequence order, propagating hard edges as each default lands
+   (`defaultOps`): an edge-forced value is taken as forced (rationale `follows from X=y`), otherwise the
+   likeliest option that contradicts nothing wins. `ledgerConflicts` (core/catalog.ts) is the pure
+   certification, and compile REFUSES a contradictory ledger. Alternative rejected: repairing conflicts at
+   compile time (silent mutation of settled decisions at the least-visible moment).
+2. **Provenance, not confidence, locks a sampling constraint** (claim 2). `fixedAssignments` fixes
+   user-grade statuses always, and a `defaulted` decision only at `source === "plan"` (the planner's
+   fixed_by_sheet — ADR-005's documented intent). Structural because every `set_decision` re-stamps
+   `source`. The measured effect of freeing 17 pseudo-constraints: the same mock session asks 12 cards
+   instead of 9 — uncertainty that was frozen is now askable and resampleable, which is exactly the
+   confidently-wrong blind spot's feeding loop cut.
+3. **Undo is selective when history moved on** (claim 3). With no foreign commits after the answer, undo is
+   the exact snapshot revert it always was. With foreign commits (edits, story corrections, verifications,
+   gap plans), the revert target is "history minus this card": the snapshot with foreign ops replayed on top
+   (best-effort; ops the missing answer invalidates are skipped), so later work survives. Belief:
+   snapshot restore + conditionSoft replay for foreign resolutions (order-free — per-world products);
+   evidence/verify reweights are knowingly not replayed.
+4. **Compile gates: unfinished, contradictory, stale** (claim 4). Refuses open/skipped decisions and ledger
+   conflicts (CLI `--draft` / web `draft:true` compiles anyway, stamped DRAFT, 409 on the gate otherwise);
+   re-reads the sheet version before writing artifacts — if it moved, the spec is stamped STALE, the report
+   records both versions, and `markDone` is skipped (the advisor's stale-spec rule then steers to a
+   recompile). No long lock: a compile takes ~a minute live and holding the project lock that long would
+   block every edit. `acceptDefaults` re-defaults anything a review override reopened, so the compiling
+   phase never legitimately starts with open decisions.
+5. **The metric counts what's missing** (claim 5). Every gold decision now enters `recovery()`'s denominator
+   (node consequence, fallback 3); absent-from-design counts as wrong; empty design vs non-empty gold = 0.
+   Mock baseline regenerated: honest AUC 0.367 (was 0.560). All pre-2026-08-25 recovery/AUC numbers are
+   upper bounds (EVALS honesty note); orderings likely stand, absolutes must be re-derived.
+6. **Auth stays with the deploy item** (claim 6): agreed and already documented; per-project token +
+   ownership middleware + rate limits ship with hosting, not before.
+
+**Fallout fixed en route.** Verification probes now test the LEDGER's chosen option
+(`ComposeOptions.chosen`), not the belief argmax — a consistency-forced default can differ from the
+marginal, and a story-check acceptance must confirm what the Sheet actually assumes (found by the web smoke
+suite: `confirmed=[]` on such a probe). The accept path likewise refreshes confidence for the confirmed
+option itself (floored at its previous value) instead of vetoing the user's acceptance with the marginal.
+
+**Consequences.** Root tests 413 → 426 (+21 web); every claim's probe is now a regression test. The freed
+constraints and joint defaulting shift selector-visible behavior — the baseline regen is deliberate and the
+θ recalibration queue (live) inherits one more reason to run.
+
+## ADR-037 — Contradictions are resolved when they happen: reopen the contradicted answer (2026-08-25)
+
+**Context.** ADR-036 #1 made contradictions impossible to *compile* (joint defaulting + `ledgerConflicts` +
+the compile gate), but a contradictory pair of USER answers could still be *accepted* into the ledger: the
+engine kept the earlier resolved answer, reported the collision, and relied on the user to notice the blocked
+compile and manually align. Two lesser leaks: the contradicted decision, being `resolved`, did not even
+appear in the defaults-review list the error message pointed at; and a `delegated` ("you decide") value
+contradicted by a later answer was skipped silently — a conflict only the compile gate would ever surface.
+
+**Decision.** Take Rule 3 at its word — "a resolved decision is never asked again *unless contradicted by a
+later user action*". When a later user action's hard edge demands a different option than an earlier
+RESOLVED decision holds, the engine does not silently flip the explicit answer and does not keep the
+contradiction either: it **reopens** the earlier decision (collision still recorded and logged), reopens the
+now-stale decisions that answer had implied (unless the new propagation re-derives them), and lets the
+normal machinery finish the job — the question is re-askable; `finishCards`/`acceptDefaults` otherwise
+settle it as a forced default consistent with the newer answer ("follows from …"). `delegated` values carry
+no user opinion, so they are re-derived directly (reopen → implied; the transition table forbids
+delegated → implied in one step). The ledger is therefore never contradictory through any engine path; the
+compile gate remains as a pure backstop for data written outside them (verified by a raw-commit test).
+
+**Alternatives rejected.** (a) Later answer silently wins (flip the earlier resolution to `implied`):
+overwrites an explicit user statement on the strength of a catalog edge — the edge might be what's wrong.
+(b) Earlier answer stands, compile blocks (the ADR-036 interim): correct but adversarial UX — the user
+discovers the conflict at the furthest point from where they caused it, and the review list couldn't even
+show it. (c) A dedicated conflict-card UI: better long-term, but reopening already routes the question into
+every existing surface (cards, review, planNext) with zero new UI.
+
+**Consequences.** A contradiction now self-heals end to end (test: override → contradiction → finish →
+accept → clean compile, no manual step). One learning-side nuance is documented in the population-priors
+test: "finally defaulted" no longer implies "never touched" — an answered decision can be reopened by a
+contradiction and re-defaulted, and its card answer remains a legitimate observation. Root tests 426 → 428.
+
+## ADR-038 — The spec workspace, the refine loop, and consistency by construction (2026-08-25)
+
+**Context.** Three asks landed together: a UI a non-technical owner would enjoy, an editable spec in the
+browser with a refine step and a `.md` download, and the evidence-layer labelling work run on Opus via Azure.
+Three agents worked disjoint file sets (spec workspace / design system / labelling) while the engine changes
+were done serially. Integrating them exposed three real consistency defects that no test had covered.
+
+**Decisions.**
+
+1. **A correction to the spec lands on the SHEET, never on the spec text** (`Engine.refineFromSpecFeedback`).
+   Editing `spec.md` is pointless — the next compile overwrites it — so an edit or comment is read for INTENT
+   and applied as patch ops through the ordinary Rule-1 path. Edits are diffed in code first
+   (`core/textdiff.ts`): a compiled spec runs ~45k characters and re-sending both versions would cost ~25k
+   tokens and bury a three-line correction, so only changed hunks with context are sent. Feedback is
+   classified four ways — wrong assumption (with the correction when given), missing element, confirmed,
+   new question. A choice the feedback OPENS becomes an open decision (`xr_…`) and a new card round, never a
+   fresh guess; compile then refuses until it is answered, which is the honest outcome rather than an error.
+   Surfaces: `/p/<id>/spec` and `zadum refine`. Live-verified against gpt-4.1, which caught a prompt gap: the
+   model emitted `add_action` against a noun the Sheet did not have, an op the patch layer rejects silently —
+   the extraction would have shown a change that never happened. Op-mechanics discipline was added to the
+   prompt; the live run then applied 2 ops with 0 rejected.
+
+2. **The refine loop is the flywheel's best signal** (docs/LEARNING.md §0). `spec_refined` carries the
+   human-readable extraction AND machine-readable `corrections` (node + the *validated* option id, since the
+   extraction holds labels that learning cannot key on), with a new `refinement` observation source. Nothing
+   else in the product produces a labelled miss and its fix in the same breath, on a document the owner had a
+   real reason to read carefully.
+
+3. **Worlds are hard-consistent by construction** (`core/worlds.resolveAssignment`). `repairAssignment`
+   propagates hard edges but never overwrites, so forcing `fixed` constraints on top of a repaired sample left
+   worlds that violate hard edges — **971 surviving violations across 39 real sampling calls**. Those
+   impossible worlds carried weight in every marginal the selector, the defaults and the soft implications
+   read. Values are now taken in priority order (certain first), each placed only if free and consistent, each
+   propagating its own edges as it lands. Measured after: 0/12. It also *improved* the benchmark
+   (mock AUC 0.367 → 0.380), so the baseline was regenerated deliberately.
+
+4. **A decision that cannot arise is dropped, not answered.** When every option of a decision contradicts what
+   the design already settled, defaulting the argmax anyway wrote a contradiction the owner could never fix in
+   review — every choice offered was impossible — and compile then refused, stranding the session. Measured:
+   with `payments_in_app = none`, every option of `payment_recording` implies that payments happen. Such a
+   decision is now removed (`remove_decision`, reported as `not_applicable`) — the planner's own
+   `not_applicable` verdict, reached later. Worlds do the same by leaving the cell unassigned, which is why
+   worlds are no longer complete by construction and downstream reads a missing value as "no opinion".
+   This is a catalog gap as much as an engine one: `payment_recording` wants a "no payments taken" option or a
+   `requires` gate. Recorded, not silently patched — that change is harness-gated.
+
+5. **Hard edges are directional, so consistency needs a backward sweep.** `propagateHard` walks forward from
+   what was just settled, so answering a decision that is the TARGET of an edge left the SOURCE standing with
+   a value implying something else. Found by a subagent's live UI testing (correcting `payments_in_app` to
+   `none` in a story check while `payment_recording=online_auto` stood). After the forward pass, the projected
+   ledger is now checked as a whole and any offending source is reopened — reported as a contradiction when the
+   user had answered it themselves. The newest user action wins (Rule 3); the compile gate stays a backstop.
+
+6. **A live experiment must not be reachable by accident.** `npm run detectability -- --help` started a full
+   paid labelling run because nothing validated arguments. Unknown flags and `--help` now exit before any
+   model is constructed, and the usage text states the measured cost.
+
+**Consequences.** Root tests 428 → 509, web 21 → 29; every defect above carries the probe that found it as a
+regression test. Worlds are no longer complete by construction — a deliberate, documented semantic change.
+The mock demo now runs the refine loop, so CI covers the headline feature end to end.

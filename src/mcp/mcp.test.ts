@@ -53,10 +53,10 @@ describe("MCP handshake and tool listing", () => {
     expect(bad && "error" in bad && bad.error.code).toBe(-32601);
   });
 
-  it("tools/list exposes the four tools with input schemas", async () => {
+  it("tools/list exposes the five tools with input schemas", async () => {
     const { engine } = await makeEngine();
     const r = result(await handleMessage(engine, req(3, "tools/list")));
-    expect(r.tools.map((t: any) => t.name)).toEqual(["get_sheet", "check_task", "propose_amendment", "record_event"]);
+    expect(r.tools.map((t: any) => t.name)).toEqual(["get_sheet", "check_task", "propose_amendment", "list_amendments", "record_event"]);
     for (const t of r.tools) expect(t.inputSchema.required).toContain("project_id");
     expect(r.tools).toEqual(TOOLS);
   });
@@ -83,20 +83,21 @@ describe("tools against a mock project", () => {
     }
   });
 
-  it("propose_amendment goes through the patcher (Rule 1) and commits", async () => {
+  // propose_amendment no longer writes the Sheet at all — it stages. Full coverage in amendments.test.ts;
+  // this keeps the guard on the tool surface itself.
+  it("propose_amendment stages instead of applying: no commit, and the response says QUEUED", async () => {
     const { engine, store } = await makeEngine();
     await engine.createProject("an invoicing app for small bookkeeping firms", { id: "m2" });
     const before = (await store.getLatestSheet("m2"))!;
+    const commitsBefore = (await store.listCommits("m2")).length;
     const res = await handleMessage(engine, req(11, "tools/call", { name: "propose_amendment", arguments: { project_id: "m2", text: "Rename Service to Offering." } }));
     const out = JSON.parse(firstText(res));
-    expect(out.applied.some((o: any) => o.op === "modify_noun")).toBe(true);
-    expect(out.sheet_version).toBe(before.version + 1);
+    expect(out).toMatchObject({ queued: true, applied: false, sheet_changed: false, status: "pending" });
+    expect(out.message).toMatch(/QUEUED/);
     const after = (await store.getLatestSheet("m2"))!;
-    expect(after.nouns.map((n) => n.name)).toContain("Offering");
-    expect(after.nouns.map((n) => n.name)).not.toContain("Service");
-    // the change is a commit, not a raw write
-    const commits = await store.listCommits("m2");
-    expect(commits.at(-1)!.source.kind).toBe("user_edit");
+    expect(after.version).toBe(before.version);
+    expect(after.nouns.map((n) => n.name)).not.toContain("Offering");
+    expect((await store.listCommits("m2")).length).toBe(commitsBefore);
   });
 
   it("check_task flags a rule-touching task, returns ok on an unrelated one, and logs an llm_call event", async () => {

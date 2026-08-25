@@ -9,11 +9,13 @@ import path from "node:path";
 import type { Engine } from "./orchestrator.js";
 import { SECTIONS, type SectionId, type SectionOut, type CriticOut, type ReverseOut, type StoryOut } from "../llm/functions.js";
 import { checkStateMachines, formatIRFindings, renderStateMachines, type IRFinding } from "../core/spec_ir.js";
+import { ledgerConflicts, type PropagationResult } from "../core/catalog.js";
+import { composeVerifyProbes } from "../core/verify.js";
 import { parallelMap, type LLMUsage } from "../llm/client.js";
 import type { Sheet } from "../core/sheet.js";
 import { renderSheetMarkdown } from "../core/render.js";
 import { normName } from "../core/ids.js";
-import type { Artifact } from "../core/session.js";
+import type { Artifact, SessionState } from "../core/session.js";
 
 export interface CompileOptions {
   candidates?: number; // best-of-N per section (default 1)
@@ -27,6 +29,10 @@ export interface CompileOptions {
   confirmBelow?: number;
   /** directory of mined precision-idiom exemplars (default catalogs/exemplars); missing files are fine */
   exemplarsDir?: string;
+  /** compile even with open decisions or a self-contradictory ledger; the spec is stamped DRAFT and the
+   *  phase never reaches done. Without it, compile refuses — a spec quietly built over 69 open decisions and
+   *  marked "done" was exactly the failure the 2026-08 external review reproduced. */
+  draft?: boolean;
 }
 
 export interface RoundTripReport {
@@ -48,6 +54,10 @@ export interface CompileResult {
   usage: LLMUsage;
   latency_ms: number;
   sheet_version: number;
+  /** the Sheet moved while sections compiled — the spec reflects an older version and the phase is NOT done */
+  stale: boolean;
+  /** hard-edge contradictions in the settled ledger at compile time (only non-empty under `draft`) */
+  conflicts: PropagationResult["conflicts"];
 }
 
 const WAVES: SectionId[][] = [
@@ -72,6 +82,20 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   const t0 = Date.now();
   const N = Math.max(1, opts.candidates ?? 1);
   const { sheet, session } = await engine.getState(projectId);
+  // ---- gates: never compile silently from an unfinished or self-contradictory ledger ----
+  const unfinished = sheet.decisions.filter((d) => d.status === "open" || d.status === "skipped");
+  const conflicts = ledgerConflicts(sheet.decisions, session.belief.nodes);
+  if (!opts.draft && (unfinished.length || conflicts.length)) {
+    const parts = [
+      unfinished.length
+        ? `${unfinished.length} decision(s) are still open (${unfinished.slice(0, 5).map((d) => d.id).join(", ")}${unfinished.length > 5 ? ", …" : ""}) — finish the cards / accept the defaults review first`
+        : "",
+      conflicts.length
+        ? `the settled ledger contradicts itself (${conflicts.map((c) => `${c.node} is ${c.have} but ${c.because} wants ${c.want}`).join("; ")}) — fix it in the defaults review`
+        : "",
+    ].filter(Boolean);
+    throw new Error(`cannot compile: ${parts.join("; and ")}. Pass draft (--draft) to compile a draft anyway.`);
+  }
   const usage = zeroUsage();
   const add = (u: LLMUsage) => {
     usage.input_tokens += u.input_tokens;
@@ -199,7 +223,26 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   // loop (throwing away a minute of compute helps nobody), but a failing spec must be impossible to mistake
   // for a passing one — it is stamped as a draft, in the two files a coding agent actually reads.
   if (critic.verdict !== "pass") spec = withFailedCriticBanner(spec, critic);
-  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now(), opts.confirmBelow ?? 0.8, irFindings);
+  if (unfinished.length || conflicts.length) spec = withDraftLedgerBanner(spec, unfinished.length, conflicts);
+  // ---- staleness: the Sheet may have moved while sections compiled (a live compile runs ~a minute outside
+  // any lock). A spec compiled from version N must not pass for current when the project is at N+k — it is
+  // stamped, reported, and the phase stays short of done so the advisor steers to a recompile. ----
+  const latestSheet = await engine.store.getLatestSheet(projectId);
+  const stale = !!latestSheet && latestSheet.version !== sheet.version;
+  if (stale)
+    spec = [
+      `> ⚠️ **STALE — the Design Sheet changed during this compile** (compiled from v${sheet.version}, project now at v${latestSheet!.version}). Recompile before relying on this spec.`,
+      "",
+      spec,
+    ].join("\n");
+  // The walkthrough's "Please confirm" items ARE story checks: composed by the same 0.5-targeted group-testing
+  // machinery the verify loop uses (core/verify.ts), so the owner's final recognition pass lands on the
+  // riskiest bundles of assumptions rather than on whatever the story model chose to re-state. One vocabulary,
+  // one mechanism. Deterministic — no extra LLM call — and it falls back to the story's own checks if the
+  // belief has nothing worth doubting.
+  const confirmChecks = verificationChecks(sheet, session);
+  const ledger = { stale, open: unfinished.length, conflicts, latest_version: latestSheet?.version ?? null };
+  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now(), opts.confirmBelow ?? 0.8, irFindings, confirmChecks, ledger);
   for (const b of bundle) {
     const art: Artifact = { project_id: projectId, name: b.name, kind: kindOf(b.name), content: b.content, created_at: now(), meta: { sheet_version: sheet.version } };
     await engine.store.saveArtifact(art);
@@ -208,9 +251,21 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
     await fs.mkdir(opts.outDir, { recursive: true });
     for (const b of bundle) await fs.writeFile(path.join(opts.outDir, b.name), b.content);
   }
-  await emit("compile_done", { verdict: critic.verdict, score: critic.score, rounds, roundtrip_overall: roundtrip?.recall.overall ?? null, usage, latency_ms: Date.now() - t0, out_dir: opts.outDir ?? null });
-  if (critic.verdict === "pass") await engine.markDone(projectId);
-  return { spec, sections, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, story, bundle, usage, latency_ms: Date.now() - t0, sheet_version: sheet.version };
+  await emit("compile_done", { verdict: critic.verdict, score: critic.score, rounds, roundtrip_overall: roundtrip?.recall.overall ?? null, stale, open_decisions: unfinished.length, conflicts: conflicts.length, usage, latency_ms: Date.now() - t0, out_dir: opts.outDir ?? null });
+  // "done" requires ALL of: the critic passed, the ledger was finished and consistent, and the Sheet did not
+  // move underneath the compile — anything less is a draft or stale spec, whatever the critic thought of it.
+  if (critic.verdict === "pass" && !stale && !unfinished.length && !conflicts.length) await engine.markDone(projectId);
+  return { spec, sections, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, story, bundle, usage, latency_ms: Date.now() - t0, sheet_version: sheet.version, stale, conflicts };
+}
+
+/** Draft compile (opts.draft) over an unfinished or contradictory ledger — stamped the way a failed critic is. */
+export function withDraftLedgerBanner(spec: string, openCount: number, conflicts: PropagationResult["conflicts"]): string {
+  return [
+    `> ⚠️ **DRAFT — COMPILED FROM AN UNFINISHED LEDGER.**${openCount ? ` ${openCount} decision(s) were still open (unanswered and undefaulted).` : ""}${conflicts.length ? ` ${conflicts.length} hard-edge contradiction(s) stand in the settled decisions:` : ""}`,
+    ...conflicts.slice(0, 5).map((c) => `> - ${c.node} is "${c.have}" but ${c.because} demands "${c.want}"`),
+    "",
+    spec,
+  ].join("\n");
 }
 
 /** Loud, unmissable header for a spec the critic rejected — see Rule 6 in CLAUDE.md. */
@@ -329,7 +384,7 @@ function tokens(s: string): string[] {
 }
 const STOP = new Set(["the", "and", "for", "that", "this", "with", "from", "never", "must", "can", "cannot", "not", "are", "its", "their", "they", "has", "have", "any", "only", "all"]);
 
-function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string, confirmBelow: number, irFindings: IRFinding[] = []) {
+function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string, confirmBelow: number, irFindings: IRFinding[] = [], confirmChecks: string[] = [], ledger: { stale: boolean; open: number; conflicts: PropagationResult["conflicts"]; latest_version: number | null } = { stale: false, open: 0, conflicts: [], latest_version: null }) {
   const sheetMd = renderSheetMarkdown(sheet, { showIds: true, showDecisions: true, showOpenDecisions: true });
   // The conduct-critical handoff is the page + this protocol (sheet_only+AGENTS.md scored 91% vs the full
   // bundle's 86% at ~1/6 the context — docs/EVALS.md "The 9k-char handoff"), so the spec is presented as
@@ -348,6 +403,12 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
     ...(critic.verdict !== "pass"
       ? [
           `⚠️ **\`spec.md\` did not pass its critic review** (verdict ${critic.verdict}, score ${critic.score}). Treat \`design-sheet.md\` as the only source of truth and ask before relying on a spec section; see \`compile-report.json\`.`,
+          "",
+        ]
+      : []),
+    ...(ledger.stale || ledger.open || ledger.conflicts.length
+      ? [
+          `⚠️ **\`spec.md\` is a draft**: ${[ledger.stale ? "the Design Sheet changed during the compile (recompile before relying on it)" : "", ledger.open ? `${ledger.open} decision(s) were still open` : "", ledger.conflicts.length ? `${ledger.conflicts.length} contradiction(s) stand in the decision ledger` : ""].filter(Boolean).join("; ")}. Confirm with the owner before building.`,
           "",
         ]
       : []),
@@ -375,8 +436,8 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
     "- `sheet-tests.ts` holds one named test stub per rule and action. Implement them as you build and KEEP the id-prefixed names — they are the Sheet's trace into the test suite. The spec's acceptance scenarios are the fuller test list.",
     "",
   ].join("\n");
-  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", generated_at: generatedAt };
-  const storyMd = story ? [`# ${story.title}`, "", ...story.steps.map((s, i) => `${i + 1}. ${s}`), "", "## Please confirm", ...story.checks.map((c) => `- ${c}`), ""].join("\n") : "";
+  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", stale: ledger.stale, latest_sheet_version: ledger.latest_version, open_decisions: ledger.open, ledger_conflicts: ledger.conflicts, generated_at: generatedAt };
+  const storyMd = story ? [`# ${story.title}`, "", ...story.steps.map((s, i) => `${i + 1}. ${s}`), "", "## Please confirm", ...(confirmChecks.length ? confirmChecks : story.checks).map((c) => `- ${c}`), ""].join("\n") : "";
   const out = [
     { name: "spec.md", content: spec },
     { name: "design-sheet.md", content: sheetMd },
@@ -434,6 +495,28 @@ function kindOf(name: string): Artifact["kind"] {
 
 function zeroUsage(): LLMUsage {
   return { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
+}
+
+/**
+ * Confirm-items for the walkthrough, composed from the belief the same way the interactive story checks are:
+ * bundles of assumed decisions whose JOINT correctness is nearest 50/50 — the questions most worth the
+ * owner's last look. Plain "Is it right that …?" phrasing, riskiest bundle first.
+ */
+export function verificationChecks(sheet: Sheet, session: SessionState, max = 5): string[] {
+  const nodeIds = new Set(session.belief.nodes.map((n) => n.id));
+  const candidates = sheet.decisions.filter((d) => d.status === "defaulted" && d.chosen && nodeIds.has(d.id)).map((d) => d.id);
+  if (!candidates.length) return [];
+  // maxSize 2: the INTERACTIVE story check can bundle six decisions because an LLM weaves them into a scene
+  // the owner reads as one story. A static bullet cannot — "Is it right that A; and B; and C; and D…?" is a
+  // run-on nobody answers honestly. Two clauses is the most a written check can carry and still be one thought.
+  const chosen = Object.fromEntries(sheet.decisions.filter((d) => d.status === "defaulted" && d.chosen).map((d) => [d.id, d.chosen!]));
+  const probes = composeVerifyProbes(session.belief, candidates, { consequenceOverride: session.consequence_override, maxProbes: max, maxSize: 2, chosen });
+  const phrase = (nodeId: string, optionId: string) => {
+    const d = sheet.decisions.find((x) => x.id === nodeId);
+    const label = d?.options.find((o) => o.id === optionId)?.label ?? optionId;
+    return `${(d?.topic ?? nodeId).toLowerCase()} — ${label.toLowerCase()}`;
+  };
+  return probes.map((p) => `Is it right that ${p.nodes.map((n) => phrase(n.id, n.option)).join(", and that ")}?`);
 }
 
 /** Tolerant loader for catalogs/exemplars/<archetype>.json — absent file or unknown shape = no style block. */

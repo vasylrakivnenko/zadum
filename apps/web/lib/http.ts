@@ -20,7 +20,9 @@ export function ok<T>(data: T, status = 200): NextResponse<T> {
 function statusFor(message: string): number {
   const m = message.toLowerCase();
   if (m.includes("not found") || m.includes("missing snapshot")) return 404;
-  if (m.includes("no card is pending") || m.includes("not on decision") || m.includes("use undolast") || m.includes("rejected") || m.includes("required") || m.includes("invalid")) return 400;
+  // "no pending verification probe …" (a stale story check) and "no compiled spec.md artifact — compile
+  // first" are both the caller asking for something out of order, not a server fault.
+  if (m.includes("no card is pending") || m.includes("no pending verification") || m.includes("no compiled spec") || m.includes("not on decision") || m.includes("use undolast") || m.includes("rejected") || m.includes("required") || m.includes("invalid")) return 400;
   return 500;
 }
 
@@ -63,6 +65,26 @@ export function str(body: Record<string, unknown>, key: string, required = false
   }
   if (typeof v !== "string") throw new HttpError(400, `${key} must be a string`);
   return v;
+}
+
+export function bool(body: Record<string, unknown>, key: string, required: true): boolean;
+export function bool(body: Record<string, unknown>, key: string, required?: false): boolean | undefined;
+export function bool(body: Record<string, unknown>, key: string, required = false): boolean | undefined {
+  const v = body[key];
+  if (v === undefined || v === null) {
+    if (required) throw new HttpError(400, `${key} is required`);
+    return undefined;
+  }
+  if (typeof v !== "boolean") throw new HttpError(400, `${key} must be true or false`);
+  return v;
+}
+
+/** A nested object field (e.g. a story check's `correction`), as a string-keyed record. */
+export function obj(body: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+  const v = body[key];
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== "object" || Array.isArray(v)) throw new HttpError(400, `${key} must be an object`);
+  return v as Record<string, unknown>;
 }
 
 export function num(body: Record<string, unknown>, key: string): number | undefined {

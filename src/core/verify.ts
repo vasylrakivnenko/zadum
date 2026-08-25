@@ -59,6 +59,10 @@ export interface ComposeOptions {
   /** max probes returned (over disjoint node sets); default 4 */
   maxProbes?: number;
   consequenceOverride?: Record<string, number>;
+  /** the option under test per candidate — the LEDGER's chosen value; defaults to the belief argmax.
+   *  Consistency-forced defaults can differ from the marginal argmax, and a story check must verify what
+   *  the ledger actually holds or an acceptance confirms nothing (measured: confirmed=[] on such a probe). */
+  chosen?: Record<string, string>;
 }
 
 const DEFAULT_TARGET = 0.5;
@@ -106,8 +110,8 @@ function expectedBits(p: number, k: number): number {
 
 interface Candidate {
   id: string;
-  option: string; // belief argmax
-  maxP: number; // α-mixed marginal of the argmax
+  option: string; // the option under test (ledger chosen when provided, else belief argmax)
+  maxP: number; // α-mixed marginal of that option
   consequence: number; // effective
   score: number; // consequence × (1 − maxP) — greedy priority
   filler: boolean;
@@ -145,8 +149,10 @@ export function composeVerifyProbes(belief: Belief, candidateIds: string[], opts
     seen.add(id);
     const node: NodeDef | undefined = nodeById(belief, id);
     if (!node) continue;
-    const { option, p } = maxOption(distribution(belief, id));
+    const dist = distribution(belief, id);
+    const option = opts.chosen?.[id] ?? maxOption(dist).option;
     if (!option) continue;
+    const p = dist[option] ?? 0;
     // prior-only nodes can't be verified against worlds (see header): skip zero explicit particle support
     if (explicitSupport(worlds, id, option) <= 0) continue;
     const c = opts.consequenceOverride?.[id] ?? node.consequence;

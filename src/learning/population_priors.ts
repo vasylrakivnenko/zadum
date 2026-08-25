@@ -21,7 +21,9 @@ import type { NodeDef } from "../core/catalog.js";
 import type { ZEvent } from "../core/session.js";
 import type { Sheet } from "../core/sheet.js";
 
-export type ObservationSource = "answer" | "override";
+/** `refinement` = corrected while reading the compiled spec (`spec_refined`) — same grade of evidence as an
+ *  `override`, kept separate so we can measure which surface actually catches wrong defaults. */
+export type ObservationSource = "answer" | "override" | "refinement";
 
 export interface Observation {
   project_id: string;
@@ -64,6 +66,14 @@ export function observationsFromEvents(projectId: string, archetypes: string[], 
     const after = e.payload.after;
     if (typeof node !== "string" || typeof after !== "string") continue;
     out.push({ project_id: projectId, archetypes, node, option: after, source: "override", weight: 1 });
+  }
+  for (const e of events) {
+    if (e.type !== "spec_refined") continue;
+    const corrections = Array.isArray(e.payload.corrections) ? e.payload.corrections : [];
+    for (const c of corrections as { node?: unknown; option?: unknown }[]) {
+      if (typeof c?.node !== "string" || typeof c?.option !== "string") continue;
+      out.push({ project_id: projectId, archetypes, node: c.node, option: c.option, source: "refinement", weight: 1 });
+    }
   }
   return out;
 }

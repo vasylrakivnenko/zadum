@@ -11,3 +11,6 @@ out/
 harness-results/
 mining-results/
 quality-results/
+
+# repo clones cached by the detectability experiment (src/mining/detectability.ts --repo-cache)
+.cache/

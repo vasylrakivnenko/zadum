@@ -42,6 +42,7 @@ one-liner ──► drafter ──► Sheet v1 ──► planner ──► decis
 | `core/session.ts` | Session/Card/Answer/Event/Project/Artifact types | types |
 | `core/render.ts` | Sheet → markdown (the one page) | pure |
 | `core/ids.ts` | readable ids (`n1`, `a3`), `normName` for duplicate detection | pure |
+| `core/textdiff.ts` | `changedHunks`/`renderHunks` — what the owner changed in an edited spec, as hunks (a 45k-char spec is never re-sent to a model) | pure |
 | `llm/client.ts` | `LLM` interface; `AnthropicLLM` (`messages.parse` + `zodOutputFormat`), `MockLLM`, `CachedLLM`, `parallelMap` | IO |
 | `llm/prompts.ts` | All prompt texts + `PROMPTS_VERSION` | data |
 | `llm/functions.ts` | The 10 structured functions + output schemas + input renderers (`sheetToText`, `nodesToText`) | IO via LLM |
@@ -164,6 +165,18 @@ candidate; N=1 default). Critic on the assembled spec; on `fail`, one repair pas
 as context. Round-trip: `reverse(spec)` → recall per list (name-normalized / Jaccard ≥ 0.5 for rules). Story
 walkthrough for the user's final sanity check. Bundle: `spec.md`, `design-sheet.md` (+decision ledger),
 `design-sheet.json`, `AGENTS.md` (coding-agent stanza incl. change protocol), `compile-report.json`, `story.md`.
+
+### 6b. Refine (the loop back from the compiled spec)
+
+`Engine.refineFromSpecFeedback` (ADR-038). The owner's edits to `spec.md` are diffed in code (`core/textdiff.ts`)
+and sent as hunks with their comments to one `spec_feedback` call, which returns patch ops PLUS a four-way
+classification. The ops go through the ordinary Rule-1 path (`makeCommit` → `applyPatch`), so a correction lands
+on the **Sheet**, not on the spec text — anything written into the spec would be overwritten by the next compile.
+Resolutions propagate exactly like a card answer, so a correction contradicting an earlier answer reopens it
+(ADR-037); a choice the feedback opens becomes an OPEN decision (`xr_…`) and a new card round, never a fresh
+guess. `spec_refined` carries both the human-readable extraction and machine-readable `corrections`
+(node + validated option id) — the flywheel's highest-grade signal (docs/LEARNING.md §0). Surfaces: the spec
+workspace at `/p/<id>/spec` and `zadum refine`.
 
 ## 7. Invariants enforced in code/tests (dogfood rules)
 

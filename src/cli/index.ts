@@ -7,19 +7,64 @@
  *   cards <id>                                        interactive decision cards
  *   defaults <id> | override <id> <node> <option> | accept <id>
  *   compile <id> [--out dir] [--candidates N]
+ *   verify <id>                                       story checks over the assumptions (group-testing)
+ *   gaps <id> [--apply N]                             turn the spec's own guesses into new questions
+ *   evidence <id> "<text>"                            feed the belief an artifact/message (not the Sheet)
  *   story <id> "<correction>"                         fix what the walkthrough got wrong (then recompile)
+ *   next <id>                                         ← what should I do next? (the guided flow)
  *   history <id> | events <id> | projects
  *   demo [--mock] [--auto]                            whole flow end to end (auto-answers cards)
  */
 import { Command } from "commander";
 import { createInterface } from "node:readline/promises";
+import { promises as fs } from "node:fs";
 import { stdin as input, stdout as output } from "node:process";
 import { buildEngine } from "../engine/bootstrap.js";
 import { compileProject } from "../engine/compile.js";
 import { renderSheetMarkdown } from "../core/render.js";
 import type { DealResult, Engine } from "../engine/orchestrator.js";
 import { isThoroughness, thoroughnessCompileOverrides, THOROUGHNESS_LEVELS, THOROUGHNESS_PRESETS } from "../core/thoroughness.js";
+import { formatNextAction, nextAction, type NextAction } from "../engine/advisor.js";
 import type { Store } from "../store/store.js";
+
+/** Snapshot the advisor needs; shared by `next` and the flow-hints every command prints when it finishes. */
+async function nextActionFor(engine: Engine, id: string): Promise<NextAction> {
+  const { sheet, session } = await engine.getState(id);
+  const artifacts = await engine.store.listArtifacts(id);
+  const report = artifacts.find((a) => a.name === "compile-report.json");
+  let compiledVersion: number | undefined;
+  if (report) {
+    try {
+      compiledVersion = (JSON.parse(report.content) as { sheet_version?: number }).sheet_version;
+    } catch {
+      compiledVersion = undefined;
+    }
+  }
+  const amendments = artifacts.find((a) => a.name === "amendments.json");
+  let pendingAmendments = 0;
+  if (amendments) {
+    try {
+      // The queue is stored as { format, amendments: [...] } (src/mcp/amendments.ts); a bare array is
+      // accepted too so an older or hand-written file still counts.
+      const raw = JSON.parse(amendments.content) as { amendments?: { status?: string }[] } | { status?: string }[];
+      const list = Array.isArray(raw) ? raw : (raw.amendments ?? []);
+      pendingAmendments = list.filter((x) => x.status === "pending").length;
+    } catch {
+      pendingAmendments = 0;
+    }
+  }
+  const refinements = (await engine.store.listEvents(id)).filter((e) => e.type === "spec_refined").length;
+  return nextAction({ sheet, session, artifacts: artifacts.map((a) => a.name), ...(compiledVersion !== undefined ? { compiledVersion } : {}), pendingAmendments, refinements });
+}
+
+/** Every command ends by pointing at the one next thing — the guided flow, not a menu of eight commands. */
+async function printNext(engine: Engine, id: string) {
+  try {
+    console.log(formatNextAction(await nextActionFor(engine, id)));
+  } catch {
+    /* advisory only — never fail a command because the hint could not be computed */
+  }
+}
 
 const program = new Command();
 program.name("zadum").description("Design Sheet — TurboTax for AI coding").version("0.1.0");
@@ -97,7 +142,7 @@ program
       for (const a of r.draft.assumptions) console.log(`  • ${a.text}`);
     }
     console.log(`\nProject ${r.project.id} · v${r.sheet.version} · ${r.session.belief.nodes.length} decisions tracked · ${r.session.belief.worlds.length} worlds · ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-    console.log(`Next: npm run zadum -- edit ${r.project.id} "..."   or   npm run zadum -- cards ${r.project.id}`);
+    await printNext(engine, r.project.id);
     await store.close();
   });
 
@@ -124,9 +169,10 @@ program
     console.log(`→ ${r.notes}`);
     console.log(`  applied ${r.applied.length} change(s)${r.rejected.length ? `, rejected ${r.rejected.length}: ${r.rejected.map((x) => x.error).join("; ")}` : ""}${r.dropped.length ? `, dropped ${r.dropped.length}` : ""} · now v${r.version}`);
     if (r.implied.hard.length || r.implied.soft.length) console.log(`  this also decided: ${[...r.implied.hard.map((h) => `${h.node}=${h.option}`), ...r.implied.soft.map((s) => `${s.node}≈${s.option}`)].join(", ")}`);
-    for (const c of r.implied.contradictions) console.log(`  ⚠ that normally implies ${c.node}=${c.wants}, but ${c.had} was already chosen — keeping it`);
+    for (const c of r.implied.contradictions) console.log(`  ⚠ that conflicts with your earlier answer ${c.node}=${c.had} (it implies ${c.wants}) — that question is open again`);
     const { sheet } = await engine.getState(id);
     console.log(renderSheetMarkdown(sheet));
+    await printNext(engine, id);
     await store.close();
   });
 
@@ -186,7 +232,7 @@ program
       }
       const also = [...ans.implied.hard.map((h) => `✓ ${h.node} = ${h.option}`), ...ans.implied.soft.map((s) => `≈ ${s.node} = ${s.option} (${Math.round(s.p * 100)}%)`)];
       if (also.length) console.log(`  this also decided: ${also.join(" · ")}`);
-      for (const c of ans.implied.contradictions) console.log(`  ⚠ this normally implies ${c.node} = ${c.wants}, but you already chose ${c.had} — keeping your answer`);
+      for (const c of ans.implied.contradictions) console.log(`  ⚠ this conflicts with your earlier answer ${c.node} = ${c.had} (it implies ${c.wants}) — that question is open again so you can settle it`);
       res = await offerContinue(ans.next);
       n += 1;
     }
@@ -196,7 +242,8 @@ program
     console.log(`Defaults review (${defaults.length} assumed decisions, riskiest first):`);
     for (const d of defaults.slice(0, 15)) console.log(`  ${d.status === "implied" ? "⇒" : d.status === "delegated" ? "↪" : "≈"} ${d.topic}: ${d.chosen_label}  (${Math.round(d.confidence * 100)}%, consequence ${d.consequence})${d.why ? ` — ${d.why}` : ""}  [${d.id}]`);
     if (defaults.length > 15) console.log(`  … and ${defaults.length - 15} more (npm run zadum -- defaults ${id})`);
-    console.log(`\nCorrect one: npm run zadum -- override ${id} <decision-id> <option-id>   ·   Accept all: npm run zadum -- accept ${id}`);
+    console.log(`\nCorrect one: npm run zadum -- override ${id} <decision-id> <option-id>`);
+    await printNext(engine, id);
     await store.close();
   });
 
@@ -228,7 +275,8 @@ program
   .action(async (id: string) => {
     const { engine, store } = await engineFromOpts();
     await engine.acceptDefaults(id);
-    console.log(`→ defaults accepted. Next: npm run zadum -- compile ${id} --out ./out/${id}`);
+    console.log(`→ defaults accepted.`);
+    await printNext(engine, id);
     await store.close();
   });
 
@@ -239,13 +287,16 @@ program
   .option("--candidates <n>", "best-of-N per section (default: from --thoroughness)", (v) => Number(v))
   .option("--critic-loops <n>", "repair passes after a failing critic verdict (default: from --thoroughness)", (v) => Number(v))
   .option("--no-story", "skip the story walkthrough")
-  .action(async (id: string, o: { out?: string; candidates?: number; criticLoops?: number; story: boolean }) => {
+  .option("--draft", "compile even with open decisions or ledger conflicts (the spec is stamped DRAFT)")
+  .action(async (id: string, o: { out?: string; candidates?: number; criticLoops?: number; story: boolean; draft?: boolean }) => {
     const { engine, store } = await engineFromOpts();
     const preset = thoroughnessCompileOverrides(thoroughnessLevel(program.opts()));
     const candidates = o.candidates ?? preset.candidates;
     const criticLoops = o.criticLoops ?? preset.criticLoops;
-    const r = await compileProject(engine, id, { outDir: o.out, candidates, criticLoops, story: o.story });
+    const r = await compileProject(engine, id, { outDir: o.out, candidates, criticLoops, story: o.story, draft: o.draft });
     console.log(`→ critic: ${r.critic.verdict} (score ${r.critic.score}, ${r.critic.violations.length} violations, ${r.critic.omissions.length} omissions, ${r.critic_rounds} round(s))`);
+    if (r.stale) console.log(`⚠️ the Sheet changed during the compile — this spec is stamped stale; recompile before relying on it`);
+    for (const c of r.conflicts) console.log(`⚠️ ledger conflict: ${c.node} is ${c.have} but ${c.because} wants ${c.want}`);
     if (r.roundtrip) console.log(`→ round-trip recall: overall ${(r.roundtrip.recall.overall * 100).toFixed(0)}% (actors ${pct(r.roundtrip.recall.actors)}, nouns ${pct(r.roundtrip.recall.nouns)}, actions ${pct(r.roundtrip.recall.actions)}, rules ${pct(r.roundtrip.recall.rules)})${r.roundtrip.missing.length ? ` · missing: ${r.roundtrip.missing.map((m) => `${m.kind}:${m.item}`).slice(0, 6).join("; ")}` : ""}`);
     console.log(`→ bundle: ${r.bundle.map((b) => b.name).join(", ")}${o.out ? ` written to ${o.out}` : " (stored as artifacts)"} · ${(r.latency_ms / 1000).toFixed(1)}s · tokens in ${r.usage.input_tokens} out ${r.usage.output_tokens}`);
     if (r.story) {
@@ -255,6 +306,28 @@ program
       r.story.checks.forEach((c) => console.log(`   - ${c}`));
       console.log(`\n  Something reads wrong? npm run zadum -- story ${id} "what should happen instead" — then recompile.`);
     }
+    await store.close();
+  });
+
+program
+  .command("next")
+  .description("what should I do next? — the guided flow: one recommended step, derived from where the project actually is")
+  .argument("<id>")
+  .action(async (id: string) => {
+    const { engine, store } = await engineFromOpts();
+    console.log(formatNextAction(await nextActionFor(engine, id)));
+    await store.close();
+  });
+
+program
+  .command("plan")
+  .description("what is the single most informative next INTERACTION — a card, a story check, or a look at one assumption? (diagnostic; the harness decides whether this drives the loop)")
+  .argument("<id>")
+  .action(async (id: string) => {
+    const { engine, store } = await engineFromOpts();
+    const plan = await engine.planNext(id);
+    if (!plan.length) console.log("— nothing left worth an interaction.");
+    for (const [i, p] of plan.entries()) console.log(`${i === 0 ? "→" : " "} ${p.kind.padEnd(7)} ${p.value.toFixed(1).padStart(7)}  ${p.why}`);
     await store.close();
   });
 
@@ -304,7 +377,7 @@ program
       break; // all probes of this round answered without a correction — done
     }
     rl.close();
-    console.log(`\nNext: npm run zadum -- accept ${id}   ·   or correct more: npm run zadum -- defaults ${id}`);
+    await printNext(engine, id);
     await store.close();
   });
 
@@ -313,13 +386,15 @@ program
   .description("mine the compiled spec's own confessed guesses (⟨src: default⟩) into new decision cards — the loop that makes the next spec tighter")
   .argument("<id>")
   .option("--apply <n>", "add the top N candidates as open decisions and reopen the card loop", (v) => Number(v))
-  .action(async (id: string, o: { apply?: number }) => {
+  .option("--ids <list>", "add exactly these candidate ids (comma-separated) instead of the top N")
+  .action(async (id: string, o: { apply?: number; ids?: string }) => {
     const { engine, store } = await engineFromOpts();
-    const r = await engine.mineSpecGaps(id, { apply: o.apply });
+    const applyIds = o.ids?.split(",").map((x) => x.trim()).filter(Boolean);
+    const r = await engine.mineSpecGaps(id, { ...(o.apply !== undefined ? { apply: o.apply } : {}), ...(applyIds?.length ? { applyIds } : {}) });
     console.log(`→ ${r.gaps.length} guessed spot(s) in the spec; ${r.candidates.length} decision candidate(s):`);
     for (const c of r.candidates) console.log(`  [c${c.consequence}] ${c.id}: ${c.question}  (${c.options.map((x) => x.label).join(" / ")}) — ${c.rationale}`);
     if (r.applied.length) console.log(`\n  applied ${r.applied.length}: next → npm run zadum -- cards ${id}, then recompile`);
-    else if (r.candidates.length) console.log(`\n  add the top ones: npm run zadum -- gaps ${id} --apply 3`);
+    else if (r.candidates.length) console.log(`\n  ask me these: npm run zadum -- gaps ${id} --apply ${Math.min(3, r.candidates.length)}   ·   or pick exactly: --ids ${r.candidates[0]!.id}`);
     await store.close();
   });
 
@@ -350,8 +425,34 @@ program
     console.log(`→ ${r.notes}`);
     console.log(`  applied ${r.applied.length} change(s)${r.rejected.length ? `, rejected ${r.rejected.length}: ${r.rejected.map((x) => x.error).join("; ")}` : ""} · now v${r.version}`);
     if (r.implied.hard.length || r.implied.soft.length) console.log(`  this also decided: ${[...r.implied.hard.map((h) => `${h.node}=${h.option}`), ...r.implied.soft.map((s) => `${s.node}≈${s.option}`)].join(", ")}`);
-    for (const c of r.implied.contradictions) console.log(`  ⚠ that normally implies ${c.node}=${c.wants}, but ${c.had} was already chosen — keeping it`);
+    for (const c of r.implied.contradictions) console.log(`  ⚠ that conflicts with your earlier answer ${c.node}=${c.had} (it implies ${c.wants}) — that question is open again`);
     if (r.applied.length) console.log(`  the Sheet changed — recompile to refresh the bundle: npm run zadum -- compile ${id}`);
+    await store.close();
+  });
+
+program
+  .command("refine")
+  .description("correct the compiled spec (a comment, or --file with your edited spec.md) — the fix lands on the Sheet, then recompile")
+  .argument("<id>")
+  .argument("[comment]", "what reads wrong, in plain English")
+  .option("--file <path>", "your edited copy of spec.md (diffed against the compiled one)")
+  .option("--quote <text>", "the passage the comment is about")
+  .action(async (id: string, comment: string | undefined, o: { file?: string; quote?: string }) => {
+    const { engine, store } = await engineFromOpts();
+    const edited = o.file ? await fs.readFile(o.file, "utf8") : undefined;
+    const r = await engine.refineFromSpecFeedback(id, {
+      ...(edited ? { edited } : {}),
+      ...(comment ? { comments: [{ text: comment, ...(o.quote ? { quote: o.quote } : {}) }] } : {}),
+    });
+    console.log(`→ ${r.notes} · now v${r.version}`);
+    for (const w of r.extraction.wrong_assumptions) console.log(`  ✗ we had ${w.node} wrong: "${w.was}"${w.should_be ? ` → "${w.should_be}"` : ""} — ${w.why}`);
+    for (const m of r.extraction.missing_elements) console.log(`  + added ${m.kind}: ${m.text}`);
+    for (const c of r.extraction.confirmed_elements) console.log(`  ✓ confirmed: ${c}`);
+    for (const q of r.extraction.new_questions) console.log(`  ? new question: ${q.question}  [${q.id}]`);
+    if (r.reopened.length) console.log(`  ⚠ this conflicts with earlier answers (${r.reopened.join(", ")}) — those questions are open again`);
+    if (r.rejected.length) console.log(`  rejected ${r.rejected.length}: ${r.rejected.map((x) => x.error).join("; ")}`);
+    if (r.added_decisions.length || r.reopened.length) console.log(`\n  Answer them first: npm run zadum -- cards ${id}`);
+    else console.log(`\n  Recompile to refresh the bundle: npm run zadum -- compile ${id}`);
     await store.close();
   });
 
@@ -413,6 +514,16 @@ program
     console.log(`5) Compiling…`);
     const c = await compileProject(engine, r.project.id, { outDir: o.out, story: true });
     console.log(`   → critic ${c.critic.verdict} (score ${c.critic.score}) · round-trip ${(c.roundtrip?.recall.overall ?? 0) * 100 | 0}% · bundle: ${c.bundle.map((b) => b.name).join(", ")}`);
+    // 6) the loop back: the owner reads the spec and corrects it. The fix lands on the SHEET, so it survives
+    // the recompile — the step that makes the spec a draft you can argue with rather than a take-it-or-leave-it.
+    console.log(`6) Reading the spec and correcting it…`);
+    const ref = await engine.refineFromSpecFeedback(r.project.id, { comments: [{ quote: "clients", text: "This is wrong — our clients never log in, we email everything." }] });
+    for (const w of ref.extraction.wrong_assumptions) console.log(`   ✗ we had ${w.node} wrong: "${w.was}"${w.should_be ? ` → "${w.should_be}"` : ""}`);
+    for (const q of ref.extraction.new_questions) console.log(`   ? new question raised: ${q.question}`);
+    if (!ref.added_decisions.length && !ref.reopened.length) {
+      const c2 = await compileProject(engine, r.project.id, { outDir: o.out, story: true });
+      console.log(`   → recompiled from the corrected Sheet (v${c2.sheet_version}) · critic ${c2.critic.verdict}`);
+    } else console.log(`   → ${ref.added_decisions.length + ref.reopened.length} question(s) need answering before the next compile`);
     const state = await engine.getState(r.project.id);
     const events = await store.listEvents(r.project.id);
     console.log(`\nDone in ${((Date.now() - t0) / 1000).toFixed(1)}s · project ${r.project.id} · ${state.commits.length} commits · ${state.session.cards.length} cards · ${events.length} events · phase ${state.session.phase}`);

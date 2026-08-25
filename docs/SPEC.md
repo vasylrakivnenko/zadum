@@ -61,7 +61,13 @@ on the page carries provenance (`draft`, `card:c3`, `user_edit:…`, `implied:�
 6. **Compile** — spec.md + design-sheet.md + design-sheet.json + AGENTS.md + compile-report.json + story.md.
    Critic must pass; round-trip recall reported.
 7. **Walkthrough** — "a day in the life" story from the spec; the user's final recognition check.
-8. **Handoff** — the bundle; AGENTS.md carries the change protocol ("update the Sheet first, then code").
+8. **Read and refine the spec** — the spec in the browser (`/p/<id>/spec`, or `zadum refine`), rendered, editable,
+   with comments anchored to whatever passage reads wrong. Corrections never edit the spec text — that would be
+   overwritten by the next compile — they are read for intent and land on the **Sheet** as patch ops, then it
+   recompiles. What the feedback meant is classified into four lists (wrong assumption / missing element /
+   confirmed / new question); a choice the feedback opens becomes an OPEN decision to ask, never a fresh guess,
+   and a correction that contradicts an earlier answer reopens that answer (ADR-037).
+9. **Handoff** — download the bundle; AGENTS.md carries the change protocol ("update the Sheet first, then code").
 
 ## 5. Architecture
 

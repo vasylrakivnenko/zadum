@@ -12,10 +12,21 @@
  * CLI: npm run harness -- [--mock] [--gold <dir|file>] [--sweep] [--variants N] [--flips N]
  *                         [--scoring s] [--theta n] [--lookahead 1|2] [--budget N] [--out dir]
  *                         [--review [depth]] [--catch-prob p] [--noise p] [--with-context]
+ *                         [--verify B] [--mix C,V ...]
  *   --review [depth]  simulate the defaults review (examine top `depth` items, default 8 ≈ one screen)
  *   --catch-prob p    P(an examined wrong default is caught), default 1.0 (attentive ceiling; try 0.5)
  *   --noise p         per-card P(the sim user mis-taps a random different option), default 0
  *   --with-context    A/B: run each gold with vs without its `extra_context` artifact and compare
+ *   --verify B        spend B verification story-checks after the card loop, through the engine's real
+ *                     getVerification/answerVerification, and turn on UNIFIED INTERACTION ACCOUNTING
+ *   --mix C,V         A/B at EQUAL TOTAL INTERACTIONS: cap the card loop at C, then spend V story checks.
+ *                     Repeatable (`--mix 6,6 --mix 0,12`); the 12+0 pure-cards arm is always included.
+ *
+ * UNIFIED INTERACTION ACCOUNTING. The product elicits through three instruments now — decision cards,
+ * verification story-checks, defaults-review correction taps — but the headline metric counted only cards, so
+ * the other two were invisible in the number that decides what ships. `--verify`/`--mix` price a card, a story
+ * check and a review tap at exactly ONE interaction each (SPEC §4.4) and report the north star per INTERACTION
+ * (`auc_per_interaction`, `recovery_at_interaction`) beside the card-only originals, which are untouched.
  */
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -81,6 +92,24 @@ export interface SessionMetrics {
   review_positions?: number[];
   /** simulated mis-taps: option answers replaced by a random different option (opt-in via `noise`) */
   noise_events?: number;
+  // ---- unified interaction accounting (opt-in via runGold's `verify` option; absent otherwise) ----
+  /**
+   * Total elicitation interactions actually SPENT, one unit each regardless of instrument:
+   * cards answered + defaults-review correction taps + verification story-checks answered.
+   * The product now elicits through three instruments; the north star ("consequence-weighted requirement
+   * recovery per QUESTION") only generalizes honestly if all three are priced the same.
+   */
+  interactions?: number;
+  /** recovery after EACH interaction of any kind, chronological. length === interactions. */
+  recovery_by_interaction?: number[];
+  /** story checks the sim reviewer accepted (every judgeable bundled answer matched the gold) */
+  verify_accepts?: number;
+  /** story checks the sim reviewer rejected */
+  verify_rejects?: number;
+  /** NET wrong defaults removed across the verification phase (wrong before − wrong after) */
+  verify_catches?: number;
+  /** wrong defaults still standing at the end of the session (defaults list, gold-truth mismatch) */
+  wrong_defaults_remaining?: number;
 }
 
 export interface Summary {
@@ -108,20 +137,38 @@ export interface Summary {
   };
   /** total simulated mis-taps, present only when sessions ran with answer noise */
   noise_events?: number;
+  // ---- unified interaction accounting (present only when sessions carry `interactions`) ----
+  /** the card-based auc_0_12 generalized to interactions of ANY instrument (index 0 = the draft, before any tap) */
+  auc_per_interaction?: number;
+  /** recovery after k INTERACTIONS (same REPORT_K positions as recovery_at), averaged over sessions */
+  recovery_at_interaction?: Record<number, number>;
+  /** pooled verification accounting */
+  verify?: {
+    sessions: number;
+    mean_interactions: number;
+    accepts: number;
+    rejects: number;
+    catches: number;
+    mean_wrong_remaining: number;
+  };
 }
 
-/** Consequence-weighted share of gold decisions the session currently gets right (settled value or argmax belief). */
+/**
+ * Consequence-weighted share of gold decisions the session currently gets right (settled value or argmax
+ * belief). Every gold decision weighs on the denominator: one the design never surfaced (no sheet decision,
+ * or no belief node) scores as wrong at its consequence — missing work is not free.
+ */
 export function recovery(sheet: Sheet, session: SessionState, gold: Gold): number {
   let num = 0;
   let den = 0;
   for (const [nodeId, truth] of Object.entries(gold.decisions)) {
     const d = sheet.decisions.find((x) => x.id === nodeId);
     const node = session.belief.nodes.find((n) => n.id === nodeId);
-    if (!d || !node) continue;
-    const c = session.consequence_override[nodeId] ?? d.consequence;
+    const c = session.consequence_override[nodeId] ?? d?.consequence ?? node?.consequence ?? 3;
     if (c <= 0) continue;
-    const value = d.status !== "open" && d.chosen ? d.chosen : maxOption(distribution(session.belief, nodeId)).option;
     den += c;
+    if (!d || !node) continue; // wrong: full weight, no credit
+    const value = d.status !== "open" && d.chosen ? d.chosen : maxOption(distribution(session.belief, nodeId)).option;
     if (value === truth) num += c;
   }
   return den ? num / den : 1;
@@ -160,6 +207,25 @@ export interface NoiseOptions {
   seed?: number;
 }
 
+/**
+ * Verification story-checks as a FIRST-CLASS elicitation instrument, priced at one interaction each — the
+ * same as a card and the same as a defaults-review correction tap (SPEC §4.4: "a card and one … question
+ * both count as one interaction step in every comparison").
+ *
+ * Unlike `src/harness/verify_eval.ts` (which simulates the mechanism over COPIES of the ledger and worlds,
+ * deliberately bypassing the engine), this drives the ENGINE's real `getVerification` / `answerVerification`:
+ * probe composition, LLM scenario rendering, the accept-ε weight update, the correction commit and its
+ * implication propagation all run for real, so recovery is measured on the same sheet+belief the product ships.
+ *
+ * Passing this option (even with budget 0) turns on unified interaction accounting.
+ */
+export interface VerifyOptions {
+  /** story checks to spend after the card loop and finishCards; the loop stops early if no probe composes */
+  budget: number;
+  /** probes composed per round; 1 (default) = fully adaptive — recompose after every answer */
+  maxProbes?: number;
+}
+
 /** Deterministic per-gold seed component so seeded behaviours differ across golds but replay identically. */
 function hashSeed(s: string): number {
   let h = 2166136261;
@@ -170,8 +236,12 @@ function hashSeed(s: string): number {
 export async function runGold(
   engine: Engine,
   gold: Gold,
-  opts: { idPrefix?: string; judge?: boolean; review?: ReviewOptions; noise?: NoiseOptions; withContext?: boolean } = {},
+  opts: { idPrefix?: string; judge?: boolean; review?: ReviewOptions; noise?: NoiseOptions; withContext?: boolean; verify?: VerifyOptions } = {},
 ): Promise<SessionMetrics> {
+  const unified = opts.verify !== undefined; // opt-in: everything below stays absent when it is off
+  /** recovery after each interaction of ANY instrument, chronological (cards → review taps → story checks) */
+  const byInteraction: number[] = [];
+  let interactions = 0;
   const id = `${opts.idPrefix ?? "h"}_${gold.id.replace(/[^a-z0-9]+/gi, "-")}_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
   const created = await engine.createProject(gold.one_liner, { id, ...(opts.withContext && gold.extra_context ? { extra_context: gold.extra_context } : {}) });
   const noiseR = opts.noise && opts.noise.p > 0 ? rng(((opts.noise.seed ?? 7) * 2654435761) ^ hashSeed(gold.id)) : null;
@@ -208,6 +278,8 @@ export async function runGold(
     answers.push({ kind: ans.answer.kind, node: card.node_id, ...(ans.answer.option_id ? { option: ans.answer.option_id } : {}) });
     const st = await engine.getState(id);
     curve.push(recovery(st.sheet, st.session, gold));
+    interactions++;
+    if (unified) byInteraction.push(curve[curve.length - 1]!);
     res = ans.next;
   }
   const defaultsList = await engine.finishCards(id); // riskiest-first: consequence × (1 − confidence)
@@ -225,8 +297,14 @@ export async function runGold(
       if (!it.options.some((o) => o.id === truth)) continue; // gold truth is not an option of this node
       try {
         await engine.overrideDefault(id, it.id, truth);
+        // one correction tap = one interaction, priced exactly like a card
+        interactions++;
+        if (unified) {
+          const s = await engine.getState(id);
+          byInteraction.push(recovery(s.sheet, s.session, gold));
+        }
       } catch {
-        /* override rejected (e.g. hard-edge contradiction) — counts as not caught */
+        /* override rejected (e.g. hard-edge contradiction) — counts as not caught, and costs no tap */
       }
     }
     const after = (await engine.getDefaults(id)).filter(isWrong).length;
@@ -237,6 +315,59 @@ export async function runGold(
       ...(wrong.length ? { review_catch_rate: (wrong.length - after) / wrong.length } : {}),
     };
   }
+  // ---- verification phase: B story checks against the ENGINE's real verification methods ----
+  let verifyOut: Pick<SessionMetrics, "verify_accepts" | "verify_rejects" | "verify_catches" | "wrong_defaults_remaining"> | null = null;
+  if (opts.verify) {
+    const maxProbes = opts.verify.maxProbes ?? 1; // 1 = recompose after every answer (adaptive group testing)
+    const wrongInList = (items: { id: string; chosen: string }[]) => items.filter((it) => gold.decisions[it.id] !== undefined && it.chosen !== gold.decisions[it.id]).length;
+    const wrongBeforeVerify = wrongInList(await engine.getDefaults(id));
+    let accepts = 0;
+    let rejects = 0;
+    for (let b = 0; b < opts.verify.budget; b++) {
+      const { probes } = await engine.getVerification(id, { maxProbes });
+      if (!probes.length) break; // nothing left worth a story check — the budget goes unspent, honestly
+      const shown = probes[0]!;
+      const stv = await engine.getState(id);
+      // the engine's own pending probe carries option IDS (the rendered view carries only labels)
+      const pending = stv.session.pending_verification?.find((p) => p.id === shown.id);
+      if (!pending) break;
+      // The sim reviewer answers from the gold: accept iff every JUDGEABLE bundled answer matches. Bundled
+      // nodes with no gold truth are unjudgeable — the simulated owner has no opinion about them, so they
+      // cannot make a scenario read wrong (verify_eval.ts filters them out of the pool for the same reason).
+      const judged = pending.nodes.filter((n) => gold.decisions[n.id] !== undefined);
+      const wrongNodes = judged.filter((n) => gold.decisions[n.id] !== n.option);
+      const effC = (nodeId: string) => stv.session.consequence_override[nodeId] ?? stv.sheet.decisions.find((d) => d.id === nodeId)?.consequence ?? 0;
+      // on rejection: name the highest-consequence wrong bundled node, correcting it to the gold's value
+      let correction: { node_id: string; option_id: string } | undefined;
+      for (const n of [...wrongNodes].sort((a, b) => effC(b.id) - effC(a.id) || a.id.localeCompare(b.id))) {
+        const truth = gold.decisions[n.id]!;
+        if (stv.sheet.decisions.find((d) => d.id === n.id)?.options.some((o) => o.id === truth)) {
+          correction = { node_id: n.id, option_id: truth };
+          break; // the riskiest wrong node whose truth is actually an option of that decision
+        }
+      }
+      const ok = wrongNodes.length === 0;
+      try {
+        await engine.answerVerification(id, ok ? { probe_id: shown.id, ok: true } : { probe_id: shown.id, ok: false, ...(correction ? { correction } : {}) });
+      } catch {
+        // the correction was rejected (e.g. a hard-edge contradiction) — the tap is still spent, as "something
+        // reads wrong" without a usable localization
+        try {
+          await engine.answerVerification(id, { probe_id: shown.id, ok: false });
+        } catch {
+          break;
+        }
+      }
+      if (ok) accepts++;
+      else rejects++;
+      interactions++;
+      const after = await engine.getState(id);
+      if (unified) byInteraction.push(recovery(after.sheet, after.session, gold));
+    }
+    const wrongAfterVerify = wrongInList(await engine.getDefaults(id));
+    verifyOut = { verify_accepts: accepts, verify_rejects: rejects, verify_catches: wrongBeforeVerify - wrongAfterVerify, wrong_defaults_remaining: wrongAfterVerify };
+  }
+
   const st = await engine.getState(id);
   const events = await engine.store.listEvents(id);
   const calibration = st.sheet.decisions
@@ -260,12 +391,26 @@ export async function runGold(
     ...(semantic_draft_recall ? { semantic_draft_recall } : {}),
     ...(review ?? {}),
     ...(noiseR ? { noise_events: noiseEvents } : {}),
+    ...(unified ? { interactions, recovery_by_interaction: byInteraction } : {}),
+    ...(verifyOut ?? {}),
   };
 }
 
 /** Recovery after exactly k cards (curve held flat past its end, so short sessions are comparable). */
 export function recoveryAt(m: SessionMetrics, k: number): number {
   return m.recovery_curve[Math.min(k, m.recovery_curve.length - 1)] ?? 0;
+}
+
+/**
+ * Recovery after exactly k INTERACTIONS of any instrument (curve held flat past the end, k=0 = the draft).
+ * Sessions without unified accounting fall back to the card curve — for a cards-only session the two curves
+ * are the same object anyway, so `auc_per_interaction` degrades to `auc_0_12` rather than to zero.
+ */
+export function recoveryAtInteraction(m: SessionMetrics, k: number): number {
+  const c = m.recovery_by_interaction;
+  if (!c?.length) return recoveryAt(m, k);
+  if (k <= 0) return m.recovery_curve[0] ?? 0;
+  return c[Math.min(k, c.length) - 1]!;
 }
 
 export const REPORT_K = [1, 3, 5, 8, 12];
@@ -341,6 +486,30 @@ export function aggregate(ms: SessionMetrics[]): Summary {
     };
   }
   const noised = ms.filter((m) => m.noise_events !== undefined);
+  // ---- unified interaction accounting: only when the sessions carried it ----
+  const uni = ms.filter((m) => m.interactions !== undefined);
+  let unified: Pick<Summary, "auc_per_interaction" | "recovery_at_interaction" | "verify"> = {};
+  if (uni.length) {
+    const recovery_at_interaction: Record<number, number> = {};
+    for (const k of REPORT_K) recovery_at_interaction[k] = mean(ms.map((m) => recoveryAtInteraction(m, k)));
+    const ver = ms.filter((m) => m.verify_accepts !== undefined);
+    unified = {
+      auc_per_interaction: mean(ms.map((m) => mean(Array.from({ length: 13 }, (_, k) => recoveryAtInteraction(m, k))))),
+      recovery_at_interaction,
+      ...(ver.length
+        ? {
+            verify: {
+              sessions: ver.length,
+              mean_interactions: mean(ver.map((m) => m.interactions ?? 0)),
+              accepts: ver.reduce((a, m) => a + (m.verify_accepts ?? 0), 0),
+              rejects: ver.reduce((a, m) => a + (m.verify_rejects ?? 0), 0),
+              catches: ver.reduce((a, m) => a + (m.verify_catches ?? 0), 0),
+              mean_wrong_remaining: mean(ver.map((m) => m.wrong_defaults_remaining ?? 0)),
+            },
+          }
+        : {}),
+    };
+  }
   return {
     n: ms.length,
     mean_cards: mean(ms.map((m) => m.cards)),
@@ -360,6 +529,7 @@ export function aggregate(ms: SessionMetrics[]): Summary {
     other_rate: allAnswers.length ? allAnswers.filter((a) => a.kind === "other").length / allAnswers.length : 0,
     ...(review ? { review } : {}),
     ...(noised.length ? { noise_events: noised.reduce((a, m) => a + (m.noise_events ?? 0), 0) } : {}),
+    ...unified,
   };
 }
 
@@ -492,6 +662,12 @@ if (isMain) {
   const review = reviewIdx >= 0 ? { depth: reviewDepthArg && /^\d+$/.test(reviewDepthArg) ? Number(reviewDepthArg) : 8, catchProb: Number(flag("--catch-prob") ?? 1) } : undefined;
   const noiseP = Number(flag("--noise") ?? 0);
   const withContext = args.includes("--with-context");
+  const verifyB = flag("--verify") !== undefined ? Number(flag("--verify")) : undefined;
+  // --mix is repeatable: every occurrence contributes one arm "<cards>,<verify>"
+  const mixes = args
+    .map((a, i) => (a === "--mix" ? args[i + 1] : undefined))
+    .filter((v): v is string => !!v && /^\d+,\d+$/.test(v))
+    .map((v) => ({ cards: Number(v.split(",")[0]), verify: Number(v.split(",")[1]) }));
 
   const { buildEngine } = await import("../engine/bootstrap.js");
   const { MemoryStore } = await import("../store/file_store.js");
@@ -540,12 +716,13 @@ if (isMain) {
     console.log(`\nwritten ${file}`);
   } else {
     const engine = await makeEngine({ scoring: scoring ?? "weighted_entropy", lookahead, maxCards: 12, ...(theta ? { theta: Number(theta) } : {}) });
-    const runOpts = { judge, ...(review ? { review } : {}), ...(noiseP > 0 ? { noise: { p: noiseP } } : {}) };
+    const runOpts = { judge, ...(review ? { review } : {}), ...(noiseP > 0 ? { noise: { p: noiseP } } : {}), ...(verifyB !== undefined ? { verify: { budget: verifyB } } : {}) };
     const logGold = (g: Gold, m: SessionMetrics, tag = "") => {
       const sem = m.semantic_draft_recall ? `  ·  JUDGE n${pc(m.semantic_draft_recall.nouns)} r${pc(m.semantic_draft_recall.rules)}` : "";
       const rev = m.wrong_defaults_before !== undefined ? `  wrong defaults ${m.wrong_defaults_before}→${m.wrong_defaults_after} @pos [${(m.review_positions ?? []).join(",")}]` : "";
       const noi = m.noise_events !== undefined ? `  mis-taps ${m.noise_events}` : "";
-      console.log(`${(g.id + tag).padEnd(30)} cards ${String(m.cards).padStart(2)}  recovery ${pc(m.recovery_curve[0]!)} → ${pc(m.final_recovery)}  stop ${m.stop_reason}  draft recall n${pc(m.draft_recall.nouns)} r${pc(m.draft_recall.rules)}${sem}${rev}${noi}  asked: ${m.asked_nodes.join(",")}`);
+      const ver = m.verify_accepts !== undefined ? `  story checks ${m.verify_accepts}✓/${m.verify_rejects}✗ caught ${m.verify_catches} (${m.wrong_defaults_remaining} wrong left)  interactions ${m.interactions}` : "";
+      console.log(`${(g.id + tag).padEnd(30)} cards ${String(m.cards).padStart(2)}  recovery ${pc(m.recovery_curve[0]!)} → ${pc(m.final_recovery)}  stop ${m.stop_reason}  draft recall n${pc(m.draft_recall.nouns)} r${pc(m.draft_recall.rules)}${sem}${rev}${noi}${ver}  asked: ${m.asked_nodes.join(",")}`);
     };
     const logSummary = (summary: Summary) => {
       console.log(`\nSUMMARY n=${summary.n} · mean cards ${summary.mean_cards.toFixed(1)} · recovery ${pc(summary.mean_initial_recovery)} → ${pc(summary.mean_final_recovery)} · ${REPORT_K.map((k) => `r@${k} ${pc(summary.recovery_at[k] ?? 0)}`).join(" · ")} · AUC ${pc(summary.auc_0_12)} · render p90 ${summary.render_ms_p90}ms · you-decide ${pc(summary.you_decide_rate)} · other ${pc(summary.other_rate)}`);
@@ -557,8 +734,55 @@ if (isMain) {
         console.log(`  wrong-default positions in review order (1 = riskiest): ${positions.map((p) => `${p}:${r.position_histogram[p]}`).join(" ")}${positions.some((p) => p > (review?.depth ?? 8)) ? `  ← ${positions.filter((p) => p > (review?.depth ?? 8)).reduce((a, p) => a + r.position_histogram[p]!, 0)} wrong default(s) BELOW the review fold (depth ${review?.depth ?? 8})` : ""}`);
       }
       if (summary.noise_events !== undefined) console.log(`answer noise: ${summary.noise_events} simulated mis-tap(s)`);
+      if (summary.auc_per_interaction !== undefined) {
+        // the same north star, priced per INTERACTION (card = story check = review tap = 1)
+        console.log(`PER-INTERACTION: ${REPORT_K.map((k) => `r@${k} ${pc(summary.recovery_at_interaction?.[k] ?? 0)}`).join(" · ")} · AUC/interaction ${pc(summary.auc_per_interaction)}   [card-only above: AUC ${pc(summary.auc_0_12)}]`);
+        if (summary.verify) {
+          const v = summary.verify;
+          console.log(`VERIFICATION: ${v.accepts} accepted / ${v.rejects} rejected story check(s) over ${v.sessions} session(s) · ${v.catches} wrong default(s) caught · ${v.mean_wrong_remaining.toFixed(1)} wrong left/session · mean interactions ${v.mean_interactions.toFixed(1)}`);
+        }
+      }
     };
-    if (withContext) {
+    if (mixes.length) {
+      // ---- instrument-mix A/B at EQUAL TOTAL INTERACTIONS: does spending some of the budget on story
+      //      checks beat spending all of it on cards? The pure-cards 12+0 arm is always the control.
+      const arms = [{ cards: 12, verify: 0 }, ...mixes].filter((a, i, xs) => xs.findIndex((x) => x.cards === a.cards && x.verify === a.verify) === i);
+      console.log(`INSTRUMENT MIX over ${golds.length} gold(s) — arms: ${arms.map((a) => `${a.cards} cards + ${a.verify} story checks`).join("  |  ")}\n`);
+      const rows: { label: string; cards: number; verify: number; sessions: SessionMetrics[]; summary: Summary }[] = [];
+      for (const arm of arms) {
+        const label = `${arm.cards}+${arm.verify}`;
+        console.log(`── arm ${label} ──`);
+        const sessions: SessionMetrics[] = [];
+        for (const g of golds) {
+          // fresh engine per session: the MockLLM's call counter is per-instance state (see the --with-context note)
+          const e = await makeEngine({ scoring: scoring ?? "weighted_entropy", lookahead, maxCards: arm.cards, ...(theta ? { theta: Number(theta) } : {}) });
+          const m = await runGold(e, g, { ...runOpts, idPrefix: `mix${arm.cards}v${arm.verify}`, verify: { budget: arm.verify } });
+          sessions.push(m);
+          logGold(g, m, ` [${label}]`);
+        }
+        rows.push({ label, cards: arm.cards, verify: arm.verify, sessions, summary: aggregate(sessions) });
+        console.log("");
+      }
+      const meanOf = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+      console.log(`MIX COMPARISON (a card, a story check and a review tap each cost exactly 1 interaction)`);
+      console.log(`  ${"arm".padEnd(10)} ${"cards".padStart(6)} ${"verify".padStart(7)} ${"iact".padStart(6)} ${"final".padStart(7)} ${"AUC/iact".padStart(9)} ${"rec/iact".padStart(9)} ${"wrong left".padStart(11)}`);
+      for (const r of rows) {
+        const iact = meanOf(r.sessions.map((m) => m.interactions ?? 0));
+        const wrong = meanOf(r.sessions.map((m) => m.wrong_defaults_remaining ?? 0));
+        const gained = r.summary.mean_final_recovery - r.summary.mean_initial_recovery;
+        console.log(
+          `  ${r.label.padEnd(10)} ${meanOf(r.sessions.map((m) => m.cards))
+            .toFixed(1)
+            .padStart(6)} ${meanOf(r.sessions.map((m) => (m.verify_accepts ?? 0) + (m.verify_rejects ?? 0)))
+            .toFixed(1)
+            .padStart(7)} ${iact.toFixed(1).padStart(6)} ${pc(r.summary.mean_final_recovery).padStart(7)} ${pc(r.summary.auc_per_interaction ?? 0).padStart(9)} ${(iact ? (gained * 100) / iact : 0).toFixed(2).padStart(8)}pp ${wrong.toFixed(1).padStart(11)}`,
+        );
+      }
+      console.log(`  (final = consequence-weighted recovery at the end · rec/iact = recovery points gained per interaction · wrong left = wrong defaults still standing)`);
+      const file = path.join(outDir, `${stamp}${mock ? "-mock" : ""}-mix.json`);
+      await fs.writeFile(file, JSON.stringify({ arms: rows.map((r) => ({ label: r.label, cards: r.cards, verify: r.verify, summary: r.summary, results: r.sessions })), golds: golds.map((g) => g.id), config: { scoring, theta, lookahead }, mock, catalog: catalogs.version }, null, 2));
+      console.log(`\nwritten ${file}`);
+    } else if (withContext) {
       // A/B: evidence in, not just answers in — same golds, with vs without the pasted artifact
       const withCtx = golds.filter((g) => g.extra_context).length;
       console.log(`extra_context A/B over ${golds.length} gold(s) (${withCtx} carry extra_context; the rest are identical in both arms)\n`);

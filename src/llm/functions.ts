@@ -105,6 +105,23 @@ export const PatchOutSchema = z.object({
 });
 export type PatchOut = z.infer<typeof PatchOutSchema>;
 
+/**
+ * Feedback on a compiled spec, classified. `ops` is the same flat op record the patcher returns (Rule 1: the
+ * model proposes, `core/patch.ts` validates), so a correction to the spec lands on the SHEET and survives the
+ * next compile. The four lists beside it are the learning signal — what we assumed wrongly, what we missed,
+ * what was confirmed, and what the feedback opened up — recorded per refinement and never inferred later.
+ * Arrays of FLAT objects only (nested objects are what strict structured outputs get wrong — see ADR-011).
+ */
+export const SpecFeedbackOutSchema = z.object({
+  ops: PatchOutSchema.shape.ops,
+  wrong_assumptions: z.array(z.object({ node: z.string(), should_be: z.string(), why: z.string() })),
+  missing_elements: z.array(z.object({ kind: z.enum(["actor", "noun", "action", "rule", "non_goal", ""]), text: z.string() })),
+  confirmed_elements: z.array(z.string()),
+  new_questions: z.array(z.object({ topic: z.string(), question: z.string(), option_a: z.string(), option_b: z.string() })),
+  notes: z.string(),
+});
+export type SpecFeedbackOut = z.infer<typeof SpecFeedbackOutSchema>;
+
 export function toUserOps(out: PatchOut): { ops: UserPatchOp[]; dropped: { op: string; reason: string }[] } {
   const ops: UserPatchOp[] = [];
   const dropped: { op: string; reason: string }[] = [];
@@ -332,6 +349,7 @@ export interface Fns {
   sampleWorlds(input: { sheet: Sheet; nodes: NodeDef[]; fixed: Record<string, string>; count: number; batch: number; batches: number; contrarian?: boolean }): Promise<LLMResponse<WorldsOut>>;
   card(input: { sheet: Sheet; node: NodeDef; options: { option_id: string; label: string; p: number }[]; also_sets: string[]; prior_answers: string[]; phrasing_style?: string }): Promise<LLMResponse<CardOut>>;
   patch(input: { sheet: Sheet; decisions: Decision[]; text: string }): Promise<LLMResponse<PatchOut>>;
+  specFeedback(input: { sheet: Sheet; decisions: Decision[]; diff: string; comments: { quote?: string; text: string }[] }): Promise<LLMResponse<SpecFeedbackOut>>;
   compileSection(input: { sheet: Sheet; section: SectionId; decisions: Decision[]; prior_sections: string; style_exemplars?: string }): Promise<LLMResponse<SectionOut>>;
   /** IR-first pilot: lifecycles as typed data, mechanically checked (core/spec_ir.ts) then deterministically rendered. */
   compileStateMachines(input: { sheet: Sheet; decisions: Decision[]; findings?: string }): Promise<LLMResponse<StateMachinesIR>>;
@@ -425,6 +443,26 @@ export function makeFns(llm: LLM): Fns {
         system: P.PATCHER_SYSTEM,
         user: `DESIGN SHEET:\n${sheetToText(sheet)}\n\nDECISIONS:\n${decisionsToText(decisions)}\n\nUSER SAYS:\n${text}`,
         schema: PatchOutSchema,
+        maxTokens: 3000,
+        temperature: 0,
+      }),
+
+    specFeedback: ({ sheet, decisions, diff, comments }) =>
+      llm.structured({
+        fn: "spec_feedback",
+        // strong tier: this call decides what a correction MEANS for the contract, and a misread here writes
+        // the wrong thing into the source of truth — the same stakes as compiling, not as phrasing a card.
+        tier: "strong",
+        system: P.SPEC_FEEDBACK_SYSTEM,
+        user: [
+          `DESIGN SHEET:\n${sheetToText(sheet)}`,
+          `DECISIONS:\n${decisionsToText(decisions)}`,
+          diff ? `THE OWNER'S EDITS TO THE SPEC (diff):\n${diff}` : "",
+          comments.length ? `THE OWNER'S COMMENTS:\n${comments.map((c, i) => `${i + 1}. ${c.quote ? `on "${c.quote.slice(0, 300)}": ` : ""}${c.text}`).join("\n")}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        schema: SpecFeedbackOutSchema,
         maxTokens: 3000,
         temperature: 0,
       }),

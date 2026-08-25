@@ -67,6 +67,14 @@ export interface SessionState {
   user_continued?: boolean;
   /** verification scenarios awaiting the user's confirm/correct (group-testing elicitation, core/verify.ts) */
   pending_verification?: { id: string; nodes: { id: string; option: string }[]; scenario: string; p_all_correct: number }[];
+  /**
+   * Cards already spent when the CURRENT round opened. Rule 7 ("never more than 12 cards per session") is a
+   * cap per sitting, not a lifetime quota: a user who returns after compiling to answer questions the spec
+   * itself surfaced (gap mining) is starting a new, explicitly-requested round. Absent = 0 = one round.
+   */
+  round_base?: number;
+  /** cap for the current round; absent = config.maxCards (Rule 7's 12). Never exceeds it. */
+  round_max_cards?: number;
   created_at: string;
   updated_at: string;
 }
@@ -91,6 +99,7 @@ export type EventType =
   | "roundtrip_result"
   | "compile_done"
   | "story_corrected"
+  | "spec_refined"
   | "verification_shown"
   | "verification_answered"
   | "evidence_absorbed"

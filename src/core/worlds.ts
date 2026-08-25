@@ -99,6 +99,73 @@ export function ess(worlds: World[]): number {
   return s > 0 ? 1 / s : 0;
 }
 
+/**
+ * Build a complete assignment that CANNOT violate a hard edge.
+ *
+ * `repairAssignment` propagates hard edges but never overwrites an existing value — it reports the collision
+ * and moves on, so a sampled world could keep a logically impossible pair (measured on real sessions: 971
+ * surviving violations across 39 sampling calls, because `fixed` constraints are forced over sampled values
+ * after repair). Those impossible worlds carry weight in every marginal the selector, the defaults and the
+ * soft implications read.
+ *
+ * Here values are taken in PRIORITY order (certain layers first) and each is placed only if it is still free
+ * and consistent; a value a hard edge has already forced is dropped in favour of the forced one, and each
+ * placement propagates its own edges as it lands. Whatever is left is filled from the prior, again choosing
+ * an option that contradicts nothing. Same algorithm as the engine's consistency-aware defaulting (ADR-036) —
+ * one rule for "settle a set of decisions without contradicting yourself", used for worlds and for the ledger.
+ */
+export function resolveAssignment(
+  layers: Record<string, string>[],
+  nodes: NodeDef[],
+): { assignment: Record<string, string>; overridden: string[]; filled: string[]; inapplicable: string[] } {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  let current: Record<string, string> = {};
+  const overridden: string[] = [];
+  const filled: string[] = [];
+  const inapplicable: string[] = [];
+  for (const layer of layers) {
+    for (const [id, raw] of Object.entries(layer)) {
+      const node = byId.get(id);
+      if (!node) continue; // unknown node: drop
+      const opt = node.options.find((o) => o.id === raw) ?? node.options.find((o) => o.label.toLowerCase() === String(raw).toLowerCase());
+      if (!opt) continue; // unknown option: drop, the prior fill below will cover it
+      if (current[id] !== undefined) {
+        if (current[id] !== opt.id) overridden.push(id); // a hard edge (or a higher layer) already settled it
+        continue;
+      }
+      const trial = propagateHard({ ...current, [id]: opt.id }, nodes, [id]);
+      if (trial.conflicts.length) {
+        overridden.push(id); // impossible given what is already certain — leave it for the prior fill
+        continue;
+      }
+      current = trial.assignment;
+    }
+  }
+  for (const n of nodes) {
+    if (current[n.id] !== undefined) continue;
+    const ranked = Object.entries(n.prior)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([o]) => o);
+    let placed = false;
+    for (const cand of ranked) {
+      const trial = propagateHard({ ...current, [n.id]: cand }, nodes, [n.id]);
+      if (trial.conflicts.length) continue;
+      current = trial.assignment;
+      placed = true;
+      break;
+    }
+    // Every option contradicts what this world already holds — the decision does not ARISE here (measured:
+    // `payments_in_app = none` leaves no viable option for `payment_recording`, whose every option implies
+    // that payments happen). Leaving it unassigned is the honest record: an assignment would be a statement
+    // this world cannot make. Downstream treats a missing value as "no opinion" by long-standing convention
+    // (`distribution` skips it and falls back to the α-prior; `conditionSoft`/`conditionHard` treat undefined
+    // as agreeing; verification skips nodes with no explicit support).
+    if (placed) filled.push(n.id);
+    else inapplicable.push(n.id);
+  }
+  return { assignment: current, overridden, filled, inapplicable };
+}
+
 /** Make an LLM-proposed assignment complete and consistent: fill gaps with prior argmax, apply hard edges. */
 export function repairAssignment(
   assignment: Record<string, string>,

@@ -6,9 +6,11 @@ import { MockLLM } from "../llm/client.js";
 import { invoicingMockHandlers } from "../llm/mock_fixtures.js";
 import { loadCatalogs } from "../engine/catalogs.js";
 import { Engine } from "../engine/orchestrator.js";
-import { loadGolds, runGold, aggregate, recovery, recoveryAt, sweep, sweepTable, type EngineFactory } from "./run.js";
+import { loadGolds, runGold, aggregate, recovery, recoveryAt, recoveryAtInteraction, sweep, sweepTable, REPORT_K, GoldSchema, type EngineFactory, type SessionMetrics } from "./run.js";
 import { perturbGold, makeVariants } from "./perturb.js";
-import { mergeCatalogs } from "../core/catalog.js";
+import { mergeCatalogs, type NodeDef } from "../core/catalog.js";
+import { emptySheet, type Decision } from "../core/sheet.js";
+import type { SessionState } from "../core/session.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -72,6 +74,50 @@ describe("harness (mock)", () => {
   });
 });
 
+describe("recovery() denominator honesty (missing work is wrong, not free)", () => {
+  const opts = [
+    { id: "yes", label: "yes" },
+    { id: "no", label: "no" },
+  ];
+  const mkNode = (id: string, consequence: number): NodeDef => ({ id, topic: id, question: id, options: opts, consequence, prior: { yes: 0.5, no: 0.5 }, implies: {}, sections: [], bespoke: false, archetype: "core" });
+  const mkDec = (id: string, chosen: string, consequence: number): Decision => ({ id, topic: id, question: id, options: opts, chosen, status: "resolved", consequence, source: "test" });
+  const mkSheet = (decisions: Decision[]) => ({ ...emptySheet("p", "x"), decisions });
+  const mkSession = (nodes: NodeDef[]): SessionState => ({ belief: { nodes, worlds: [], alpha: 1 }, consequence_override: {} }) as unknown as SessionState;
+  const mkGold = (decisions: Record<string, string>) => GoldSchema.parse({ id: "g", one_liner: "x", persona: "p", truth: "t", decisions });
+
+  it("an empty design vs a non-empty gold scores 0, not 1", () => {
+    const gold = mkGold({ a: "yes", b: "no" });
+    expect(recovery(mkSheet([]), mkSession([]), gold)).toBe(0);
+  });
+
+  it("a gold decision missing from the design counts as wrong at the node's consequence", () => {
+    // a (consequence 4) matches; b (consequence 1) was never surfaced on the sheet → 4 / (4 + 1)
+    const gold = mkGold({ a: "yes", b: "no" });
+    const sheet = mkSheet([mkDec("a", "yes", 4)]);
+    const session = mkSession([mkNode("a", 4), mkNode("b", 1)]);
+    expect(recovery(sheet, session, gold)).toBeCloseTo(4 / 5, 12);
+  });
+
+  it("all gold decisions present and matching scores 1", () => {
+    const gold = mkGold({ a: "yes", b: "no" });
+    const sheet = mkSheet([mkDec("a", "yes", 4), mkDec("b", "no", 1)]);
+    const session = mkSession([mkNode("a", 4), mkNode("b", 1)]);
+    expect(recovery(sheet, session, gold)).toBe(1);
+  });
+
+  it("a gold decision whose node is absent from the catalog counts as wrong at fallback weight 3", () => {
+    // a (consequence 4) matches; c exists nowhere (no sheet decision, no belief node) → 4 / (4 + 3)
+    const gold = mkGold({ a: "yes", c: "no" });
+    const sheet = mkSheet([mkDec("a", "yes", 4)]);
+    const session = mkSession([mkNode("a", 4)]);
+    expect(recovery(sheet, session, gold)).toBeCloseTo(4 / 7, 12);
+  });
+
+  it("the vacuous case stays vacuous: a gold with no decisions scores 1", () => {
+    expect(recovery(mkSheet([]), mkSession([]), mkGold({}))).toBe(1);
+  });
+});
+
 describe("simulated defaults review + answer noise (opt-in)", () => {
   const mkEngine = async () => new Engine(new MemoryStore(), new MockLLM(invoicingMockHandlers), await loadCatalogs(), { precompute: false });
 
@@ -81,9 +127,19 @@ describe("simulated defaults review + answer noise (opt-in)", () => {
     expect(m.wrong_defaults_after).toBeUndefined();
     expect(m.review_positions).toBeUndefined();
     expect(m.noise_events).toBeUndefined();
+    // unified interaction accounting is opt-in too: with no flags the metrics SHAPE is exactly what it was
+    expect(m.interactions).toBeUndefined();
+    expect(m.recovery_by_interaction).toBeUndefined();
+    expect(m.verify_accepts).toBeUndefined();
+    expect(m.verify_rejects).toBeUndefined();
+    expect(m.verify_catches).toBeUndefined();
+    expect(m.wrong_defaults_remaining).toBeUndefined();
     const s = aggregate([m]);
     expect(s.review).toBeUndefined();
     expect(s.noise_events).toBeUndefined();
+    expect(s.auc_per_interaction).toBeUndefined();
+    expect(s.recovery_at_interaction).toBeUndefined();
+    expect(s.verify).toBeUndefined();
   });
 
   it("attentive reviewer at full depth corrects every wrong default to the gold truth", async () => {
@@ -151,6 +207,123 @@ describe("simulated defaults review + answer noise (opt-in)", () => {
     expect(gold.extra_context).toContain("INV-0231");
     const m = await runGold(await mkEngine(), gold, { idPrefix: "ctx", withContext: true });
     expect(m.cards).toBeGreaterThan(0); // plumbing: createProject accepts the artifact
+  });
+});
+
+describe("unified interaction accounting (cards + story checks + review taps)", () => {
+  const mkEngine = async (maxCards?: number) =>
+    new Engine(new MemoryStore(), new MockLLM(invoicingMockHandlers), await loadCatalogs(), {
+      precompute: false,
+      ...(maxCards !== undefined ? { config: { maxCards } } : {}),
+    });
+
+  it("spends verification interactions through the engine's real methods and prices them like cards", async () => {
+    const gold = await loadInvoicingGold();
+    const m = await runGold(await mkEngine(), gold, { idPrefix: "vfy", verify: { budget: 4 } });
+    expect(m.verify_accepts).toBeDefined();
+    expect(m.verify_rejects).toBeDefined();
+    const spent = m.verify_accepts! + m.verify_rejects!;
+    expect(spent).toBeGreaterThan(0);
+    expect(spent).toBeLessThanOrEqual(4);
+    // one card = one story check = one interaction
+    expect(m.interactions).toBe(m.cards + spent);
+    // the unified curve has exactly one point per interaction, in chronological order
+    expect(m.recovery_by_interaction).toHaveLength(m.interactions!);
+    for (const r of m.recovery_by_interaction!) {
+      expect(r).toBeGreaterThanOrEqual(0);
+      expect(r).toBeLessThanOrEqual(1);
+    }
+    // the card prefix of the unified curve IS the card curve (which stays card-only)
+    expect(m.recovery_by_interaction!.slice(0, m.cards)).toEqual(m.recovery_curve.slice(1));
+    // a story check can only leave the ledger no worse: catches are a NET count and never fabricate recovery
+    expect(m.wrong_defaults_remaining).toBeGreaterThanOrEqual(0);
+    expect(m.final_recovery).toBeCloseTo(m.recovery_by_interaction!.at(-1)!, 10);
+  });
+
+  it("budget 0 turns accounting on without spending a story check", async () => {
+    const gold = await loadInvoicingGold();
+    const m = await runGold(await mkEngine(), gold, { idPrefix: "v0", verify: { budget: 0 } });
+    expect(m.verify_accepts).toBe(0);
+    expect(m.verify_rejects).toBe(0);
+    expect(m.interactions).toBe(m.cards);
+    expect(m.recovery_by_interaction).toEqual(m.recovery_curve.slice(1));
+    // no story checks spent ⇒ the per-interaction north star reduces to the card-only one
+    const s = aggregate([m]);
+    expect(s.auc_per_interaction).toBeCloseTo(s.auc_0_12, 10);
+  });
+
+  it("review taps count as interactions and land in the unified curve after the cards", async () => {
+    const gold = await loadInvoicingGold();
+    const m = await runGold(await mkEngine(), gold, { idPrefix: "rt", review: { depth: 999, catchProb: 1 }, verify: { budget: 0 } });
+    const taps = m.wrong_defaults_before! - m.wrong_defaults_after!;
+    expect(taps).toBeGreaterThan(0);
+    expect(m.interactions).toBe(m.cards + taps);
+    expect(m.recovery_by_interaction).toHaveLength(m.interactions!);
+  });
+
+  it("a mix arm caps the card loop at its budget and spends the rest on story checks", async () => {
+    const gold = await loadInvoicingGold();
+    const mix = await runGold(await mkEngine(6), gold, { idPrefix: "mix", verify: { budget: 6 } });
+    expect(mix.cards).toBe(6);
+    expect(mix.asked_nodes).toHaveLength(6);
+    expect(mix.stop_reason).toBe("max_cards");
+    expect(mix.interactions).toBeLessThanOrEqual(12);
+    // the pure-verification arm asks no cards at all (defaults straight from the belief, then story checks)
+    const pure = await runGold(await mkEngine(0), gold, { idPrefix: "pure", verify: { budget: 6 } });
+    expect(pure.cards).toBe(0);
+    expect(pure.asked_nodes).toEqual([]);
+    expect(pure.verify_accepts! + pure.verify_rejects!).toBeGreaterThan(0);
+    expect(pure.interactions).toBe(pure.verify_accepts! + pure.verify_rejects!);
+  });
+
+  it("aggregate does the per-interaction arithmetic and pools the verification counts", () => {
+    const base = (p: Partial<SessionMetrics>): SessionMetrics => ({
+      gold_id: "g",
+      project_id: "p",
+      cards: 0,
+      stop_reason: "max_cards",
+      recovery_curve: [0.2],
+      final_recovery: 0.6,
+      settledness_final: 0,
+      draft_recall: { actors: 1, nouns: 1, rules: 1, non_goals: 1 },
+      calibration: [],
+      answers: [],
+      card_render_ms: [],
+      card_value1: [],
+      asked_nodes: [],
+      ...p,
+    });
+    const unified = base({
+      recovery_curve: [0.2],
+      recovery_by_interaction: [0.4, 0.6],
+      interactions: 2,
+      verify_accepts: 1,
+      verify_rejects: 3,
+      verify_catches: 5,
+      wrong_defaults_remaining: 7,
+    });
+    // k = 0 is the draft; the curve is held flat past its end
+    expect(recoveryAtInteraction(unified, 0)).toBe(0.2);
+    expect(recoveryAtInteraction(unified, 1)).toBe(0.4);
+    expect(recoveryAtInteraction(unified, 2)).toBe(0.6);
+    expect(recoveryAtInteraction(unified, 12)).toBe(0.6);
+    // a session without unified accounting falls back to the CARD curve rather than to zero
+    const cardsOnly = base({ recovery_curve: [0.1, 0.3], cards: 1 });
+    expect(recoveryAtInteraction(cardsOnly, 0)).toBe(0.1);
+    expect(recoveryAtInteraction(cardsOnly, 5)).toBe(0.3);
+
+    const s = aggregate([unified]);
+    expect(s.auc_per_interaction).toBeCloseTo((0.2 + 0.4 + 0.6 * 11) / 13, 12);
+    expect(s.recovery_at_interaction![1]).toBeCloseTo(0.4, 12);
+    for (const k of REPORT_K.filter((k) => k > 1)) expect(s.recovery_at_interaction![k]).toBeCloseTo(0.6, 12);
+    expect(s.verify).toEqual({ sessions: 1, mean_interactions: 2, accepts: 1, rejects: 3, catches: 5, mean_wrong_remaining: 7 });
+    // the card-based headline is untouched by any of this
+    expect(s.auc_0_12).toBeCloseTo(0.2, 12);
+
+    // mixed populations: per-interaction means average across BOTH kinds of session
+    const s2 = aggregate([unified, cardsOnly]);
+    expect(s2.recovery_at_interaction![1]).toBeCloseTo((0.4 + 0.3) / 2, 12);
+    expect(s2.verify!.sessions).toBe(1); // pooled over the sessions that actually verified
   });
 });
 

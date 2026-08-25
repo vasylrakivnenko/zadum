@@ -76,9 +76,12 @@ describe("population priors over mock sessions", () => {
     for (const o of overrides) expect(obs.filter((x) => x.project_id === o.project && x.source === "override" && x.node === o.node && x.option === o.to)).toHaveLength(1);
     // archetypes come from the final sheet
     expect(obs.every((o) => o.archetypes.includes("b2b-invoicing"))).toBe(true);
-    // a final defaulted decision is not an observation unless the user touched it
+    // a final defaulted decision is not an observation unless the user touched it. "Defaulted" no longer
+    // implies "untouched": an ANSWERED decision can be reopened by a contradicting later answer and then
+    // re-defaulted at accept (Rule 3's reopen semantics) — its card answer stays a legitimate observation.
     const sheet = (await store.getLatestSheet("s1"))!;
-    const untouched = sheet.decisions.filter((d) => d.status === "defaulted");
+    const answered = new Set((await store.getSession("s1"))!.answers.map((a) => a.node_id));
+    const untouched = sheet.decisions.filter((d) => d.status === "defaulted" && !answered.has(d.id));
     expect(untouched.length).toBeGreaterThan(0);
     for (const d of untouched) expect(obs.some((o) => o.project_id === "s1" && o.node === d.id)).toBe(false);
     // the undone answer in s4 is not counted twice

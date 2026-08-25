@@ -3,6 +3,14 @@ import type { DecidedEntry, Sheet } from "@/lib/types";
 
 const MARK: Record<string, string> = { resolved: "✓", implied: "⇒", defaulted: "≈", delegated: "↪", skipped: "·", open: "?" };
 const VIA: Record<string, string> = { card_answer: "card", implication: "implied", user_edit: "your edit", plan: "from the description", default: "defaulted", defaults_review: "review", undo: "undo" };
+/** What each mark in the decided list means, spelled out once so the column is readable at a glance. */
+const LEGEND: { status: string; word: string }[] = [
+  { status: "resolved", word: "you chose" },
+  { status: "implied", word: "follows from that" },
+  { status: "defaulted", word: "assumed" },
+  { status: "delegated", word: "left to us" },
+  { status: "skipped", word: "skipped" },
+];
 
 export interface SheetViewProps {
   sheet: Sheet;
@@ -21,13 +29,13 @@ export function SheetView({ sheet, decided, fresh, title }: SheetViewProps) {
     <section className="panel sheet">
       <div className="spread">
         <h2>{title ?? "Design Sheet"}</h2>
-        <span className="muted small">
+        <span className="muted small tnum">
           v{sheet.version}
           {sheet.archetypes.length ? ` · ${sheet.archetypes.join(", ")}` : ""}
         </span>
       </div>
       <div className="lists">
-        <List title="People" empty="nobody yet">
+        <List title="People" count={sheet.actors.length} empty="nobody yet">
           {sheet.actors.map((a) => (
             <li key={a.id} className={cls(a.id, a.source)}>
               <strong>{a.name}</strong>
@@ -35,7 +43,7 @@ export function SheetView({ sheet, decided, fresh, title }: SheetViewProps) {
             </li>
           ))}
         </List>
-        <List title="Things it keeps track of" empty="nothing yet">
+        <List title="Things it keeps track of" count={sheet.nouns.length} empty="nothing yet">
           {sheet.nouns.map((n) => (
             <li key={n.id} className={cls(n.id, n.source)}>
               <strong>{n.name}</strong>
@@ -44,7 +52,7 @@ export function SheetView({ sheet, decided, fresh, title }: SheetViewProps) {
             </li>
           ))}
         </List>
-        <List title="What people do" empty="no actions yet">
+        <List title="What people do" count={sheet.actions.length} empty="no actions yet">
           {sheet.actions.map((a) => (
             <li key={a.id} className={cls(a.id, a.source)}>
               {actorName(a.actor)} <strong>{a.verb}</strong> {nounName(a.object)}
@@ -52,7 +60,7 @@ export function SheetView({ sheet, decided, fresh, title }: SheetViewProps) {
             </li>
           ))}
         </List>
-        <List title="What must never happen" empty="no rules yet">
+        <List title="What must never happen" count={sheet.rules.length} empty="no rules yet">
           {sheet.rules.map((r) => (
             <li key={r.id} className={cls(r.id, r.source)}>
               {r.text}
@@ -61,7 +69,7 @@ export function SheetView({ sheet, decided, fresh, title }: SheetViewProps) {
             </li>
           ))}
         </List>
-        <List title="Not yet" empty="nothing ruled out yet">
+        <List title="Not yet" count={sheet.non_goals.length} empty="nothing ruled out yet">
           {sheet.non_goals.map((g) => (
             <li key={g.id} className={cls(g.id, g.source)}>
               {g.text}
@@ -72,16 +80,26 @@ export function SheetView({ sheet, decided, fresh, title }: SheetViewProps) {
       {decided && decided.length > 0 && (
         <div className="decided">
           <h3>Decided ({decided.length})</h3>
+          <div className="legend" aria-hidden="true">
+            {LEGEND.map((l) => (
+              <span key={l.status}>
+                <span className={`mark ${l.status}`}>{MARK[l.status]}</span>
+                {l.word}
+              </span>
+            ))}
+          </div>
           <ul>
             {decided.map((d) => (
-              <li key={d.id} className={fresh?.has(d.id) ? "fresh" : ""} title={`${d.status}${d.via ? ` · ${VIA[d.via] ?? d.via}` : ""}`}>
-                <span className={`mark ${d.status}`}>{MARK[d.status] ?? "·"}</span>
+              <li key={d.id} className={fresh?.has(d.id) ? "fresh" : ""} title={`${statusWord(d.status)}${d.via ? ` · ${VIA[d.via] ?? d.via}` : ""}`}>
+                <span className={`mark ${d.status}`} aria-hidden="true">
+                  {MARK[d.status] ?? "·"}
+                </span>
                 <span>
                   <span className="topic">{d.topic} → </span>
                   {d.label}
                 </span>
-                <span className="conf">
-                  {d.status === "resolved" ? VIA[d.via] ?? d.via : d.confidence !== null ? `${Math.round(d.confidence * 100)}%` : d.status}
+                <span className="conf" title={d.status === "resolved" ? "how it was decided" : "how sure we are"}>
+                  {d.status === "resolved" ? VIA[d.via] ?? d.via : d.confidence !== null ? `${Math.round(d.confidence * 100)}%` : statusWord(d.status)}
                 </span>
               </li>
             ))}
@@ -92,10 +110,17 @@ export function SheetView({ sheet, decided, fresh, title }: SheetViewProps) {
   );
 }
 
-function List({ title, empty, children }: { title: string; empty: string; children: React.ReactNode[] }) {
+function statusWord(status: string): string {
+  return LEGEND.find((l) => l.status === status)?.word ?? status;
+}
+
+function List({ title, count, empty, children }: { title: string; count: number; empty: string; children: React.ReactNode[] }) {
   return (
     <div className="list">
-      <h3>{title}</h3>
+      <h3>
+        {title}
+        {count > 0 ? <span className="count">{count}</span> : null}
+      </h3>
       {children.length ? <ul>{children}</ul> : <div className="empty">{empty}</div>}
     </div>
   );

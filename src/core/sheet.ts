@@ -87,6 +87,9 @@ export const SheetSchema = z.object({
   project_id: z.string(),
   version: z.number().int().min(0),
   one_liner: z.string(),
+  /** 2–4 word name for the app, written by the drafter. Empty on sheets drafted before this existed —
+   *  every reader falls back to `one_liner`, which is why this defaults rather than being optional. */
+  name: z.string().default(""),
   archetypes: z.array(z.string()).default([]),
   actors: z.array(ActorSchema).default([]),
   nouns: z.array(NounSchema).default([]),

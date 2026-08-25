@@ -5,6 +5,9 @@ import { TopBar } from "@/components/TopBar";
 import { Toast, type ToastData } from "@/components/Toast";
 import { api, errorMessage } from "@/lib/client";
 
+/** Three real one-liners, so it is obvious what a good one looks like. */
+const EXAMPLES = ["an invoicing app for small bookkeeping firms", "a booking app for a two-chair barber shop", "an internal tool for tracking repair jobs"];
+
 export default function Home() {
   const router = useRouter();
   const [oneLiner, setOneLiner] = useState("");
@@ -36,9 +39,17 @@ export default function Home() {
           <p>We draft a one-page Design Sheet, you correct it in plain English, a few decision cards settle what matters, and a coding-agent-ready spec compiles.</p>
         </div>
         <form onSubmit={submit} className="stack">
-          <input type="text" value={oneLiner} onChange={(e) => setOneLiner(e.target.value)} placeholder="an invoicing app for small bookkeeping firms" autoFocus disabled={busy} />
+          <input type="text" value={oneLiner} onChange={(e) => setOneLiner(e.target.value)} placeholder={EXAMPLES[0]} autoFocus disabled={busy} aria-label="Describe the app you want in one line" />
+          <div className="examples">
+            <span className="lead">For example:</span>
+            {EXAMPLES.map((ex) => (
+              <button key={ex} type="button" className="example" disabled={busy} onClick={() => setOneLiner(ex)}>
+                {ex}
+              </button>
+            ))}
+          </div>
           {showExtra ? (
-            <textarea value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Paste anything you have — an example invoice, a spreadsheet, an email, notes… It helps the first draft get your business right." rows={6} disabled={busy} />
+            <textarea value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Paste anything you have — an example invoice, a spreadsheet, an email, notes… It helps the first draft get your business right." rows={6} disabled={busy} autoFocus aria-label="Anything you already have" />
           ) : (
             <button type="button" className="btn ghost" onClick={() => setShowExtra(true)} style={{ alignSelf: "flex-start" }}>
               + Paste anything you have (an example invoice, a spreadsheet, an email — optional)

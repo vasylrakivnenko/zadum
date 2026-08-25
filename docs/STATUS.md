@@ -1,10 +1,11 @@
 # STATUS — resume here
 
-_Last updated: 2026-08-24 (session 1j, the spec-quality build — ADR-034, four parallel agents + core. See
-milestones 43–49 and the 1j session-log entry). Next session: start at "Next steps" below._
+_Last updated: 2026-08-25 (session 1p — the spec workspace + refine loop + evidence-layer labelling, ADR-038,
+three parallel agents. See milestones 57–59 and the 1n/1p session-log entries). Next session: start at
+"Next steps" below._
 
 ## TL;DR
-Core workflow + architecture of Design Sheet is built and green: `npm test` → **363 tests / 33 files** (+10 web
+Core workflow + architecture of Design Sheet is built and green: `npm test` → **509 tests / 39 files** (+29 web
 smoke tests in `apps/web`, `npm test --prefix apps/web`) pass (incl. a
 Postgres round-trip when `DATABASE_URL` is set), `npm run typecheck` clean, `npm run zadum -- --mock demo` runs the
 whole flow without credentials, and **the live LLM path works end to end on Azure OpenAI gpt-4.1** (draft 47s,
@@ -21,7 +22,18 @@ and `risk` are switchable (`--scoring`), two-ply lookahead is available (`--look
 
 | # | Milestone | State |
 |---|-----------|-------|
-| 49 | **Compiler A/B under the ruler** (same project, only the pipeline changed): spec_entropy 0.057→**0.043** (−25%), material divergence 8.8%→**4.8%**, forced-rate 79%→87%; live IR path clean first try (1 medium finding survived, recorded). Run 1 vs baselines: zadum 0.08 / 0 builder Qs / 32-of-32 pairwise vs Spec Kit 0.13, DLAI 0.22; the one-pager alone measures 0.33 (honest negative) | ✅ run — EVALS "spec-quality ruler" |
+| 59 | **Evidence layer: lexicon + Opus labelling + the detectability experiment** (`src/mining/{lexicon,condense,label,detectability}.ts`, `catalogs/lexicon/lexicon.json`): 136 features / 127 mapped to real catalog nodes / 14 categories; present-absent-**unobserved** cells with witness-loci rules so a negative is only licensed where the labeller could actually have looked; repo condenser; run-to-run agreement. Live on **claude-opus-4-8 via Azure AI Foundry**, 8 paired repos + 8 spec docs × 2 runs, $28.74. **REVIEW §3's prediction is not supported as stated** (repos fill 21.1% vs specs 15.3%) — but per category the instinct holds exactly where it was aimed: `records_workflow` favours specs **3.6×**, while structural categories favour repos by up to 2.2× (`integrations_sync` 84.4% vs 38.1%). Verdict: use both, each labelling only what it can witness | ✅ run live — EVALS "Detectability" |
+| 58 | **The spec workspace + refine loop** (`/p/<id>/spec`, `zadum refine`, `Engine.refineFromSpecFeedback`): the compiled spec rendered in the browser, select-to-comment, edit mode, refine, download `.md`. Corrections are diffed in code (`core/textdiff.ts`) and land on the **Sheet**, so they survive the next compile; feedback is classified four ways and a choice it opens becomes an open decision, never a fresh guess. Live-verified against gpt-4.1 (caught a prompt gap that would have silently dropped a correction) | ✅ (ADR-038) |
+| 57b | **UI/UX pass**: design system rebuilt (globals.css 204 → 1704 lines — type/spacing scales, focus rings, reduced-motion, a defaults table that reflows to cards on a phone, 1–9 keyboard answers on the card screen), safe in-repo markdown renderer, TopBar flow Design Sheet → Decision cards → Assumptions → Spec | ✅ (2 parallel agents) |
+| 57 | **External-review fixes (ADR-036)** — all six claims from the outside review confirmed by probe, then fixed: joint consistency-aware defaulting + `ledgerConflicts` (a normal mock session shipped 1 hard-edge contradiction; now 0 by construction), provenance-locked sampling constraints (17 belief guesses were frozen at ≥0.95; now only user-grade + planner `source:"plan"`), selective undo (interleaved edits survive), compile gates (refuses open/contradictory ledgers, `--draft` escape, staleness re-check before markDone), honest `recovery()` (missing gold decisions count as wrong; empty design = 0, was 1.0 — **mock baseline AUC 0.560 → 0.367**, historical numbers were upper bounds) | ✅ (8 new engine tests + 5 harness tests; auth = claim 6 stays with the deploy item) |
+| 56 | **Unified interaction accounting** (`--verify B`, `--mix C,V`, `auc_per_interaction`): a card, a story check and a review tap all cost 1. Mock A/B at 12 interactions: **0+12 story checks 68% final / 62% AUC-per-interaction vs 12+0 cards 63% / 51%**; the old card-only metric scored the winning arm at its *initial* recovery (50%) — it was measuring the best arm as zero | ✅ run (mock; live re-run queued) |
+| 55 | **Unified interaction planner** (`src/core/planner.ts`, `zadum plan`, `Engine.planNext`): cards / story checks / review taps ranked on one consequence-weighted bits scale with explicit tunable conversions; advisory until the harness `--mix` arm justifies driving the loop | ✅ built (6 tests) |
+| 54 | **Ruler refinements**: builder-questions split into answered_in_spec / flagged_assumption / genuine_gap (the ledger made assumptions visible and the raw count punished us), ≥4 repeats, cross-family readers, per-repeat spread, CI mock run | ✅ (see the 1k agent report + EVALS) |
+| 53 | **MCP amendment queue** (`src/mcp/amendments.ts`, `npm run amendments`): agents STAGE Sheet changes, only owner approval applies them; approved/rejected records kept as flywheel signal #1 | ✅ (19 MCP tests) |
+| 52 | **Web parity** for the three newest instruments: story-check panel above the defaults table, "Tighten the spec" gap flow, evidence box; `verification` block in ProjectState | ✅ (21 web tests) |
+| 51 | **The guided flow** (`src/engine/advisor.ts`, `zadum next`, hint after every command): one recommended next action with a reason, derived from state — amendments outrank all, an explicit accept is respected, a stale spec is flagged first | ✅ (8 tests) |
+| 50 | **Fourth-pass defect fixes**, each with the probe that found it as a regression test: verification ESS collapse (5.98→1.01 → now 4.45–10.25), Rule-7-caps-a-sitting (gap questions were silently dropped at full budget), stranded gated children (reopen + conditional defaulting) | ✅ |
+| 49 | **Compiler A/B under the ruler** (same project, only the pipeline changed): spec_entropy 0.057→0.043 (−25%) — ⚠️ **WITHDRAWN by ruler v2** (milestone 54): measured with same-family readers at n=2 and a broken salt coin; under cross-family readers at n=4 the two sit inside overlapping spreads. Needs a same-conditions re-run.  Also: live IR path clean first try (1 medium finding survived, recorded). Run 1 vs baselines: zadum 0.08 / 0 builder Qs / 32-of-32 pairwise vs Spec Kit 0.13, DLAI 0.22; the one-pager alone measures 0.33 (honest negative) | ✅ run — EVALS "spec-quality ruler" |
 | 48 | **Spec-quality ruler** (`npm run quality`, src/quality/): ambiguity adversary (spec_entropy), builder questions, blind pairwise tournament — 15 tests, salt-randomized, offline re-scorable | ✅ built + 2 live runs |
 | 47 | **Verification-mode elicitation** (core/verify.ts + engine getVerification/answerVerification + CLI `verify` + `npm run verify:eval`): joint-p≈0.5 scenario probes (group testing); mock: 8 taps ≈ the perfect depth-8 review (27–33%), rejection reweights flip ~10 more argmaxes free | ✅ built + measured (mock) |
 | 46 | **Gap loop closed** (gap_parse.ts + engine mineSpecGaps + CLI `gaps [--apply N]`): ⟨src: default⟩ confessions → candidate decisions → applied nodes are dealt (user-continued semantics — confirmed fix) → recompile | ✅ end-to-end probe green |
@@ -243,7 +255,44 @@ E. Live A/Bs queued behind the harness: ZADUM_CONTRARIAN on/off (belief diversit
    2026-08-23-1, see catalogs/README.md "Learned from corpus") into more catalogs as they're built.
 9. A/B thesis test: hand-written Sheet + AGENTS.md vs none → coding agent asked for a rule-violating feature.
 
+## Known gaps / caveats (2026-08-25 additions)
+- **Worlds are no longer complete by construction.** A decision whose every option would contradict a world is
+  left unassigned there ("does not arise"), and downstream reads a missing value as no opinion (`distribution`
+  falls back to the α-prior; `conditionSoft`/`conditionHard` treat undefined as agreeing). Deliberate — the
+  alternative was impossible worlds carrying weight in every marginal — but it is a semantic change any new
+  belief code must respect.
+- **`payment_recording` is a catalog gap**, surfaced by the consistency work: with `payments_in_app = none`
+  every one of its options implies that payments happen, so the decision is dropped as not-applicable. It wants
+  a "no payments taken" option or a `requires` gate; that change is harness-gated and NOT yet made.
+- **The labelling pipeline's negatives are very thin** (3 licensed `absent` in 2176 repo cells): conditionals
+  built on the current matrix are closer to co-occurrence than to P(B|A). And ~6% of cells returned no verdict
+  from the model — retry that before quoting any detectability number as final.
+- **The detectability run is n=8 per side, one mixed sample, $28.74.** Directional, not decisive; the
+  per-category cut is the part worth acting on, and `detectable_in` has not yet been narrowed from it.
+- **All historical recovery/AUC numbers are upper bounds** (fixed 2026-08-25, ADR-036 #5): `recovery()` used
+  to skip gold decisions the session never surfaced, so an empty design scored 1.0. The regenerated honest
+  mock baseline is AUC 0.367 (was 0.560). Same-metric orderings (arm A/Bs) likely stand — every arm enjoyed
+  the same inflation — but no pre-2026-08-25 absolute recovery number should be quoted. Live comparisons
+  (vs Spec Kit etc.) should be re-derived at the next live run.
+- **Undo with interleaved foreign commits is best-effort on the belief side**: the sheet-side selective
+  revert is exact (later edits survive), but evidence/verify reweights that happened after the undone answer
+  are not replayed into the restored worlds (deliberately weak signals; conditionSoft replays ARE applied).
+- **A verification probe can now bundle a consistency-forced default whose belief-marginal support is low**
+  — by design (the scenario tests what the ledger actually holds), but it makes low `p_all_correct` bundles
+  slightly more common; the 0.35–0.65 band logic is unchanged.
+- **Compile refuses open/contradictory ledgers** (`--draft` to bypass): any script or flow that compiled
+  straight from `createProject` must now call `finishCards` + `acceptDefaults` first (the demo, harness,
+  thesis and web flows already do). Since s1n (ADR-037) the conflict half of this gate is a pure backstop:
+  answer-time contradictions reopen the contradicted answer instead of entering the ledger at all.
+
 ## Known gaps / caveats (2026-08-24 additions)
+- **Card rounds are opened only by gap-apply** (`round_base`/`round_max_cards`, ADR-035 #2). If a later user
+  edit reopens or adds decisions after a gap round is exhausted, `cards` stops at `max_cards` for that round
+  until another explicit round-opening action. Contained and honest (Rule 7 is a per-sitting cap), but the
+  stop reason reads terse; a future `zadum cards --new-round` (or the advisor offering it) is the clean fix.
+- **The unified planner is advisory** (`zadum plan`, `Engine.planNext`): it ranks cards vs story checks vs
+  review taps but does NOT drive `deal`. Wiring it in needs a live `--mix` win first; the mock A/B favouring
+  verification-only is direction-suggestive on known-miscalibrated beliefs.
 - **recalibration.json is not yet epistemically usable**: the current event corpus is dominated by simulated
   sessions (perfect sim answers) and auto-accepted defaults (scored "correct" by construction), so the fitted
   map says the belief is UNDER-confident (87–100% everywhere) — the opposite of the live truth. Fit it from
@@ -273,8 +322,9 @@ E. Live A/Bs queued behind the harness: ZADUM_CONTRARIAN on/off (belief diversit
   override `ruleBankDir` will now silently exercise the real `catalogs/rule-bank/b2b-invoicing.json` (mined
   2026-08-23) — the mock's `augment_rules: () => ({ additions: [] })` keeps this harmless, but a new mock
   fixture set for another archetype will need the same handler if that archetype's bank exists.
-- `fixed_by_sheet` (planner) → defaulted @0.95 and used as sampling constraints (ADR-005) — revisit if the planner
-  over-fixes.
+- `fixed_by_sheet` (planner) → defaulted @0.95 and used as sampling constraints (ADR-005) — since 2026-08-25
+  the ONLY defaulted grade that constrains sampling (provenance `source:"plan"`, ADR-036 #2); belief-derived
+  defaults are never constraints. Revisit if the planner over-fixes.
 - Card generation uses the fast tier (Haiku) with `temperature 0.7`; speculative precompute is on by default in the
   Engine but off in tests. Precompute writes `session.precomputed` under the per-project lock.
 - `PatchOut` flat-record schema (ADR-011) is verbose; if Anthropic structured outputs accept `.optional()` via the
@@ -283,6 +333,57 @@ E. Live A/Bs queued behind the harness: ZADUM_CONTRARIAN on/off (belief diversit
 - `harness-results/`, `out/`, `.zadum/` are git-ignored. Repo initialized but **nothing committed yet** (by request).
 
 ## Session log
+- 2026-08-25 s1p (spec workspace, refine loop, evidence layer; ADR-038): three agents on disjoint file sets
+  (spec workspace / design system / Opus labelling) plus the engine work serially. Shipped the refine loop
+  (spec feedback → hunks → four-way classification → Sheet patch ops → recompile), the spec workspace UI, the
+  design-system pass, and the labelling pipeline with its live detectability experiment. **Integration found
+  three consistency defects no test covered**: (1) sampled worlds could violate hard edges — 971 real
+  violations across 39 sampling calls, because `fixed` was forced on top of a repaired sample; now
+  hard-consistent by construction (0/12) and the benchmark improved (AUC 0.367 → 0.380, baseline regenerated
+  deliberately); (2) a decision whose every option contradicts the settled design was defaulted to a
+  contradiction the owner could not fix, stranding the session — now dropped as not-applicable; (3) hard edges
+  are directional, so settling the TARGET of an edge left the SOURCE implying something else — a backward
+  consistency sweep now reopens it (found by an agent's live UI testing). Also: `--help` on the detectability
+  CLI started a paid run; arguments are now validated before any model is constructed. One agent (labelling)
+  was killed by the watchdog after its live run completed; its work was finished and verified here.
+  509 root + 29 web tests green, typecheck clean, quality:ci 37/37, mock demo end to end, harness gate OK.
+- 2026-08-25 s1n (contradiction semantics; ADR-037): closed the remaining trust hole after s1m — the engine
+  could still ACCEPT a contradictory pair of user answers (earlier answer kept, collision reported, compile
+  blocked later; the contradicted `resolved` decision wasn't even visible in the review list the error
+  pointed at). Now a later user action whose hard edge contradicts an earlier RESOLVED answer reopens that
+  answer (Rule 3's "unless contradicted…" taken literally), reopens its stale implied/defaulted derivations,
+  and the normal loop finishes: re-askable, or consistency-forced at the next defaulting pass. `delegated`
+  values are re-derived instead of silently skipped. Contradictions self-heal end to end (override →
+  contradiction → finish → accept → clean compile, zero manual steps); the compile conflict gate is now a
+  pure backstop (raw-commit test proves it still bites). 428 root + 21 web tests green; harness gate
+  byte-identical (mock golds answer consistently — no baseline change).
+- 2026-08-25 s1m (external-review fixes; ADR-036): a founder-solicited outside review made six claims; every
+  one was CONFIRMED by a scripted probe before any code changed, then all six were fixed (one parallel agent
+  on the harness metric, core engine serial). (1) Contradictory ledgers: `finishCards` now defaults jointly
+  in consequence order with hard edges propagated as defaults land (`defaultOps`), `ledgerConflicts` is the
+  final certification, and compile refuses a contradictory ledger — probe went 1 conflict → 0. (2) Locked
+  guesses: `fixedAssignments` requires provenance (`source:"plan"`) for defaulted decisions, not confidence —
+  probe went 17 locked belief guesses → 0 (and the freed uncertainty made the same session ask 12 cards, not
+  9). (3) Undo: selective revert replays foreign commits onto the snapshot so interleaved edits survive.
+  (4) Compile: refuses open decisions (`--draft` escape, web 409), re-checks `sheet.version` before
+  artifacts — a moved sheet gets a STALE stamp and no `markDone`. (5) `recovery()` counts missing gold
+  decisions as wrong (empty design = 0); baseline regenerated: honest mock AUC 0.367 (was 0.560; upper-bound
+  note in EVALS). (6) Web auth: agreed, stays fused to the deploy work item. Fallout fixed en route:
+  verification probes now test the LEDGER's chosen value (`ComposeOptions.chosen`) — a consistency-forced
+  default can differ from the belief argmax, and accepting a scenario now confirms what the Sheet actually
+  assumes; `acceptDefaults` re-defaults children a review override reopened, so compiling never starts open.
+  426 root + 21 web tests green (13 new), typecheck clean, quality:ci 37/37, mock demo end-to-end, harness
+  gate byte-identical on the new baseline.
+- 2026-08-24 s1k (fourth-pass self-critique, unattended; ADR-035): eleven verified points implemented — three
+  defects in hours-old machinery (ESS collapse under story-check accepts; Rule 7 dead-ending the gap loop at
+  full budget; gated children stranded on stale parents), two product gaps (no guided flow; web a version
+  behind), plus the amendment queue, evidence-on-correction, the narrative-ritual fold, ruler refinements,
+  interaction accounting, and the unified planner. Four parallel agents (web / MCP / quality / harness) +
+  serial core. Every defect was reproduced by script BEFORE the fix and the probe became its regression test.
+  Self-caught during the build: the walkthrough fold produced six-clause run-on confirm items (capped to 2 for
+  written checks); the advisor's first ordering looped users back into checks they had just accepted (phase
+  rule added); the web agent found `mineSpecGaps` treated a checkbox selection as a prefix (engine now takes
+  ids). 364 → 400+ tests; gate byte-identical throughout.
 - 2026-08-24 s1j (the spec-quality build, unattended per explicit user request; ADR-034): the founder's
   "write much better specs" directive implemented end to end in the approved order — ruler first, then the
   loops that move it. Four parallel agents (quality ruler / verify core / spec IR / gap parser + idiom miner,

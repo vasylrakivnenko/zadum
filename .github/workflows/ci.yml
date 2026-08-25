@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: spec-quality ruler self-check (mock instruments)
+        run: npm run quality:ci
       - name: mock demo end-to-end
         run: npm run zadum -- --mock demo --out /tmp/ci-demo
       - name: selector regression gate (mock harness vs committed baseline)

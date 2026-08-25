@@ -96,7 +96,7 @@ export function simulateVerification(input: {
 
   for (let b = 0; b < budget; b++) {
     const remaining = input.candidateIds.filter((id) => !settled.has(id));
-    const probes: VerifyProbe[] = composeVerifyProbes({ ...belief, worlds }, remaining, { consequenceOverride });
+    const probes: VerifyProbe[] = composeVerifyProbes({ ...belief, worlds }, remaining, { consequenceOverride, chosen: Object.fromEntries(ledger) });
     if (!probes.length) break;
     const probe = probes[0]!;
     const ok = probe.nodes.every((n) => goldDecisions[n.id] === n.option);

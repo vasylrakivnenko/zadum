@@ -22,18 +22,21 @@ export const PAIRWISE_SYSTEM = `You compare two specifications for the same appl
 
 For each dimension answer "first", "second", or "tie", plus ONE sentence of evidence citing something concrete (a decision one spec pins down and the other leaves open, a contradiction, a missing edge case).
 
-Length itself is not a merit: judge ambiguity resolved, not words written. A short spec that decides beats a long spec that hedges. Return JSON only.`;
+Length itself is not a merit: judge ambiguity resolved, not words written. A short spec that decides beats a long spec that hedges. Return JSON only, as FLAT fields: for each dimension, "<dimension>_winner" ("first" | "second" | "tie") and "<dimension>_evidence" (one sentence).`;
 
-const DimVerdict = z.object({
-  winner: z.enum(["first", "second", "tie"]),
-  evidence: z.string(),
-});
-
+// Flat record, not nested objects: on the first live tournament Opus 4.8 returned non-objects for nested
+// dimension fields deterministically (3 of 4 zadum-new/dlai-sdd calls failed all retries), silently shrinking
+// the sample. Flat scalars are the house pattern for strict structured outputs (ADR-011's PatchOut).
+const Winner = z.enum(["first", "second", "tie"]);
 export const PairwiseOutSchema = z.object({
-  completeness_edge_cases: DimVerdict,
-  unambiguity: DimVerdict,
-  implementability: DimVerdict,
-  internal_consistency: DimVerdict,
+  completeness_edge_cases_winner: Winner,
+  completeness_edge_cases_evidence: z.string(),
+  unambiguity_winner: Winner,
+  unambiguity_evidence: z.string(),
+  implementability_winner: Winner,
+  implementability_evidence: z.string(),
+  internal_consistency_winner: Winner,
+  internal_consistency_evidence: z.string(),
 });
 export type PairwiseOut = z.infer<typeof PairwiseOutSchema>;
 
@@ -61,7 +64,7 @@ export async function runPairwise(judge: LLM, specA: string, specB: string, salt
   const mapBack = (w: "first" | "second" | "tie"): "a" | "b" | "tie" =>
     w === "tie" ? "tie" : (w === "first") !== swapped ? "a" : "b";
   const dimensions = Object.fromEntries(
-    PAIRWISE_DIMENSIONS.map((d) => [d, { winner: mapBack(res.data[d].winner), evidence: res.data[d].evidence }]),
+    PAIRWISE_DIMENSIONS.map((d) => [d, { winner: mapBack(res.data[`${d}_winner`]), evidence: res.data[`${d}_evidence`] }]),
   ) as PairwiseResult["dimensions"];
   return { swapped, raw: res.data, dimensions };
 }
@@ -83,6 +86,38 @@ export interface NamedMatchup {
   a: string;
   b: string;
   dimensions: PairwiseResult["dimensions"];
+}
+
+/**
+ * Verbosity-bias diagnostic. The first live tournament's win rate was perfectly monotone in spec length
+ * (58k > 47k > 6k > 4k chars) — the classic length-bias signature pairwise LLM judging is known for, and it
+ * DISAGREED with entropy on the one comparison where length and quality diverged. Until a length-matched
+ * tournament design exists, every standings table must carry this number: the share of decided dimension
+ * verdicts won by the longer spec. Near 1.0 means the tournament is measuring word count, not quality.
+ */
+export interface LengthBias {
+  /** decided (non-tie) dimension verdicts between specs of different length */
+  decided: number;
+  longer_won: number;
+  /** longer_won / decided; NaN-free: 0 when nothing decided */
+  longer_won_rate: number;
+}
+
+export function lengthBias(matchups: NamedMatchup[], charsByName: Record<string, number>): LengthBias {
+  let decided = 0;
+  let longerWon = 0;
+  for (const m of matchups) {
+    const ca = charsByName[m.a];
+    const cb = charsByName[m.b];
+    if (ca === undefined || cb === undefined || ca === cb) continue;
+    for (const d of PAIRWISE_DIMENSIONS) {
+      const w = m.dimensions[d].winner;
+      if (w === "tie") continue;
+      decided += 1;
+      if ((w === "a" && ca > cb) || (w === "b" && cb > ca)) longerWon += 1;
+    }
+  }
+  return { decided, longer_won: longerWon, longer_won_rate: decided ? longerWon / decided : 0 };
 }
 
 export function pairwiseStandings(matchups: NamedMatchup[]): PairwiseStanding[] {

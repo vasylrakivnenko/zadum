@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
+import { StoryCheck } from "@/components/StoryCheck";
+import { TightenSpec } from "@/components/TightenSpec";
 import { Toast, impliedText, type ToastData } from "@/components/Toast";
 import { api, errorMessage, pct } from "@/lib/client";
-import type { CompileResponse, DefaultItem, Phase } from "@/lib/types";
+import type { CompileResponse, DefaultItem, Phase, Sheet } from "@/lib/types";
 
 const STATUS_WORD: Record<string, string> = { defaulted: "assumed", implied: "follows", delegated: "left to us", skipped: "skipped", resolved: "you chose" };
 
@@ -20,6 +22,8 @@ export default function DefaultsPage() {
   const [compiling, setCompiling] = useState(false);
   const [result, setResult] = useState<CompileResponse | null>(null);
   const [artifacts, setArtifacts] = useState<string[]>([]);
+  const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [checkable, setCheckable] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,10 +33,16 @@ export default function DefaultsPage() {
         if (cancelled) return;
         setOneLiner(s.project.one_liner);
         setPhase(s.session.phase);
+        setSheet(s.sheet);
         const needsFinish = s.session.phase === "cards" || s.session.phase === "correcting" || s.session.phase === "drafting";
         const list = needsFinish ? (await api.finishCards(id)).defaults : (await api.defaults(id)).defaults;
         if (cancelled) return;
         setDefaults(list);
+        // finishCards is what turns unasked decisions into assumed ones, so the count only settles after it.
+        const after = needsFinish ? await api.state(id) : s;
+        if (cancelled) return;
+        setSheet(after.sheet);
+        setCheckable(after.verification.checkable);
         if (needsFinish) setPhase("defaults_review");
         if (s.session.phase === "done" || s.session.phase === "compiling") {
           const a = await api.artifacts(id);
@@ -73,7 +83,11 @@ export default function DefaultsPage() {
       setResult(r);
       setArtifacts(r.bundle);
       setPhase(r.phase);
-      setToast(r.critic.verdict === "pass" ? { kind: "ok", text: `Compiled · critic passed (score ${r.critic.score}) in ${(r.latency_ms / 1000).toFixed(1)}s.` } : { kind: "warn", text: `Compiled, but the critic did not pass (score ${r.critic.score}). The bundle is available; review the findings below.` });
+      setToast(
+        r.critic.verdict === "pass"
+          ? { kind: "ok", text: `Compiled · the check against your rules passed (score ${r.critic.score}) in ${(r.latency_ms / 1000).toFixed(1)}s. Open the spec below.` }
+          : { kind: "warn", text: `Compiled, but the check against your rules did not pass (score ${r.critic.score}). The spec is available below; the findings say what to look at.` },
+      );
     } catch (e) {
       setToast({ kind: "error", text: errorMessage(e) });
     } finally {
@@ -89,6 +103,8 @@ export default function DefaultsPage() {
       <TopBar id={id} oneLiner={oneLiner} phase={phase} current={phase === "done" || phase === "compiling" ? "compile" : "defaults"} />
       <main className="page">
         <div className="stack">
+          {/* The gentlest instrument first: a story to recognize beats a table to audit. */}
+          {sheet && checkable > 0 && <StoryCheck id={id} sheet={sheet} onDefaults={setDefaults} />}
           <section className="panel stack">
             <div className="spread">
               <div>
@@ -116,7 +132,7 @@ export default function DefaultsPage() {
             ) : assumed.length === 0 ? (
               <p className="muted">Nothing was assumed — every decision was settled by you.</p>
             ) : (
-              <div style={{ overflowX: "auto" }}>
+              <div className="tablewrap" style={{ overflowX: "auto" }}>
                 <table className="deftable">
                   <thead>
                     <tr>
@@ -132,22 +148,28 @@ export default function DefaultsPage() {
                   <tbody>
                     {assumed.map((d) => (
                       <tr key={d.id} className={d.consequence * (1 - d.confidence) >= 2 ? "risky" : ""}>
-                        <td title={`how much it matters × how unsure we are (${d.consequence.toFixed(1)} × ${(1 - d.confidence).toFixed(2)})`}>
+                        <td data-label="Risk" title={`how much it matters × how unsure we are (${d.consequence.toFixed(1)} × ${(1 - d.confidence).toFixed(2)})`}>
                           <RiskBar risk={d.consequence * (1 - d.confidence)} />
                         </td>
-                        <td>
-                          <div>{d.topic}</div>
+                        <td data-label="Topic">
+                          <div className="topiccell">{d.topic}</div>
                           <div className="why">{d.question}</div>
                         </td>
-                        <td>
-                          <div>{d.chosen_label}</div>
-                          <div className="why">{STATUS_WORD[d.status] ?? d.status}</div>
+                        <td data-label="Assumed">
+                          <div className="assumedcell">{d.chosen_label}</div>
+                          <div className="status">{STATUS_WORD[d.status] ?? d.status}</div>
                         </td>
-                        <td>{pct(d.confidence)}</td>
-                        <td>{"●".repeat(Math.round(d.consequence)).padEnd(5, "○")}</td>
-                        <td className="why">{d.why}</td>
-                        <td>
-                          <select value={d.chosen} disabled={busyNode !== null || compiling} onChange={(e) => void override(d.id, e.target.value)}>
+                        <td data-label="Sure" className="num">
+                          {pct(d.confidence)}
+                        </td>
+                        <td data-label="Matters" className="matters" title={`how much this one matters: ${Math.round(d.consequence)} of 5`}>
+                          {"●".repeat(Math.round(d.consequence)).padEnd(5, "○")}
+                        </td>
+                        <td data-label="Why" className="why">
+                          {d.why}
+                        </td>
+                        <td data-label="Correct">
+                          <select value={d.chosen} disabled={busyNode !== null || compiling} onChange={(e) => void override(d.id, e.target.value)} aria-label={`Change the answer for ${d.topic}`}>
                             {d.options.map((o) => (
                               <option key={o.id} value={o.id}>
                                 {o.label}
@@ -166,15 +188,31 @@ export default function DefaultsPage() {
 
           {(result || artifacts.length > 0) && (
             <section className="panel stack">
-              <h2>Compiled spec</h2>
+              <div className="spread">
+                <div>
+                  <h2>Your spec is ready.</h2>
+                  <p className="muted">Everything above went into a bundle a coding agent can build from. Read it, edit it, and hand it over from the spec workspace.</p>
+                </div>
+                <Link href={`/p/${id}/spec`} className="btn primary">
+                  Open the spec →
+                </Link>
+              </div>
               {result && (
                 <>
                   <div className="row">
                     <span className={`badge ${result.critic.verdict}`}>critic: {result.critic.verdict}</span>
                     <span className="badge">score {result.critic.score}</span>
-                    <span className="badge">{result.critic_rounds} round{result.critic_rounds === 1 ? "" : "s"}</span>
+                    <span className="badge">
+                      {result.critic_rounds} round{result.critic_rounds === 1 ? "" : "s"}
+                    </span>
                     {result.roundtrip && <span className="badge">round-trip recall {pct(result.roundtrip.recall.overall)}</span>}
                     <span className="badge">{(result.latency_ms / 1000).toFixed(1)}s</span>
+                    {/* the engine reports it; hiding it would be dishonest */}
+                    {result.stale && (
+                      <span className="badge warn" title="Your Design Sheet changed while the spec was compiling, so this bundle is one version behind.">
+                        one version behind — compile again
+                      </span>
+                    )}
                   </div>
                   {result.roundtrip && (
                     <p className="small muted">
@@ -183,7 +221,7 @@ export default function DefaultsPage() {
                     </p>
                   )}
                   {(result.critic.violations.length > 0 || result.critic.omissions.length > 0) && (
-                    <ul className="small">
+                    <ul className="findings">
                       {result.critic.violations.map((v, i) => (
                         <li key={`v${i}`}>
                           violation of {v.rule_id} ({v.severity}) at {v.where}: {v.why}
@@ -197,50 +235,55 @@ export default function DefaultsPage() {
                     </ul>
                   )}
                   {result.story && (
-                    <div>
+                    <div className="stack">
                       <div className="spread">
-                        <h3 style={{ fontSize: 15 }}>{result.story.title}</h3>
-                        <Link href={`/p/${id}/story`} className="btn primary">
+                        <div>
+                          <h3>{result.story.title}</h3>
+                          <p className="small muted">A day in the life, from the spec — does this look like your business? The walkthrough lets you confirm each moment or fix it in one line.</p>
+                        </div>
+                        <Link href={`/p/${id}/story`} className="btn">
                           Walk through the story →
                         </Link>
                       </div>
-                      <p className="small muted">A day in the life, from the spec — does this look like your business? The walkthrough lets you confirm each moment or fix it in one line.</p>
-                      <ol>
+                      <ol className="story-steps">
                         {result.story.steps.map((s, i) => (
                           <li key={i}>{s}</li>
                         ))}
                       </ol>
                       {result.story.checks.length > 0 && (
-                        <>
-                          <div className="small muted">Please confirm:</div>
-                          <ul>
+                        <div>
+                          <div className="eyebrow" style={{ marginBottom: "var(--s-2)" }}>
+                            Please confirm
+                          </div>
+                          <ul className="findings">
                             {result.story.checks.map((c, i) => (
                               <li key={i}>{c}</li>
                             ))}
                           </ul>
-                        </>
+                        </div>
                       )}
                     </div>
                   )}
                 </>
               )}
               <div>
-                <div className="small muted" style={{ marginBottom: 6 }}>
-                  Bundle
+                <div className="eyebrow" style={{ marginBottom: "var(--s-2)" }}>
+                  Raw files
                 </div>
-                <div className="row">
+                <div className="filerow">
                   {artifacts.map((name) => (
                     <Link key={name} href={`/p/${id}/artifacts/${encodeURIComponent(name)}`} className="btn">
                       {name}
                     </Link>
                   ))}
                   {artifacts.includes("story.md") && !result && (
-                    <Link href={`/p/${id}/story`} className="btn primary">
+                    <Link href={`/p/${id}/story`} className="btn">
                       Walk through the story →
                     </Link>
                   )}
                 </div>
               </div>
+              {artifacts.includes("spec.md") && <TightenSpec id={id} />}
             </section>
           )}
         </div>

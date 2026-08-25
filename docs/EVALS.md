@@ -21,8 +21,21 @@ data but have not yet been run against a LIVE model — the sweep and baseline r
 invoicing-only; re-run both with `--gold src/harness/gold` (all three) once ready to spend the calls.
 
 ## Metrics (`src/harness/run.ts`)
-- `recovery_curve[k]`: after k cards, Σ c_n·[value_n == gold_n] / Σ c_n over gold decisions present in the session
-  (value = chosen if settled else argmax P). North star = mean curve / AUC over 0..12 cards; final recovery.
+- `recovery_curve[k]`: after k cards, Σ c_n·[value_n == gold_n] / Σ c_n over ALL gold decisions
+  (value = chosen if settled else argmax P; a gold decision the session never surfaced scores as wrong at the
+  node's consequence, fallback 3 when no node exists). North star = mean curve / AUC over 0..12 cards; final
+  recovery.
+
+  **Honesty note (2026-08-25):** `recovery()` historically skipped gold decisions missing from the design (or
+  whose catalog node couldn't be found), so they never entered the denominator — an empty design scored 1.0.
+  Every recovery/AUC number recorded before this date is therefore an upper bound. Same-metric comparisons
+  (arm orderings, A/B directions) likely stand, since every arm enjoyed the same inflation; absolute values
+  will be re-derived when the baseline is regenerated, after the pending engine fixes land.
+  *Regenerated same day (ADR-036 landed: honest recovery + joint consistency-aware defaulting + provenance-
+  locked constraints): the mock harness baseline is now **AUC 0.367** (was 0.560 under the inflated metric).
+  The drop is the honesty correction plus a deliberate selector-visible change — freeing the 17
+  pseudo-constraints changes the belief, and the asked sequences moved on 2 of the 3 mock golds
+  (booking-salon identical). Live numbers (vs Spec Kit / DLAI) and live θ still await re-derivation.*
 - `cards`, `stop_reason`, `settledness`.
 - `draft_recall` for actors/nouns/rules vs the gold sheet (name-normalized; Jaccard for rules).
 - `calibration`: (confidence, correct) pairs for defaulted decisions → reliability bins.
@@ -266,6 +279,62 @@ not yet a verdict. Two findings look real rather than noise, and one column is m
 - Compile: critic 10/10; round-trip 92% after the action-matching fix; 69s; ~112k input tokens.
 - Selection: 4/12 cards were generic crud-saas nodes even at 0.5 weight (the drafter tagged crud-saas as a
   secondary archetype) — whether they are worth asking is a harness question (needs a gold with those nodes).
+
+## Detectability: repos vs spec documents (2026-08-25, claude-opus-4-8 on Azure AI Foundry, 8 paired documents × 2 runs)
+
+The one-day test recorded in REVIEW-2026-08-23 §3, run at last on the pairs the corpus already had (of 106
+manifest documents, 67 carry a GitHub `source_url`). 136-feature lexicon, 127 features mapped to real catalog
+nodes. Two runs per document, never sharing a cache, so agreement measures the model's own stability.
+`npm run detectability` (add `--mock` for the free path). **Cost: $28.74** ($17.63 repos, $11.11 specs).
+
+**The recorded prediction — "repos fill ~20-30% of behavioural columns with low agreement, specs 2-3x that with
+high agreement" — is NOT supported as stated.**
+
+| | repo | spec_doc |
+|---|---|---|
+| present / absent / unobserved | 457 / 3 / 1716 | 305 / 29 / 1842 |
+| fill rate (all cells) | **21.1%** | **15.3%** |
+| fill rate (of cells actually asked) | 21.6% | 18.1% |
+| run-to-run agreement, informative cells | 0.723 | 0.749 |
+| absent-licensing rate | 100% (3 raw) | 96.7% (30 raw) |
+
+Repos landed inside the predicted 20-30% band; specs did **not** reach 2× them — specs filled *less*. Agreement
+was near-identical and high for both (0.93 raw, ~0.73-0.75 informative), so neither source is unstable.
+
+**The aggregate hides the real answer, which is per category** (`by_category` in the report — present/asked):
+
+| category | repo | spec_doc | better |
+|---|---|---|---|
+| integrations_sync | **84.4%** | 38.1% | repo |
+| identity_access | **42.8%** | 25.0% | repo |
+| notifications_messaging | **39.1%** | 31.3% | repo |
+| reporting_analytics | **37.5%** | 25.0% | repo |
+| tenancy_sharing | **33.3%** | 26.5% | repo |
+| data_lifecycle | **28.5%** | 20.5% | repo |
+| localization_platform | **28.1%** | 18.5% | repo |
+| compliance_governance | **24.0%** | 14.3% | repo |
+| payments | **21.1%** | 16.5% | repo |
+| **records_workflow** | 8.8% | **32.0%** | **spec (3.6×)** |
+| booking_scheduling | 10.9% | **15.2%** | spec |
+| commerce_catalog / invoicing / marketplace | 8.0 / 9.1 / 8.9% | 10.8 / 10.0 / 8.5% | tie |
+
+So the review's *instinct* was right in the one place it named. `records_workflow` — who may do what to a
+record, and when, which is precisely "behaviour" — is the category where spec documents beat repos **3.6×**,
+and it is the category repos are worst at (8.8%). Everywhere the evidence is structural (an integration, an
+auth flow, a notification channel) the code is simply better evidence than prose about the code, by margins up
+to 2.2×. The lexicon is dominated by those structural categories, which is why the headline reversed.
+
+**What this changes.** Not "repos instead of specs" and not "specs instead of repos" — *both, each labelling
+only what it can witness*. The actionable output is per-feature `detectable_in`, narrowed by this measurement,
+so a structural feature is read from the repo and a workflow/policy feature from the document. The repo scrape
+has earned its place for structural columns; it has not earned the behavioural ones.
+
+**Two cautions on the record.** (1) Licensed negatives are very rare (3 of 2176 repo cells, 29 of 2176 spec
+cells): the witness-loci discipline is conservative by design, so the matrix will be overwhelmingly
+present/unobserved, and conditionals built on it are closer to co-occurrence than to P(B|A) until the negative
+side is strengthened. (2) ~6% of cells came back with no verdict from the model (`no_answer_from_model` 128
+repo / 129 spec) — a pipeline reliability gap, not a property of the corpus, and it should be retried before
+any number here is quoted as final. n=8 per side, one archetype-mixed sample; directional, not decisive.
 
 ## Calibrating θ
 `--sweep` → "STOPPING RULE CALIBRATION". Pick the θ inside the target card band with the highest recovery, put it
@@ -779,3 +848,80 @@ compile → `zadum gaps --apply 2` → the two proposed xg_ decisions were DEALT
 recompile. Confirmed critique from the self-review, fixed before shipping: prior-only gap nodes score
 value1 ≈ c·H(prior) ≈ 5–8, far under θ=24, so without marking the reopened loop user-continued the engine
 converged instantly and never asked the questions the user had just requested.
+
+### Unified interaction accounting: the metric was scoring the best arm as zero (2026-08-24, mock)
+
+The product has three elicitation instruments, but the headline metric counted only CARDS. `runGold` now
+prices a card, a story check, and a review tap identically at one interaction (`--verify B`, `--mix C,V`),
+and reports `auc_per_interaction` beside the card-only AUC. Three arms at 12 total interactions, 3 mock golds:
+
+| arm | final recovery | AUC/interaction | AUC (card-only) | recovery per interaction | wrong defaults left |
+|---|---|---|---|---|---|
+| 12 cards + 0 checks | 63% | 51% | 51% | 1.07 pp | 13.0 |
+| 6 + 6 | 59% | 52% | 50% | 0.75 pp | 14.0 |
+| **0 cards + 12 checks** | **68%** | **62%** | 50% | **1.49 pp** | **11.7** |
+
+**The metric change is the finding.** The 0+12 arm's card-only AUC is 50% — exactly its initial recovery,
+because it answers zero cards: the old headline number scored the best-performing arm as if it had done
+nothing. Under honest accounting it leads by +11pp.
+
+**And verification-only beat cards-only on mock** (+5pp final recovery, fewest wrong defaults, winning 2 of 3
+golds), while the 6+6 middle arm was the WORST of the three — the mix curve is non-monotone, not a smooth
+trade-off. Caveats, stated because they matter: mock beliefs are known-miscalibrated and verification's
+reweights move many argmaxes at once on a belief that was mis-shaped to begin with; the sim reviewer is a
+mechanism ceiling (catch-prob 1); unjudgeable bundled nodes bias the sim toward accepting, which if anything
+understates verification; n=3 golds, one seed. **Direction-suggestive, not a shipping decision — the live
+re-run is what would justify changing the default flow.** The unified planner (`src/core/planner.ts`,
+`zadum plan`) can rank the three instruments on one scale, and stays advisory until that live evidence exists.
+
+### Ruler v2: the instrument had a bug, and the metric that punished us is fixed (2026-08-24)
+
+Refinements after the review (ADR-035 #10), then a live re-run at n=4 with **cross-family readers**
+(gpt-4.1 + Sonnet 4.6), Opus 4.8 judging, seeded: 104 calls, 528s.
+
+**A defect in the RULER, found while adding `--seed`:** `saltCoin` reduced `h*31+c` mod 2 — exactly the parity
+of the character sum — so presentation order tracked trivial salt features and a seed prefix could only flip a
+whole run in lockstep. Every earlier quality run's "randomized" order was therefore not random. Replaced with
+FNV-1a + a xorshift finalizer, with an avalanche test. The aligner's `maxTokens` also went 4000 → 6000: a
+truncated aligner silently drops pairs off the end of its list and biases the metric.
+
+**Builder-questions is now two-pass**, and the predicted reversal reproduced live. Each question is labelled
+against the spec: `flagged_assumption` (the spec marks this as an assumption — asking is CORRECT) ›
+`answered_in_spec` (a reading failure) › `genuine_gap` (the spec truly does not say). Headline = genuine gaps.
+
+| spec | raw Q | **genuine gaps** | flagged | answered |
+|---|---|---|---|---|
+| zadum-new | 20.5 | **10.5** | **6.0** | 4.0 |
+| zadum-old | 22.0 | 11.0 | 5.5 | 5.5 |
+| dlai-sdd | 16.0 | 12.0 | 0.0 | 4.0 |
+| spec-kit | 15.8 | 12.3 | 1.0 | 2.5 |
+
+On the **raw** count our specs rank last; on genuine gaps they rank first. The cleanest signal in the run is
+`flagged`: ~6 of every 20 questions asked of our specs are questions the spec *invited* (the decision ledger
+doing its job), versus ~0–1 for the baselines. That column's separation does not overlap.
+
+**Entropy at n=4, cross-family**: zadum-old 0.08 [0.00–0.14], zadum-new 0.10 [0.00–0.23], spec-kit 0.25
+[0.20–0.33], dlai-sdd 0.49 [0.39–0.54]. The us-vs-baselines gap is large and holds; **the compiler A/B above
+(0.057 → 0.043) does NOT survive these conditions** — cross-family readers raised entropy everywhere (the
+shared-blind-spot inflation the refinement was built to expose), and zadum-new/zadum-old now sit inside
+overlapping spreads with the ordering flipped. **Treat the −25% claim as withdrawn pending a same-conditions
+re-measurement**; what stands is that both our specs are far less ambiguous than both baselines.
+
+**Honest limits of n=4**: the dominant variance is the READER, not the spec (Sonnet asks ~2× more of
+everything; the within-reader ordering holds for gpt-4.1 but inverts for Sonnet on zadum-old). Every
+genuine-gap spread overlaps every other. Three of four `zadum-new vs dlai-sdd` pairwise calls failed schema
+validation deterministically (nested objects in strict mode), so that arm's 78% is over 9 matchups and is
+probably an underestimate — the recommended fix (flatten to scalar fields) is queued with a re-run, not
+retrofitted onto a measured table. `answered_in_spec` running 4.0–5.5 for our specs is its own finding: a
+50k-char spec has a findability problem worth a follow-up.
+
+### Pairwise tournament: schema fixed, verdict parked (2026-08-24)
+
+The deterministic judge failures are fixed at the root — `PairwiseOutSchema` is now flat scalar fields
+(`<dimension>_winner` / `<dimension>_evidence`), the ADR-011 pattern, instead of the nested objects Opus 4.8
+returned malformed on every retry. But the tournament is NOT being re-run, because the last run's numbers show
+why it shouldn't be quoted at all yet: **win rate was perfectly monotone in spec length** (58k → 78%, 47k →
+60%, 6k → 44%, 4k → 17%) and disagreed with entropy on the one comparison where length and quality diverged.
+The runner now computes a `length_bias` diagnostic (share of decided verdicts won by the longer spec) on every
+run, warns loudly at ≥80%, and stores it in the results JSON. Until a length-matched tournament design exists,
+entropy and genuine-gaps are the quotable instruments; pw-win is a tiebreaker with a posted health warning.
