@@ -93,6 +93,49 @@ describe("decision catalogs", () => {
     }
   });
 
+  it("same_as targets resolve, and every declared equivalence actually collapses", async () => {
+    const { catalogs, archetypes } = await loadCatalogs();
+    const core = catalogs.find((c) => c.archetype === "core")!;
+    const declared: { from: string; same: NonNullable<Catalog["nodes"][number]["same_as"]> }[] = [];
+    for (const c of catalogs) {
+      // a same_as target must be visible wherever the declaring node is (core, or the same catalog) —
+      // otherwise the equivalence would be silently inert for some archetype combinations
+      const visible = new Map<string, Set<string>>();
+      for (const n of [...core.nodes, ...c.nodes]) visible.set(n.id, new Set(n.options.map((o) => o.id)));
+      for (const n of c.nodes) {
+        if (!n.same_as) continue;
+        declared.push({ from: n.id, same: n.same_as });
+        const target = visible.get(n.same_as.node);
+        expect(target, `${c.id}/${n.id}.same_as targets ${n.same_as.node}, which is neither core nor in ${c.id}`).toBeDefined();
+        expect(n.same_as.node, `${n.id}.same_as points at itself`).not.toBe(n.id);
+        const loser = n.same_as.prefer === "this" ? n.same_as.node : n.id;
+        const winner = n.same_as.prefer === "this" ? n.id : n.same_as.node;
+        for (const [from, to] of Object.entries(n.same_as.map)) {
+          expect(visible.get(loser)!.has(from), `${n.id}.same_as maps unknown ${loser}.${from}`).toBe(true);
+          expect(visible.get(winner)!.has(to), `${n.id}.same_as maps to unknown ${winner}.${to}`).toBe(true);
+        }
+      }
+    }
+    expect(declared.length, "the catalogs should declare at least the known duplicate").toBeGreaterThan(0);
+    // and the merge really removes the loser (Rule 3: a question the owner already answered is never re-asked)
+    const merged = mergeCatalogs(catalogs, [...archetypes]);
+    expect(merged.errors).toEqual([]);
+    expect(merged.same_as.map((m) => `${m.loser}->${m.winner}`)).toContain("record_recurring->recurring_scheduled");
+    expect(merged.nodes.map((n) => n.id)).not.toContain("record_recurring");
+    const ids = new Set(merged.nodes.map((n) => n.id));
+    for (const n of merged.nodes) for (const edges of Object.values(n.implies)) for (const e of edges) expect(ids.has(e.node), `${n.id} implies dropped node ${e.node}`).toBe(true);
+  });
+
+  it("record_workflow tags only mark generic per-record workflow nodes", async () => {
+    const { catalogs } = await loadCatalogs();
+    const tagged = catalogs.flatMap((c) => c.nodes.filter((n) => n.tags.includes("record_workflow")).map((n) => `${c.archetype}/${n.id}`));
+    // routeByWorkflowSignal only ever drops these, and only from a SECONDARY archetype — so the tag must
+    // stay on questions that genuinely presuppose a person and a deadline on each record.
+    expect(tagged.sort()).toEqual(
+      ["crud-saas/record_activity_feed", "crud-saas/record_assignment", "crud-saas/record_bulk_edit", "crud-saas/record_templates", "crud-saas/record_views", "crud-saas/record_watchers"].sort(),
+    );
+  });
+
   it("archetype catalogs do not redefine core nodes and have the expected size", async () => {
     const { catalogs } = await loadCatalogs();
     const core = new Set(catalogs.find((c) => c.archetype === "core")!.nodes.map((n) => n.id));

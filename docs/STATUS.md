@@ -1,12 +1,14 @@
 # STATUS — resume here
 
-_Last updated: 2026-08-25 (session 1p — the spec workspace + refine loop + evidence-layer labelling, ADR-038,
-three parallel agents. See milestones 57–59 and the 1n/1p session-log entries). Next session: start at
-"Next steps" below._
+_Last updated: 2026-08-25 (session 1s — the evidence layer, phases 0-9 of the evidence-matrix brief: taxonomy
+overlay, corpus ingestion, label calibration, the decision matrix, element statistics, co-occurrence, the
+design graph, hard exclusions, and the optional runtime reweighting. Six parallel agents. See milestone 62 and
+ADR-040. Before that: 1r the compile gates, 1q anonymous auth + project ownership, 1p the spec workspace.)
+Next session: start at "Next steps" below._
 
 ## TL;DR
-Core workflow + architecture of Design Sheet is built and green: `npm test` → **509 tests / 39 files** (+29 web
-smoke tests in `apps/web`, `npm test --prefix apps/web`) pass (incl. a
+Core workflow + architecture of Design Sheet is built and green: `npm test` → **1027 tests / 54 files** (+42 web
+smoke/security tests in `apps/web`, `npm test --prefix apps/web`) pass (incl. a
 Postgres round-trip when `DATABASE_URL` is set), `npm run typecheck` clean, `npm run zadum -- --mock demo` runs the
 whole flow without credentials, and **the live LLM path works end to end on Azure OpenAI gpt-4.1** (draft 47s,
 edit, cards, compile 69s with critic 10/10). See "Live findings" below — they drove three fixes and show θ must be
@@ -22,6 +24,9 @@ and `risk` are switchable (`--scoring`), two-ply lookahead is available (`--look
 
 | # | Milestone | State |
 |---|-----------|-------|
+| 62 | **The evidence layer: two matrices, and a graph that can never become a law** (ADR-040). The catalogs hold 135 decisions and their hard edges, and `worlds.ts` reasons over JOINT assignments — but every prior we had was a marginal, so the sampler's only source of joint structure was the LLM guessing afresh each session. Nine new modules close that: (a) `mining/taxonomy.ts` + `catalogs/taxonomy/overlay.json` — a layer overlay over **all 135 nodes, 0 unclassified**, where an unknown node id fails validation and an unclassified one is merely reported; (b) `mining/corpus.ts` — pinned shallow clones, stable artifact ids, digest hashes, archetype-**stratified** sampling with fork/mirror drops that carry reasons, `--yes-spend` gate preserved; (c) `mining/label_eval.ts` + `catalogs/gold/label-gold.json` — precision against a hand-adjudicated gold set, run-to-run consensus, breakdowns by category/source/archetype, every rate `null` (never 0 or 1) on a zero denominator; (d) `mining/matrix.ts` — **evidence rows** (what an artifact contains) kept separate from **decision rows** (what it decided), with `observable` as the eligibility flag every later denominator is built from; (e) `mining/element_stats.ts` — prevalence, binary entropy, the pinned IDF, plus `rarityWeight` shipped as an **exact identity at 0**; (f) `mining/cooccurrence.ts` — stratified 2×2 tables where `n11+n10+n01+n00 === eligible_n` is checked on every pair; (g) `learning/design_graph.ts` — Wilson intervals, Jeffreys smoothing, and `classifyPair()` whose return type admits only `soft_positive`/`soft_negative`/`unknown`, so **there is no code path from a statistic to a hard rule**; (h) catalog `excludes` — symmetric hard mutual exclusion with unit propagation, so a promoted rule has somewhere to live; (i) `core/evidence_graph.ts` + `EngineOptions.designGraph` — soft reweighting applied **once** to newly sampled worlds, stamped so it cannot double-count, clamped so the graph's widest odds (16) stay below what a user answer moves (20), **off by default**. Mock end-to-end (`npm run mine:matrix -- --mock`) runs corpus → labels → matrix → statistics → graph → validation with no credentials | ✅ (tests 858 → 1027; harness AUC **unchanged** at 0.350995, quality 37/37) |
+| 61 | **The compile gates** (ADR-039) — an outside review of live project `f9280b97` found six contradictions between Rules the spec calls inviolable; the compiler had shipped it with `critic: pass, score 10, zero violations`, and its one mechanical signal (round-trip recall) was reporting `rules 0.2` when the true value was 1.0. All sixteen review findings confirmed against the artifacts. Fixes: (a) `blockingReasons()` decides deliverability from the critic **and** deterministic findings **and** round-trip recall **and** the ledger **and** semantic staleness — `markDone` is gated on it, and high findings drive one *targeted* repair of only the sections they point at; (b) `core/spec_checks.ts` — 8 checks incl. `unimplemented_decision` (high): a decision the owner personally answered whose chosen option appears nowhere in the body, which is how three deliberate answers (52s on one card) reached the spec as nothing; (c) `core/spec_ir.ts` — 3 lifecycle codes, 0 → 6 real findings on the artifact; (d) `core/ledger_checks.ts` — restrictive access rules vs settled decisions that grant more, advisory, never rewrites an answer; (e) `core/textmatch.ts` + `core/roundtrip.ts` — paraphrase-tolerant matching (threshold 0.50 from a 13-positive/266-negative sweep): **recall 0.56 → 1.00** on the same run, 0 false missing, and 32 genuine scope-creep items visible for the first time; (f) `sheetFingerprint()` — staleness by content, so a story check raising three confidences no longer strands a project short of `done`; (g) catalog `same_as` + `topicIncoherence` + bespoke dedup (drops mined `x2`, which was core `concurrency` re-asked) + noun-gated routing of `record_workflow` nodes; (h) `relativeStopFloor` — built, evidenced, **shipped OFF** for the harness to decide, with `floor_curves` in every sweep | ✅ (tests 514 → 672; baseline regenerated deliberately, see below) |
+| 60 | **Hosted projects are owned, and learning knows whose data it is fitting.** (a) *Anonymous auth* (`apps/web/lib/security.ts`): a signed HttpOnly browser credential whose hash is the owner id — no account provider, and a future account system maps that id rather than changing ownership semantics. `ZADUM_AUTH_SECRET` is required in production. Every `/api/projects` handler goes through one wrapper — same-origin check *first* (a rejected cross-origin probe never mints an identity or a cookie), then session, rate limit, owner check; `lib/ownership.ts#ownedProject` is the single owner rule, used by the server-rendered pages too. A project owned by another browser is a 404, never a 403. Rate-limit keys are only as good as what identifies the caller: forwarding headers are ignored unless `ZADUM_TRUST_PROXY=1`, a freshly minted identity never gets its own bucket, and callers nothing can tell apart share one process-wide backstop (`ZADUM_RATE_SHARED_FACTOR`). (b) *Postgres migration 0002* adds `owner_id` + `origin` (existing rows backfilled to `'legacy'`) and `projects_owner_idx`; `listProjects` is now most-recently-updated-first on every store, matching the index. (c) *Learning provenance gate* (`src/learning/projects.ts`): `npm run learn` fits on `user` projects only — `--include-origin` **adds** sources, never replaces, and a project with no recorded origin counts as `legacy` so the file store and Postgres answer the same question | ✅ (web suite 29 → 42 tests, root 509 → 514; project ids are now full UUIDs) |
 | 59 | **Evidence layer: lexicon + Opus labelling + the detectability experiment** (`src/mining/{lexicon,condense,label,detectability}.ts`, `catalogs/lexicon/lexicon.json`): 136 features / 127 mapped to real catalog nodes / 14 categories; present-absent-**unobserved** cells with witness-loci rules so a negative is only licensed where the labeller could actually have looked; repo condenser; run-to-run agreement. Live on **claude-opus-4-8 via Azure AI Foundry**, 8 paired repos + 8 spec docs × 2 runs, $28.74. **REVIEW §3's prediction is not supported as stated** (repos fill 21.1% vs specs 15.3%) — but per category the instinct holds exactly where it was aimed: `records_workflow` favours specs **3.6×**, while structural categories favour repos by up to 2.2× (`integrations_sync` 84.4% vs 38.1%). Verdict: use both, each labelling only what it can witness | ✅ run live — EVALS "Detectability" |
 | 58 | **The spec workspace + refine loop** (`/p/<id>/spec`, `zadum refine`, `Engine.refineFromSpecFeedback`): the compiled spec rendered in the browser, select-to-comment, edit mode, refine, download `.md`. Corrections are diffed in code (`core/textdiff.ts`) and land on the **Sheet**, so they survive the next compile; feedback is classified four ways and a choice it opens becomes an open decision, never a fresh guess. Live-verified against gpt-4.1 (caught a prompt gap that would have silently dropped a correction) | ✅ (ADR-038) |
 | 57b | **UI/UX pass**: design system rebuilt (globals.css 204 → 1704 lines — type/spacing scales, focus rings, reduced-motion, a defaults table that reflows to cards on a phone, 1–9 keyboard answers on the card screen), safe in-repo markdown renderer, TopBar flow Design Sheet → Decision cards → Assumptions → Spec | ✅ (2 parallel agents) |
@@ -174,6 +179,34 @@ so the one selector-touching fix guards a degenerate case without shifting norma
 recalibration.** The contradiction reporting and the honest toast change what the user sees mid-session, so both
 are worth watching in the first live run.
 
+## Next steps (evidence layer, 2026-08-25 s1s — the honest gaps)
+
+The layer is built and every gate is green, but **nothing in it has been measured on live data yet**. In
+priority order:
+
+E1. **The gold set is 4 artifacts / 42 cells against a target of 30 artifacts**, and all four are `spec_doc`,
+    so `label_eval`'s by-source-type precision breakdown has exactly one population. Adjudicating ~26 more —
+    including repos — is the cheapest thing on this list and it gates trusting any labelling number.
+E2. **33 of 135 catalog nodes have no lexicon feature**, so the matrix is structurally blind to them
+    (`booking_time_zones`, `taxes`, `payment_recording`, `deposits`, …). Every report names them, which is the
+    honest behaviour, but a graph that cannot see a third of the catalog cannot inform a third of the cards.
+    Extend `catalogs/lexicon/lexicon.json`, then re-validate.
+E3. **Run the pipeline live** (`npm run mine:corpus` → `label` → `mine:matrix` → `mine:graph`). Everything to
+    date is a mechanism exercised by the mock labeller; not one probability in the system came from real data.
+    Budget with `--dry-run` first; `--yes-spend` is required and deliberately so.
+E4. **Then, and only then, the graph-on/graph-off harness arm.** `EngineOptions.designGraph` is off by
+    default and stays off until a harness arm shows improvement or no material harm on held-out data — the bar
+    the rule bank cleared (ADR-027) and `contrarianSampling` still has not. The clamp arithmetic
+    (`graphNeverOutvotesAnswer`) is proven in tests; what is unproven is whether the graph *helps*.
+E5. **The mock run surfaces 6 conflicts on 4 invoicing documents** (`invoice_delivery: hosted_link vs
+    pdf_email`, `tenancy: multi_org vs single_org`, …). Each is a real question about the lexicon: two
+    features mapping to options that are not actually exclusive, or a document that genuinely does both.
+    Triage them — conflicts are preserved precisely so someone can.
+E6. **`rarityWeight` and MCTS are both unstarted experiments, correctly.** `adjustValueByRarity` ships as an
+    exact identity at weight 0; Phase 8's MCTS was deliberately not built, because the spec says to build it
+    only "if measurements justify it" and the existing DP bound already reports greedy = optimal at H=12
+    (milestone 40). Revisit if the world count grows well beyond ~12.
+
 ## Next steps (spec-quality follow-ups, 2026-08-24 s1j)
 
 S1. **Instrument refinements before quoting ruler numbers externally**: builder-questions must exclude
@@ -191,10 +224,12 @@ S5. **Live θ recalibration** after the catalog change (children shifted mock se
 
 ## Next steps (in order, refreshed 2026-08-24 after the overnight build)
 
-A. **First real users** — now genuinely unblocked: hosted deploy + minimal auth for `apps/web` (the only
-   missing pieces; flow, story step, soft stop, latency plumbing all exist). The single most important number
-   real sessions produce: wrong-default catch-rate in the review (`default_overridden.review_position` is
-   already logged; the simulated reviewer predicts the ordering has a below-the-fold hole).
+A. **First real users** — auth and ownership landed (milestone 60), so what remains is the hosted deploy
+   itself: pick the host, set a stable `ZADUM_AUTH_SECRET`, and set `ZADUM_TRUST_PROXY=1` behind whatever
+   proxy it terminates TLS on, or the per-IP creation limit degrades to one shared process-wide backstop.
+   The single most important number real sessions produce: wrong-default catch-rate in the review
+   (`default_overridden.review_position` is already logged; the simulated reviewer predicts the ordering has
+   a below-the-fold hole).
 B. **RB-mixture belief** (survey top-5 #1) — its own session: the DP bound proved policy search is closed
    (greedy=optimal at H=12), so ALL remaining selector headroom is belief representation/calibration; θ
    recalibration afterwards. The recalibration estimator needs gold-truth-scored harness data first (gap above).
@@ -256,6 +291,38 @@ E. Live A/Bs queued behind the harness: ZADUM_CONTRARIAN on/off (belief diversit
 9. A/B thesis test: hand-written Sheet + AGENTS.md vs none → coding agent asked for a rule-violating feature.
 
 ## Known gaps / caveats (2026-08-25 additions)
+- **θ is still uncalibrated for live sessions, and it is the root cause under most of the review.** The card
+  loop stopped at 5 cards with the best remaining question worth 22.624 against θ=24 — and that question became
+  the worst defect in the spec. On 4 of the 5 cards the owner answered, the belief's argmax was wrong; 41 of 48
+  decisions were then defaulted from that same belief. `relativeStopFloor` is the mechanism for it and ships
+  OFF; recalibrating θ itself needs a live `--sweep` over more than the current three archetypes.
+- **`scripts/mock-harness-baseline.json` was regenerated** (AUC 0.380265 → 0.350995) because catalog dedup
+  removed one node. Not a selector regression: the mock sampler seeds its PRNG from the rendered prompt, so one
+  fewer node re-rolls every sampled world — a control that deleted an arbitrary unrelated node moved AUC
+  further (0.334138).
+- **Four compiler defects are measured and reproducible** (ADR-039, four live compiles of one project):
+  `approval_workflow = "One approver"` is never implemented in any run; derived-field formulas are unstable
+  (emitted in run 1, absent in 2-4, while run 3 still printed the "Sign convention" heading); the spec
+  resolves an awkward settled decision by declaring it a non-goal instead of building it; and trace markers
+  corrupt into citing the chosen OPTION id instead of the decision id (bogus markers 1 -> 1 -> 12 -> 24 while
+  the real ones stayed at 46). The last one is now caught by `unknown_trace_id`; the other three are open and
+  are prompt/compiler work, not input problems.
+- **Iterating compiles does not clear the gate.** The rewritten critic surfaces roughly one rule-pair cluster
+  per pass, so each compile buys one fix and exposes the next. Four runs went 7 -> 5 -> 2 -> 2 mechanical
+  highs and 8 -> 7 -> 4 -> 4 critic violations without reaching deliverable.
+- **`record_assignment` is a known miss for `unimplemented_decision`.** The owner asked for due dates and
+  reminders; the spec mentions them in prose without modelling a Due Date field. Word presence cannot see the
+  difference between a mention and a model.
+- **The critic still enumerates rule pairs from prose.** `CRITIC_SYSTEM` now demands an exhaustive pairwise
+  pass, but with ~10 rules plus ~10 derived invariants that is 190 pairs and coverage depends on the model's
+  diligence. Handing it the pairs pre-computed is the next step.
+- **A cleared cookie is a lost project.** Ownership is a browser credential with no recovery path, and
+  pre-ownership projects (`owner_id` null) are deliberately unreachable from the web app — they stay available
+  to the CLI/store. Both wait on a real account layer.
+- **Per-visitor rate limiting needs `ZADUM_TRUST_PROXY=1` and a proxy that overwrites `x-forwarded-for`.**
+  Without it the app cannot tell two anonymous callers apart, and the creation limit — the LLM-spend guard —
+  is a process-wide backstop rather than a per-visitor cap. The limiter is also per process: several web
+  processes multiply every limit by the process count.
 - **Worlds are no longer complete by construction.** A decision whose every option would contradict a world is
   left unassigned there ("does not arise"), and downstream reads a missing value as no opinion (`distribution`
   falls back to the α-prior; `conditionSoft`/`conditionHard` treat undefined as agreeing). Deliberate — the

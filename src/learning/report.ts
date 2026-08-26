@@ -1,8 +1,9 @@
 /**
- * Loop B report: run every statistical estimator over all projects in a store and print/write the results.
+ * Loop B report: run every statistical estimator over real user projects in a store and print/write results.
  *   npx tsx src/learning/report.ts [--data-dir .zadum] [--out learning-results]
  * (package.json: `"learn": "tsx src/learning/report.ts"`). Uses PgStore when DATABASE_URL is set, else FileStore.
- * No LLM calls; everything here is arithmetic over logged events, sessions and final Sheets.
+ * Mock, experiment and legacy projects are excluded unless explicitly opted in. No LLM calls; everything here
+ * is arithmetic over logged events, sessions and final Sheets.
  */
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -15,6 +16,8 @@ import { calibrationReport, formatCalibration, cardSamples, defaultSamples, type
 import { fitRecalibration, formatRecalibration, writeRecalibration, type Recalibration } from "./recalibrate.js";
 import { collectTraces, thetaGrid, thetaTable, formatThetaTable, type ThetaPoint } from "./theta_replay.js";
 import { rewardFromEvents, updateAll, formatBandit, type BanditState, type RewardSample } from "./phrasing_bandit.js";
+import { helpRequested, parseFlags, type Flags } from "../cli/flags.js";
+import { learningProjectIds, parseLearningOrigins, type ProjectOrigin } from "./projects.js";
 
 export interface LearningReport {
   projects: number;
@@ -33,8 +36,8 @@ export function allCatalogNodes(catalogs: LoadedCatalogs): NodeDef[] {
   return mergeCatalogs(catalogs.catalogs, catalogs.archetypes).nodes;
 }
 
-export async function runLearning(store: Store, catalogs: LoadedCatalogs, opts: { n0?: number; thetas?: number[] } = {}): Promise<LearningReport> {
-  const ids = (await store.listProjects()).map((p) => p.id).sort();
+export async function runLearning(store: Store, catalogs: LoadedCatalogs, opts: { n0?: number; thetas?: number[]; includeOrigins?: readonly ProjectOrigin[] } = {}): Promise<LearningReport> {
+  const ids = await learningProjectIds(store, opts.includeOrigins);
   const nodes = allCatalogNodes(catalogs);
   const observations = await collectObservations(store, ids);
   const priors = populationPriors(observations, nodes, { n0: opts.n0 });
@@ -106,13 +109,25 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   await import("../env.js"); // .env → process.env (DATABASE_URL, ZADUM_DATA_DIR)
   const args = process.argv.slice(2);
-  const flag = (name: string) => {
-    const i = args.indexOf(name);
-    return i >= 0 ? args[i + 1] : undefined;
-  };
-  const dataDir = flag("--data-dir") ?? process.env.ZADUM_DATA_DIR ?? ".zadum";
-  const outDir = flag("--out") ?? "learning-results";
-  const n0 = flag("--n0") ? Number(flag("--n0")) : undefined;
+  const usage = `learn — estimate priors and calibration from real user sessions only by default\n\n  npm run learn -- [--data-dir <dir>] [--out <dir>] [--n0 N]\n                  [--include-origin mock,experiment,legacy]\n\nUser projects are always included; --include-origin ADDS the sources it names.\nProjects with no recorded origin count as legacy (see docs/LEARNING.md).`;
+  if (helpRequested(args)) {
+    console.log(usage);
+    process.exit(0);
+  }
+  let flags: Flags;
+  try {
+    flags = parseFlags(args, { value: ["--data-dir", "--out", "--n0", "--include-origin"] });
+  } catch (e) {
+    console.error(`${(e as Error).message}\n\n${usage}`);
+    process.exit(2);
+  }
+  const dataDir = flags.value("--data-dir") ?? process.env.ZADUM_DATA_DIR ?? ".zadum";
+  const outDir = flags.value("--out", "learning-results");
+  const rawN0 = flags.value("--n0");
+  const n0 = rawN0 === undefined ? undefined : Number(rawN0);
+  if (n0 !== undefined && (!Number.isFinite(n0) || n0 < 0)) throw new Error("--n0 must be a non-negative number");
+  const rawOrigins = flags.value("--include-origin");
+  const includeOrigins = rawOrigins === undefined ? undefined : parseLearningOrigins(rawOrigins);
   let store: Store;
   if (process.env.DATABASE_URL) {
     const { PgStore } = await import("../store/pg_store.js");
@@ -124,7 +139,7 @@ if (isMain) {
   const { loadCatalogs } = await import("../engine/catalogs.js");
   const catalogs = await loadCatalogs();
   try {
-    const report = await runLearning(store, catalogs, { n0 });
+    const report = await runLearning(store, catalogs, { n0, includeOrigins });
     console.log(formatReport(report));
     const files = await writeReport(report, outDir);
     console.log(`\nwritten ${files.join(", ")}`);

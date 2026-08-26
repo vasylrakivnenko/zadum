@@ -3,12 +3,15 @@
  *   sections fan-out (3 waves for consistency) → best-of-N per section (critic picks) → assemble →
  *   critic vs Rules (repair loop) → round-trip check (spec → Sheet' → diff) → story walkthrough → bundle.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { Engine } from "./orchestrator.js";
 import { SECTIONS, type SectionId, type SectionOut, type CriticOut, type ReverseOut, type StoryOut } from "../llm/functions.js";
-import { checkStateMachines, formatIRFindings, renderStateMachines, type IRFinding } from "../core/spec_ir.js";
+import { checkStateMachines, formatIRFindings, normalizeMachineActors, renderStateMachines, type IRFinding } from "../core/spec_ir.js";
+import { checkSpec } from "../core/spec_checks.js";
+import { ruleContradictions } from "../core/ledger_checks.js";
+import { roundTripReport, scopeCreep, type RoundTripReport } from "../core/roundtrip.js";
 import { ledgerConflicts, type PropagationResult } from "../core/catalog.js";
 import { composeVerifyProbes } from "../core/verify.js";
 import { parallelMap, type LLMUsage } from "../llm/client.js";
@@ -33,13 +36,80 @@ export interface CompileOptions {
    *  phase never reaches done. Without it, compile refuses — a spec quietly built over 69 open decisions and
    *  marked "done" was exactly the failure the 2026-08 external review reproduced. */
   draft?: boolean;
+  /** round-trip recall below which the spec is not deliverable (default DEFAULT_MIN_RECALL) */
+  minRecall?: number;
 }
 
-export interface RoundTripReport {
-  recall: { actors: number; nouns: number; actions: number; rules: number; non_goals: number; overall: number };
-  missing: { kind: string; item: string }[];
-  extra: { kind: string; item: string }[];
+/**
+ * The shape every mechanical checker produces — `IRFinding` (lifecycles) and `SpecFinding` (spec text) both
+ * conform, so the gate can reason about them together without caring which checker spoke.
+ */
+export interface Finding {
+  code: string;
+  severity: "high" | "medium" | "low";
+  message: string;
+  fix_hint: string;
+  /** the section the finding sits in, when the checker could tell — drives targeted repair */
+  section?: string;
+  /** IR findings name a machine instead of a section */
+  machine?: string;
 }
+
+/**
+ * Why this spec is not deliverable. Empty = deliverable.
+ *
+ * Rule 6 says the compiled spec must pass the critic before delivery. On a live run the critic returned
+ * `pass`, score 10, zero violations for a spec with six contradictions between the Sheet's own inviolable
+ * Rules — so an LLM verdict alone cannot be the gate. The deterministic checkers gate alongside it.
+ */
+export function blockingReasons(input: {
+  critic: CriticOut;
+  findings: Finding[];
+  roundtrip: RoundTripReport | null;
+  stale: boolean;
+  open: number;
+  conflicts: PropagationResult["conflicts"];
+  minRecall?: number;
+}): string[] {
+  const out: string[] = [];
+  if (input.critic.verdict !== "pass") out.push(`the critic returned ${input.critic.verdict} (score ${input.critic.score})`);
+  const high = input.findings.filter((f) => f.severity === "high");
+  if (high.length) out.push(`${high.length} mechanical check(s) failed: ${[...new Set(high.map((f) => f.code))].join(", ")}`);
+  const min = input.minRecall ?? DEFAULT_MIN_RECALL;
+  if (input.roundtrip && input.roundtrip.recall.overall < min) out.push(`the spec round-trips at ${(input.roundtrip.recall.overall * 100).toFixed(0)}% recall, below the ${(min * 100).toFixed(0)}% bar`);
+  if (input.open) out.push(`${input.open} decision(s) are still open`);
+  if (input.conflicts.length) out.push(`${input.conflicts.length} contradiction(s) stand in the decision ledger`);
+  if (input.stale) out.push("the Design Sheet changed under the compile");
+  return out;
+}
+
+/** Reverse-compiling the spec should recover the Sheet. Below this, the spec has dropped what it was built from. */
+export const DEFAULT_MIN_RECALL = 0.8;
+
+/** The sections a set of findings points at — a repair round re-runs only these, not the whole document. */
+export function repairTargets(findings: Finding[]): SectionId[] {
+  const ids = new Set<SectionId>();
+  for (const f of findings) {
+    if (f.machine) ids.add("state_machines");
+    const s = f.section && SECTIONS.find((x) => x === f.section || TITLES[x].toLowerCase() === f.section!.toLowerCase().replace(/^#+\s*/, ""));
+    if (s) ids.add(s);
+  }
+  return SECTIONS.filter((s) => ids.has(s));
+}
+
+/** One block of findings, phrased the way the critic's violations are, for a repair round's fix hints. */
+export function formatFindings(findings: Finding[]): string {
+  if (!findings.length) return "";
+  const order = { high: 0, medium: 1, low: 2 } as const;
+  return [
+    "MECHANICAL CHECK FAILURES TO FIX (these are deterministic — the text really does say this):",
+    ...[...findings]
+      .sort((a, b) => order[a.severity] - order[b.severity])
+      .map((f) => `- [${f.severity}] ${f.code}${f.section ? ` in "${f.section}"` : f.machine ? ` in machine "${f.machine}"` : ""}: ${f.message} Fix: ${f.fix_hint}`),
+  ].join("\n");
+}
+
+export type { RoundTripReport };
 
 export interface CompileResult {
   spec: string;
@@ -48,6 +118,12 @@ export interface CompileResult {
   critic_rounds: number;
   /** mechanical findings that survived the IR repair round for the state_machines section (empty = clean) */
   ir_findings: IRFinding[];
+  /** deterministic findings over the assembled spec text (empty = clean) */
+  spec_findings: Finding[];
+  /** settled decisions that contradict an inviolable Rule (empty = clean) */
+  ledger_findings: Finding[];
+  /** why this spec is not deliverable; empty = deliverable and the project is marked done */
+  blocking: string[];
   roundtrip: RoundTripReport | null;
   story: StoryOut | null;
   bundle: { name: string; content: string }[];
@@ -74,7 +150,7 @@ const TITLES: Record<SectionId, string> = {
   rules_invariants: "Rules & invariants",
   acceptance_scenarios: "Acceptance scenarios",
   journeys: "Key journeys",
-  non_goals_defaults: "Non-goals & defaulted decisions",
+  non_goals_defaults: "Non-goals",
   glossary: "Glossary",
 };
 
@@ -129,15 +205,16 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
         const high = (fs2: IRFinding[]) => fs2.filter((f) => f.severity === "high").length;
         const first = await engine.fns.compileStateMachines({ sheet, decisions: sheet.decisions });
         add(first.usage);
-        let ir = first.data;
+        let ir = normalizeMachineActors(first.data, sheet);
         let findings = checkStateMachines(ir, sheet);
         let irRounds = 1;
         if (high(findings) > 0) {
           const retry = await engine.fns.compileStateMachines({ sheet, decisions: sheet.decisions, findings: formatIRFindings(findings) });
           add(retry.usage);
-          const f2 = checkStateMachines(retry.data, sheet);
+          const retryIr = normalizeMachineActors(retry.data, sheet);
+          const f2 = checkStateMachines(retryIr, sheet);
           if (high(f2) <= high(findings)) {
-            ir = retry.data;
+            ir = retryIr;
             findings = f2;
           }
           irRounds = 2;
@@ -201,6 +278,34 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
     await emit("critic_result", { round: rounds, verdict: critic.verdict, score: critic.score, violations: critic.violations.length, omissions: critic.omissions.length });
   }
 
+  // ---- the deterministic gate, and one targeted repair ----
+  // Rule 6 rests on the critic; on a live run the critic returned pass / score 10 / zero violations for a spec
+  // with six contradictions between the Sheet's own inviolable Rules. These checks cannot be talked out of it.
+  // The repair re-runs only the sections the findings point at — a finding in the glossary is no reason to pay
+  // for a whole second document.
+  const traceMap = () => Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces]));
+  // Rules beat assumptions in the LEDGER too, not only in the spec — a defaulted answer that grants what an
+  // access rule withholds is a contradiction a coding agent reads as settled fact. Computed once: it is a
+  // property of the Sheet, so no repair round can change it.
+  const ledgerFindings: Finding[] = ruleContradictions(sheet).map((f) => ({ ...f, section: "Decision ledger" }));
+  let specFindings: Finding[] = checkSpec(spec, sheet, traceMap());
+  const withIr = (fs: Finding[]) => [...fs, ...ledgerFindings, ...irFindings.map((f) => ({ ...f, section: TITLES.state_machines }))];
+  let allFindings = withIr(specFindings);
+  await emit("spec_checked", { round: 1, findings: allFindings.length, high: allFindings.filter((f) => f.severity === "high").length, codes: [...new Set(allFindings.map((f) => f.code))] });
+  const highFindings = () => allFindings.filter((f) => f.severity === "high");
+  if (highFindings().length && (opts.criticLoops ?? 1) > 0) {
+    const targets = repairTargets(highFindings());
+    if (targets.length) {
+      fixHints = formatFindings(highFindings());
+      priorText = "";
+      await writeWave(targets);
+      spec = assemble(sheet, sections);
+      specFindings = checkSpec(spec, sheet, traceMap());
+      allFindings = withIr(specFindings);
+      await emit("spec_checked", { round: 2, repaired: targets, findings: allFindings.length, high: highFindings().length, codes: [...new Set(allFindings.map((f) => f.code))] });
+    }
+  }
+
   // ---- round trip ----
   let roundtrip: RoundTripReport | null = null;
   if (opts.roundTrip ?? true) {
@@ -228,7 +333,8 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   // any lock). A spec compiled from version N must not pass for current when the project is at N+k — it is
   // stamped, reported, and the phase stays short of done so the advisor steers to a recompile. ----
   const latestSheet = await engine.store.getLatestSheet(projectId);
-  const stale = !!latestSheet && latestSheet.version !== sheet.version;
+  const moved = !!latestSheet && latestSheet.version !== sheet.version;
+  const stale = moved && sheetFingerprint(latestSheet!, opts.confirmBelow ?? 0.8) !== sheetFingerprint(sheet, opts.confirmBelow ?? 0.8);
   if (stale)
     spec = [
       `> ⚠️ **STALE — the Design Sheet changed during this compile** (compiled from v${sheet.version}, project now at v${latestSheet!.version}). Recompile before relying on this spec.`,
@@ -241,8 +347,10 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
   // one mechanism. Deterministic — no extra LLM call — and it falls back to the story's own checks if the
   // belief has nothing worth doubting.
   const confirmChecks = verificationChecks(sheet, session);
-  const ledger = { stale, open: unfinished.length, conflicts, latest_version: latestSheet?.version ?? null };
-  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now(), opts.confirmBelow ?? 0.8, irFindings, confirmChecks, ledger);
+  const ledger = { stale, moved, open: unfinished.length, conflicts, latest_version: latestSheet?.version ?? null };
+  const blocking = blockingReasons({ critic, findings: allFindings, roundtrip, stale, open: unfinished.length, conflicts, minRecall: opts.minRecall });
+  if (blocking.length) spec = withBlockedBanner(spec, blocking, allFindings);
+  const bundle = buildBundle(sheet, spec, sections, critic, roundtrip, story, rounds, now(), opts.confirmBelow ?? 0.8, irFindings, confirmChecks, ledger, allFindings, blocking);
   for (const b of bundle) {
     const art: Artifact = { project_id: projectId, name: b.name, kind: kindOf(b.name), content: b.content, created_at: now(), meta: { sheet_version: sheet.version } };
     await engine.store.saveArtifact(art);
@@ -251,11 +359,11 @@ export async function compileProject(engine: Engine, projectId: string, opts: Co
     await fs.mkdir(opts.outDir, { recursive: true });
     for (const b of bundle) await fs.writeFile(path.join(opts.outDir, b.name), b.content);
   }
-  await emit("compile_done", { verdict: critic.verdict, score: critic.score, rounds, roundtrip_overall: roundtrip?.recall.overall ?? null, stale, open_decisions: unfinished.length, conflicts: conflicts.length, usage, latency_ms: Date.now() - t0, out_dir: opts.outDir ?? null });
+  await emit("compile_done", { verdict: critic.verdict, score: critic.score, rounds, blocking, findings: allFindings.length, roundtrip_overall: roundtrip?.recall.overall ?? null, stale, sheet_moved: moved, open_decisions: unfinished.length, conflicts: conflicts.length, usage, latency_ms: Date.now() - t0, out_dir: opts.outDir ?? null });
   // "done" requires ALL of: the critic passed, the ledger was finished and consistent, and the Sheet did not
   // move underneath the compile — anything less is a draft or stale spec, whatever the critic thought of it.
-  if (critic.verdict === "pass" && !stale && !unfinished.length && !conflicts.length) await engine.markDone(projectId);
-  return { spec, sections, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, story, bundle, usage, latency_ms: Date.now() - t0, sheet_version: sheet.version, stale, conflicts };
+  if (!blocking.length) await engine.markDone(projectId);
+  return { spec, sections, critic, critic_rounds: rounds, ir_findings: irFindings, spec_findings: specFindings, ledger_findings: ledgerFindings, blocking, roundtrip, story, bundle, usage, latency_ms: Date.now() - t0, sheet_version: sheet.version, stale, conflicts };
 }
 
 /** Draft compile (opts.draft) over an unfinished or contradictory ledger — stamped the way a failed critic is. */
@@ -292,10 +400,90 @@ function assemble(sheet: Sheet, sections: CompileResult["sections"]): string {
   for (const s of SECTIONS) {
     const sec = sections[s];
     if (!sec) continue;
-    L.push("", `## ${TITLES[s]}`, "", sec.markdown.trim());
+    let body = sectionBody(TITLES[s], sec.markdown);
+    // The decision ledger is rendered below, deterministically, with real provenance. A model-written copy
+    // shipped once headed "not explicitly discussed in the Design Sheet" while listing all seven decisions
+    // the owner had personally answered — the product's central promise, inverted. Never carry a second one.
+    if (s === "non_goals_defaults") body = stripDecisionTable(body);
+    L.push("", `## ${TITLES[s]}`, "", body);
   }
   L.push("", decisionLedger(sheet));
   return L.join("\n") + "\n";
+}
+
+/** Heading words, comparable across "Non-goals & defaults" / "Non-Goals and Defaults" / "Key User Journeys". */
+const HEADING_FILLER = new Set(["and", "the", "of", "a", "an", "for"]);
+function headingTokens(s: string): string[] {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((t) => t && !HEADING_FILLER.has(t));
+}
+
+/**
+ * The section body as it should appear under the heading the assembler writes.
+ *
+ * Sections are told to emit body content only, but a model that opens with its own "# Data Model" anyway
+ * renders the heading twice — seven such pairs shipped in one live compile ("## Overview" twice, "## Data
+ * model" then "# Data Model", and so on). Drop a leading heading that restates the section title, and demote
+ * any surviving h1/h2 to h3 so no section heading can outrank the document title or masquerade as a sibling.
+ */
+export function sectionBody(title: string, markdown: string): string {
+  const lines = markdown.trim().split("\n");
+  const first = lines.findIndex((l) => l.trim() !== "");
+  const head = first >= 0 ? /^(#{1,3})\s+(.*)$/.exec(lines[first]!.trim()) : null;
+  if (head) {
+    const want = headingTokens(title);
+    const got = headingTokens(head[2]!);
+    const subset = (a: string[], b: string[]) => a.length > 0 && a.every((t) => b.includes(t));
+    // "Actors & permissions" vs "Actors × Permissions Matrix", "Key journeys" vs "Key User Journeys": either
+    // side may carry extra words, but one must contain the other entirely — never drop an unrelated heading.
+    if (subset(want, got) || subset(got, want)) {
+      lines.splice(0, first + 1);
+      while (lines.length && lines[0]!.trim() === "") lines.shift();
+    }
+  }
+  let fenced = false;
+  return lines
+    .map((l) => {
+      if (/^\s*(```|~~~)/.test(l)) fenced = !fenced;
+      return fenced ? l : l.replace(/^(#{1,2})\s+/, "### ");
+    })
+    .join("\n")
+    .trim();
+}
+
+/** Remove a model-written decision/defaults table (and its heading) — see the call site for why. */
+export function stripDecisionTable(body: string): string {
+  const lines = body.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const isHeader = /^\s*\|/.test(lines[i]!) && /\bdecision\b/i.test(lines[i]!) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1] ?? "");
+    if (!isHeader) {
+      out.push(lines[i]!);
+      continue;
+    }
+    // Drop the table, its separator and every row; then the heading and lead-in prose that introduced it.
+    while (i < lines.length && /^\s*\|/.test(lines[i]!)) i++;
+    i--;
+    for (let j = out.length - 1; j >= 0; j--) {
+      const l = out[j]!.trim();
+      if (l === "") continue;
+      if (/^#{1,6}\s/.test(l)) {
+        if (/decision|default|assum/i.test(l)) out.length = j;
+        break;
+      }
+      if (/decision|default|assum/i.test(l) && l.length < 400) {
+        out.length = j;
+        continue;
+      }
+      break;
+    }
+    out.push("_The complete decision ledger, with provenance and confidence, is rendered below._");
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /**
@@ -321,70 +509,34 @@ export function decisionLedger(sheet: Sheet): string {
   return L.join("\n");
 }
 
-export function roundTripReport(sheet: Sheet, rev: ReverseOut): RoundTripReport {
-  const missing: RoundTripReport["missing"] = [];
-  const extra: RoundTripReport["extra"] = [];
-  const rec = (kind: string, have: string[], got: string[], match: (a: string, b: string) => boolean) => {
-    let hit = 0;
-    for (const h of have) {
-      if (got.some((g) => match(h, g))) hit++;
-      else missing.push({ kind, item: h });
-    }
-    for (const g of got) if (!have.some((h) => match(h, g))) extra.push({ kind, item: g });
-    return have.length ? hit / have.length : 1;
-  };
-  const eqName = (a: string, b: string) => normName(a) === normName(b);
-  const fuzzy = (a: string, b: string) => jaccard(a, b) >= 0.5;
-  const actorName = (id: string) => sheet.actors.find((a) => a.id === id)?.name ?? id;
-  const nounName = (id: string) => sheet.nouns.find((n) => n.id === id)?.name ?? id;
-  const recall = {
-    actors: rec("actor", sheet.actors.map((a) => a.name), rev.actors.map((a) => a.name), eqName),
-    nouns: rec("noun", sheet.nouns.map((n) => n.name), rev.nouns.map((n) => n.name), eqName),
-    actions: rec(
-      "action",
-      sheet.actions.map((a) => `${actorName(a.actor)}|${a.verb}|${nounName(a.object)}`),
-      rev.actions.map((a) => `${a.actor}|${a.verb}|${a.object}`),
-      sameAction,
-    ),
-    rules: rec("rule", sheet.rules.map((r) => r.text), rev.rules.map((r) => r.text), fuzzy),
-    non_goals: rec("non_goal", sheet.non_goals.map((g) => g.text), rev.non_goals.map((g) => g.text), fuzzy),
-    overall: 0,
-  };
-  const total = sheet.actors.length + sheet.nouns.length + sheet.actions.length + sheet.rules.length + sheet.non_goals.length;
-  const found = total - missing.length;
-  recall.overall = total ? found / total : 1;
-  return { recall, missing, extra };
+/**
+ * What a compiled spec is actually built from — the settled answers and the Sheet's content, deliberately NOT
+ * the version counter, the confidence values, or the rationales.
+ *
+ * A compile runs ~a minute outside any lock, so the Sheet can move under it. Calling every move a staleness
+ * marks good specs STALE and, because `done` requires a fresh Sheet, strands the project short of done: one
+ * live run was stamped stale by a background story check that raised three confidences from 95% to 97% and
+ * changed no answer at all. Confidence enters the fingerprint only as the bucket that matters — whether the
+ * decision sits below the confirm-first bar — because that is the one confidence change the bundle can see.
+ */
+export function sheetFingerprint(sheet: Sheet, confirmBelow = 0.8): string {
+  const parts: string[] = [
+    sheet.one_liner,
+    sheet.archetypes.join(","),
+    ...[...sheet.actors].sort((a, b) => a.id.localeCompare(b.id)).map((a) => `p:${a.id}=${a.name}`),
+    ...[...sheet.nouns].sort((a, b) => a.id.localeCompare(b.id)).map((n) => `n:${n.id}=${n.name}|${n.fields_hint.join(",")}`),
+    ...[...sheet.actions].sort((a, b) => a.id.localeCompare(b.id)).map((a) => `a:${a.id}=${a.actor}|${a.verb}|${a.object}`),
+    ...[...sheet.rules].sort((a, b) => a.id.localeCompare(b.id)).map((r) => `r:${r.id}=${r.kind}|${r.text}`),
+    ...[...sheet.non_goals].sort((a, b) => a.id.localeCompare(b.id)).map((g) => `g:${g.id}=${g.text}`),
+    ...[...sheet.decisions]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((d) => `d:${d.id}=${d.chosen ?? ""}|${d.status}|${(d.confidence ?? 1) < confirmBelow ? "low" : "ok"}`),
+  ];
+  return createHash("sha256").update(parts.join("\n")).digest("base64url").slice(0, 32);
 }
 
-/** "Bookkeeper|creates|Invoice" ~ "bookkeeper|create|invoices": actor and object by normalized name, verb by stem. */
-function sameAction(x: string, y: string): boolean {
-  const [xa = "", xv = "", xo = ""] = x.split("|");
-  const [ya = "", yv = "", yo = ""] = y.split("|");
-  const stem = (v: string) => normName(v).replace(/(ing|ed|es|s)$/, "");
-  const actorOk = normName(xa) === normName(ya) || jaccard(xa, ya) >= 0.5;
-  const objectOk = normName(xo) === normName(yo) || jaccard(xo, yo) >= 0.5;
-  const verbOk = stem(xv) === stem(yv) || jaccard(xv, yv) >= 0.5;
-  return (actorOk && objectOk && verbOk) || jaccard(x.replace(/\|/g, " "), y.replace(/\|/g, " ")) >= 0.75;
-}
 
-function jaccard(a: string, b: string): number {
-  const A = new Set(tokens(a));
-  const B = new Set(tokens(b));
-  if (!A.size && !B.size) return 1;
-  let inter = 0;
-  for (const t of A) if (B.has(t)) inter++;
-  return inter / (A.size + B.size - inter);
-}
-function tokens(s: string): string[] {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]+/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 2 && !STOP.has(t));
-}
-const STOP = new Set(["the", "and", "for", "that", "this", "with", "from", "never", "must", "can", "cannot", "not", "are", "its", "their", "they", "has", "have", "any", "only", "all"]);
-
-function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string, confirmBelow: number, irFindings: IRFinding[] = [], confirmChecks: string[] = [], ledger: { stale: boolean; open: number; conflicts: PropagationResult["conflicts"]; latest_version: number | null } = { stale: false, open: 0, conflicts: [], latest_version: null }) {
+function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sections"], critic: CriticOut, roundtrip: RoundTripReport | null, story: StoryOut | null, rounds: number, generatedAt: string, confirmBelow: number, irFindings: IRFinding[] = [], confirmChecks: string[] = [], ledger: { stale: boolean; moved?: boolean; open: number; conflicts: PropagationResult["conflicts"]; latest_version: number | null } = { stale: false, open: 0, conflicts: [], latest_version: null }, specFindings: Finding[] = [], blocking: string[] = []) {
   const sheetMd = renderSheetMarkdown(sheet, { showIds: true, showDecisions: true, showOpenDecisions: true });
   // The conduct-critical handoff is the page + this protocol (sheet_only+AGENTS.md scored 91% vs the full
   // bundle's 86% at ~1/6 the context — docs/EVALS.md "The 9k-char handoff"), so the spec is presented as
@@ -412,6 +564,15 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
           "",
         ]
       : []),
+    // Mechanical failures are stated here, not only in compile-report.json: an agent reads AGENTS.md and the
+    // Sheet, and a contradiction it is not warned about is one it will implement one arbitrary way.
+    ...(specFindings.some((f) => f.severity === "high")
+      ? [
+          `⚠️ **\`spec.md\` fails ${specFindings.filter((f) => f.severity === "high").length} mechanical check(s)** — these are deterministic, not opinions. Do not resolve them by choosing: ask the owner.`,
+          ...specFindings.filter((f) => f.severity === "high").slice(0, 8).map((f) => `  - ${f.code}: ${f.message}`),
+          "",
+        ]
+      : []),
     "This project has a one-page Design Sheet (`design-sheet.md`) — the source of truth — and a compiled specification (`spec.md`) for implementation detail.",
     "",
     "Before any task:",
@@ -436,7 +597,7 @@ function buildBundle(sheet: Sheet, spec: string, sections: CompileResult["sectio
     "- `sheet-tests.ts` holds one named test stub per rule and action. Implement them as you build and KEEP the id-prefixed names — they are the Sheet's trace into the test suite. The spec's acceptance scenarios are the fuller test list.",
     "",
   ].join("\n");
-  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, ir_findings: irFindings, roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", stale: ledger.stale, latest_sheet_version: ledger.latest_version, open_decisions: ledger.open, ledger_conflicts: ledger.conflicts, generated_at: generatedAt };
+  const report = { sheet_version: sheet.version, critic, critic_rounds: rounds, ir_findings: irFindings, spec_findings: specFindings, blocking, deliverable: blocking.length === 0, scope_creep: roundtrip ? scopeCreep(roundtrip) : [], roundtrip, traces: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.traces])), critic_passed: critic.verdict === "pass", stale: ledger.stale, sheet_moved: ledger.moved ?? ledger.stale, latest_sheet_version: ledger.latest_version, open_decisions: ledger.open, ledger_conflicts: ledger.conflicts, generated_at: generatedAt };
   const storyMd = story ? [`# ${story.title}`, "", ...story.steps.map((s, i) => `${i + 1}. ${s}`), "", "## Please confirm", ...(confirmChecks.length ? confirmChecks : story.checks).map((c) => `- ${c}`), ""].join("\n") : "";
   const out = [
     { name: "spec.md", content: spec },
@@ -539,4 +700,22 @@ async function loadStyleExemplars(archetype: string | undefined, dir = "catalogs
   } catch {
     return null;
   }
+}
+
+
+/**
+ * The one banner that says, in the two files a coding agent reads, exactly why this spec is not deliverable.
+ * Deterministic findings lead: unlike a critic verdict they are not a judgement, and an agent must not
+ * "resolve" them by picking an interpretation.
+ */
+export function withBlockedBanner(spec: string, blocking: string[], findings: Finding[]): string {
+  const high = findings.filter((f) => f.severity === "high").slice(0, 8);
+  return [
+    `> ⚠️ **NOT DELIVERABLE — ${blocking.length} gate(s) failed.** ${blocking.join("; ")}.`,
+    ">",
+    "> The Design Sheet (`design-sheet.md`) remains the source of truth. Fix these and recompile; do not resolve a contradiction by choosing one side of it.",
+    ...(high.length ? [">", ...high.map((f) => `> - ${f.code}${f.section ? ` (${f.section})` : ""}: ${f.message}`)] : []),
+    "",
+    spec,
+  ].join("\n");
 }

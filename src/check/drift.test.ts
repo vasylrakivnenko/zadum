@@ -23,7 +23,7 @@ async function makeProject(id: string) {
   const llm = new MockLLM(invoicingMockHandlers);
   const catalogs = await loadCatalogs();
   const engine = new Engine(store, llm, catalogs, { precompute: false, ruleBankDir: emptyRuleBankDir });
-  await engine.createProject("an invoicing app for small bookkeeping firms", { id });
+  await engine.createProject("an invoicing app for small bookkeeping firms", { id, origin: "experiment" });
   const sheet = (await store.getLatestSheet(id))!;
   return { engine, store, sheet };
 }
@@ -100,7 +100,7 @@ describe("runDriftCli (mock engine, file store in a temp dir)", () => {
     // ruleBankDir is pinned via env-free option by constructing the doc from whatever Sheet resulted
     const { buildEngine } = await import("../engine/bootstrap.js");
     const { engine, store } = await buildEngine({ mock: true, dataDir: tmp, engine: { precompute: false, ruleBankDir: emptyRuleBankDir } });
-    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "cli1" });
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "cli1", origin: "experiment" });
     const sheet = (await store.getLatestSheet("cli1")) as Sheet;
     const goodDoc = path.join(tmp, "README.md");
     await fs.writeFile(goodDoc, asDoc(sheetToText(sheet)));

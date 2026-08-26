@@ -1,0 +1,80 @@
+{
+  "schema": "zadum.label-gold.v1",
+  "version": "2026.08.25-1",
+  "lexicon_version": "2026.08.25-1",
+  "catalog_version": "b2b-invoicing@2026.08.24-1+booking@2026.08.23-1+core@2026.08.22-1+crud-saas@2026.08.25-1+e-commerce@2026.08.23-1+marketplace@2026.08.23-1",
+  "note": "Hand-adjudicated gold labels for the evidence matrix. THIS FILE HOLDS 4 ARTIFACTS AND 42 CELLS. Every cell below was read out of the real corpus document named by doc_id and carries the reason in `note`. Cells nobody adjudicated are simply not here: an absent row is NOT an `unobserved` agreement, it is excluded from every denominator (see label_eval.ts). A verdict records what the ARTIFACT shows, never what the product is known to do elsewhere: `absent` means the place this feature would have appeared was inspected in this document and was empty; `unobserved` means the document is silent and silence carries no signal.",
+  "todo": "TODO: grow to the target of 30 adjudicated artifacts (currently 4). Add whole documents, never partial guesses, and keep the mix across doc_type and archetype so the by-source-type and by-archetype breakdowns keep separate populations rather than one pooled number. Also needed: at least one `repo` doc_type artifact — every artifact here is a spec_doc, so the by-source-type breakdown has one population only.",
+  "artifacts": [
+    {
+      "doc_id": "crud-e-project-mgmt",
+      "doc_type": "spec_doc",
+      "archetype": "crud-saas",
+      "cells": [
+        { "feature_id": "workspaces_or_projects", "verdict": "present", "note": "\"In the product you can create projects to collaborate with your team members\"; work packages live inside projects and projects have members." },
+        { "feature_id": "multi_user_accounts", "verdict": "present", "note": "A whole \"Manage members\" section: \"How to add existing members or invite new members to a project.\"" },
+        { "feature_id": "invite_by_admin", "verdict": "present", "note": "\"Add members — How to add existing members or invite new members to a project\"; the members filter lists \"Invited — returns all users that have been invited, but have not yet registered\"." },
+        { "feature_id": "role_based_permissions", "verdict": "present", "note": "\"A role is defined as a set of permissions defined by a unique name. Project members are assigned to a project by specifying a user's ... name and the role(s) they should assume.\"" },
+        { "feature_id": "custom_roles_admin_defined", "verdict": "present", "note": "\"You can check this setting in the Roles and Permissions section of the system administration\" — roles and their permissions are configured by an administrator, not fixed." },
+        { "feature_id": "per_record_permission_rules", "verdict": "present", "note": "Work packages are shared per record with a per-share role: \"Work package shares provides filters based on all the roles available for sharing work packages ... View / Comment / Edit\"." },
+        { "feature_id": "assignee_and_due_date", "verdict": "present", "note": "\"A work package ... may have various additional attributes, such as status, assignee, priority, due date.\"" },
+        { "feature_id": "linked_record_types", "verdict": "present", "note": "\"Work package relations and hierarchies — How to create work package relations and hierarchies.\"" },
+        { "feature_id": "comments_and_mentions_feed", "verdict": "present", "note": "\"you will be notified about important changes that are relevant to you, whether they are new comments that mention you\"; clicking a notification \"will open the Activity tab of this work package\"." },
+        { "feature_id": "in_app_notification_centre", "verdict": "present", "note": "\"a red badge on the notification bell icon ... The number on the badge indicates the number of total unread notifications\", plus \"Mark notifications as read\" — an in-app centre with a read state." },
+        { "feature_id": "no_login_at_all", "verdict": "absent", "note": "The actors/permissions material was inspected and directly contradicts single-user use: \"You must be a member of a project to view and work in it\", members, groups, roles, administrators." },
+        { "feature_id": "board_and_calendar_views", "verdict": "absent", "note": "The document enumerates the views it has — \"table view, split screen view, details view\" — and no board/kanban is among them. The list is the declared place this would appear and it is empty. (This is a claim about THIS document, not about the product.)" }
+      ]
+    },
+    {
+      "doc_id": "invoicing-g-subscription-billing",
+      "doc_type": "spec_doc",
+      "archetype": "b2b-invoicing",
+      "cells": [
+        { "feature_id": "online_payment_collection", "verdict": "present", "note": "\"It is typically used to charge customers in eCommerce Shopping Cart type flows\" — money is collected through the app's own payment APIs." },
+        { "feature_id": "card_payment_provider_integration", "verdict": "present", "note": "\"to add a payment method corresponding to Stripe via a token, the Stripe plugin expects a field named `token`\"; gateway plugins (Adyen, PayPal) are the whole subject." },
+        { "feature_id": "refunds_via_provider", "verdict": "present", "note": "\"the product (the product Admin UI) to handle refunds, chargebacks, adjustments\" plus a \"#### Refund\" direct-payment API that goes through the gateway plugin." },
+        { "feature_id": "subscription_products", "verdict": "present", "note": "\"the product core billing engine to charge for subscriptions\"; the default payment method \"is assumed to be used for recurring payments\"." },
+        { "feature_id": "public_api_for_customers", "verdict": "present", "note": "\"designed to offer a single payment API for any type of payment gateway\" — the document IS the customer-facing API reference." },
+        { "feature_id": "a_few_key_integrations", "verdict": "present", "note": "Named third parties throughout: \"Adyen notifications, Recurly push notifications, PayPal or BitPay IPN\", Stripe, PayU Latam." },
+        { "feature_id": "payment_sandbox_test_mode", "verdict": "absent", "note": "The payment configuration surface is described in detail (plugin registration, plugin properties, credentials, demos) and no sandbox or test mode appears anywhere in it." },
+        { "feature_id": "multi_currency_transactions", "verdict": "unobserved", "note": "Currency is never discussed. The only money figure is \"given an order of $10\" in an example. Silence, not a negative — do not read single-currency into it." }
+      ]
+    },
+    {
+      "doc_id": "marketplace-d-multivendor-howto",
+      "doc_type": "spec_doc",
+      "archetype": "marketplace",
+      "cells": [
+        { "feature_id": "multi_tenant_org_scoping", "verdict": "present", "note": "\"Multi-tenancy: Each channel can be configured with its own set of products, shipping methods, payment methods, etc. This allows you to run multiple shops from a single the product server.\"" },
+        { "feature_id": "role_based_permissions", "verdict": "present", "note": "\"Roles are the foundation of the product's role-based access control (RBAC) system. A Role is a named collection of Permissions.\"" },
+        { "feature_id": "custom_roles_admin_defined", "verdict": "present", "note": "\"Beyond the built-in roles, administrators can create any number of custom roles ... defined by selecting the specific permissions it should grant.\"" },
+        { "feature_id": "commission_fee_taken", "verdict": "present", "note": "\"we also specify a 'platform fee' percentage, which is the percentage of the total Order value which the marketplace will collect as a fee. The remaining amount is then split between the Sellers.\"" },
+        { "feature_id": "payouts_to_third_parties", "verdict": "present", "note": "\"the marketplace may collect all payments and then later disburse the funds to the Sellers\"; each Seller carries a `connectedAccountId`." },
+        { "feature_id": "seller_sets_own_prices", "verdict": "present", "note": "Prices are per channel and each channel is a seller's shop: \"If an administrator of the UK channel changes the USD price to $20, the price in the Default channel will remain at $30.\"" },
+        { "feature_id": "product_variants", "verdict": "present", "note": "\"there is a one-to-many relation from `ProductVariant` to `ProductVariantPrice`\"; ProductVariant is a first-class catalog entity." },
+        { "feature_id": "multi_currency_transactions", "verdict": "present", "note": "\"Each Channel has a set of `availableCurrencyCodes` ... you are able to define multiple prices in different currencies on a single product variant.\"" },
+        { "feature_id": "seller_application_and_approval", "verdict": "absent", "note": "Seller onboarding is described step by step and has no approval gate: \"a new mutation in the Shop API which allows a new seller to register\", whose listed effects create the Seller, Channel, Role, ShippingMethod and StockLocation immediately." },
+        { "feature_id": "listing_moderation_before_live", "verdict": "absent", "note": "The same onboarding walkthrough ends \"Bob can now log in to the Dashboard ... and begin creating products to sell!\" — no review step before a listing is live, in a document that does describe the order state machine in detail." },
+        { "feature_id": "two_way_reviews", "verdict": "unobserved", "note": "Reviews, ratings and reputation are never mentioned in this guide at all. Nothing was inspected, so this is a missing observation, not a negative." }
+      ]
+    },
+    {
+      "doc_id": "booking-c-appointments",
+      "doc_type": "spec_doc",
+      "archetype": "booking",
+      "cells": [
+        { "feature_id": "staff_time_resource_model", "verdict": "present", "note": "What is booked is a provider's time: \"Go to Users → Providers, select the provider, and adjust their working plan.\"" },
+        { "feature_id": "per_resource_schedules", "verdict": "present", "note": "Each provider has their own working plan with breaks: \"the default working plan includes breaks that don't leave enough room for your service ... adjust their working plan.\"" },
+        { "feature_id": "two_way_calendar_sync", "verdict": "present", "note": "\"the product can sync appointments with Google Calendar in both directions. When a provider links their Google Calendar, any changes made in either system will be reflected in the other.\"" },
+        { "feature_id": "a_few_key_integrations", "verdict": "present", "note": "\"Google Calendar synchronization\" in the feature list, plus a whole CalDAV (Baikal) sync guide." },
+        { "feature_id": "transactional_email_sending", "verdict": "present", "note": "\"Email notification system\" in the feature list." },
+        { "feature_id": "multi_language_ui", "verdict": "present", "note": "\"Multi-language interface\" in the feature list." },
+        { "feature_id": "multi_user_accounts", "verdict": "present", "note": "\"Log in to the product backend and go to the Calendar page\"; providers are users under Users → Providers." },
+        { "feature_id": "no_login_at_all", "verdict": "absent", "note": "The document repeatedly describes a backend people log in to and a Users section with providers, so the actors material was inspected and is not single-user-no-login." },
+        { "feature_id": "sms_notifications", "verdict": "absent", "note": "The notification capability is enumerated in the feature list as \"Email notification system\" and nothing else; SMS appears nowhere in the guide." },
+        { "feature_id": "sms_and_email_booking_reminders", "verdict": "absent", "note": "Same enumerated feature list: email only. Reminders by SMS are not offered anywhere in the document." },
+        { "feature_id": "online_payment_collection", "verdict": "unobserved", "note": "Money, payments, deposits and fees are never mentioned in this README/FAQ/sync guide. Silence — do not record a negative for a subject the document never opens." }
+      ]
+    }
+  ]
+}

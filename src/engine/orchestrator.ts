@@ -13,11 +13,13 @@ import { KNOWN_ARCHETYPES, type LoadedCatalogs } from "./catalogs.js";
 import { emptySheet, type Sheet, type Decision } from "../core/sheet.js";
 import { makeCommit, revertOps, type Commit, type CommitSourceKind } from "../core/commit.js";
 import { applyPatch, type PatchOp } from "../core/patch.js";
-import { ledgerConflicts, mergeCatalogs, nodeDefFromDecision, propagateHard, requirementsMet, type NodeDef, type PropagationResult } from "../core/catalog.js";
+import { findDuplicateNode, ledgerConflicts, mergeCatalogs, nodeDefFromDecision, propagateHard, requirementsMet, routeByWorkflowSignal, type NodeDef, type PropagationResult } from "../core/catalog.js";
 import { conditionSoft, conditionHard, distribution, maxOption, topOptions, ess, resolveAssignment, makeWorld, normalizeWeights, type Belief, type World } from "../core/worlds.js";
 import { decideNext, impliedByUpdate, settledness, rankOpen, mergeConfig, type SelectorConfig, type Ranked } from "../core/selector.js";
 import type { SessionState, Card, Answer, AnswerKind, ZEvent, EventType, ProjectRecord, Phase } from "../core/session.js";
 import { FIT_LIKELIHOOD, reweightByLikelihood, worldSummaries, beliefShift } from "../core/evidence.js";
+import { applyGraphWeights } from "../core/evidence_graph.js";
+import type { DesignGraph } from "../learning/design_graph.js";
 import { composeVerifyProbes, reweightOnVerify } from "../core/verify.js";
 import { planInteractions, type PlannedInteraction } from "../core/planner.js";
 import { changedHunks, renderHunks } from "../core/textdiff.js";
@@ -56,6 +58,22 @@ export interface EngineOptions {
    *  the selector's τ/θ decisions yet — that shift needs its own harness gate (see docs/REVIEW-2026-08-23.md
    *  on belief concentration). */
   recalibration?: SerializedRecalibration;
+  /**
+   * Loop B, harness-gated: the learned **design graph** (`src/learning/design_graph.ts`) applied as a soft
+   * LIKELIHOOD over freshly sampled worlds — "projects like this one usually also did X" — never as a rule.
+   *
+   * DISABLED BY DEFAULT: absent, `applyGraphWeights` hands back the very array it was given, so a graph-off
+   * run is byte-identical to one before the graph existed. The explicit config path (this option, set by the
+   * harness or a CLI flag) is the intended one; an env-file convenience beside `ZADUM_PRIORS_FILE` in
+   * `src/engine/bootstrap.ts` is the natural second step and is deliberately not wired here.
+   *
+   * The three guarantees, all in `src/core/evidence_graph.ts` and all tested there: the evidence is applied
+   * ONCE per world (each world it touches is stamped, so an answer never re-applies the same correlation);
+   * a soft edge may shrink a world's weight but can never delete one; and the whole graph's odds band is
+   * narrower than a single user answer's, so an answer always wins. Hard catalog rules are untouched — they
+   * stay enforced by `resolveAssignment`/`propagateHard` where they always were.
+   */
+  designGraph?: DesignGraph;
 }
 
 /**
@@ -199,11 +217,26 @@ export class Engine {
 
   // ---------- phase 1: draft + plan ----------
 
-  async createProject(one_liner: string, input: { extra_context?: string; id?: string } = {}): Promise<{ project: ProjectRecord; sheet: Sheet; session: SessionState; draft: Draft; rejected: number }> {
-    const id = input.id ?? randomUUID().slice(0, 8);
-    const project: ProjectRecord = { id, one_liner, created_at: this.now(), updated_at: this.now(), phase: "drafting", latest_version: 0 };
+  async createProject(
+    one_liner: string,
+    input: { extra_context?: string; id?: string; owner_id?: string; origin?: NonNullable<ProjectRecord["origin"]> } = {},
+  ): Promise<{ project: ProjectRecord; sheet: Sheet; session: SessionState; draft: Draft; rejected: number }> {
+    // Full UUID: the id is a database key and URL component. Eight hex characters collided around tens of
+    // thousands of projects and createProject's upsert semantics could then mix two owners' records.
+    const id = input.id ?? randomUUID();
+    const inferredOrigin: NonNullable<ProjectRecord["origin"]> = this.llm.name.includes("mock") ? "mock" : "user";
+    const project: ProjectRecord = {
+      id,
+      one_liner,
+      ...(input.owner_id ? { owner_id: input.owner_id } : {}),
+      origin: input.origin ?? inferredOrigin,
+      created_at: this.now(),
+      updated_at: this.now(),
+      phase: "drafting",
+      latest_version: 0,
+    };
     await this.store.createProject(project);
-    await this.emit({ project_id: id, phase: "drafting" }, "project_created", { one_liner, extra_context: input.extra_context ?? null });
+    await this.emit({ project_id: id, phase: "drafting" }, "project_created", { one_liner, extra_context: input.extra_context ?? null, origin: project.origin });
 
     // 1. draft (one joint call)
     const t0 = Date.now();
@@ -225,6 +258,13 @@ export class Engine {
     // 2. plan decisions: catalog nodes + bespoke
     const merged = mergeCatalogs(this.catalogs.catalogs, sheet.archetypes);
     if (merged.errors.length) this.log(`catalog warnings: ${merged.errors.join("; ")}`);
+    for (const m of merged.same_as) this.log(`same question at two granularities: ${m.loser} merged into ${m.winner}`);
+    // Routing on the drafted nouns. The planner's own `not_applicable` is the primary filter, but it is an
+    // LLM judgement and it silently failed live: a financial ledger was asked about assignee due dates and
+    // saved personal views, picked the richest option for both, and the compiler implemented neither.
+    // `routeByWorkflowSignal` is the deterministic belt to that brace — see its doc comment for the rule.
+    const routed = routeByWorkflowSignal(merged.nodes, sheet);
+    for (const d of routed.dropped) this.log(`routed out before planning: ${d.id} — ${d.why}`);
     // Rule bank (in parallel with planning: independent LLM calls over the same draft sheet). A missing or
     // corrupt bank must never block onboarding — this is an enhancement, not a core commitment.
     const primaryArchetype = sheet.archetypes[0];
@@ -234,7 +274,7 @@ export class Engine {
           return null;
         })
       : null;
-    const [planRes, augmented] = await Promise.all([this.fns.plan({ sheet, nodes: merged.nodes }), augmentRulesFromBank(this.fns, sheet, bank)]);
+    const [planRes, augmented] = await Promise.all([this.fns.plan({ sheet, nodes: routed.nodes }), augmentRulesFromBank(this.fns, sheet, bank)]);
     if (augmented.result.ops.length) {
       const ra = await this.commit(sheet, augmented.result.ops, { kind: "rule_bank" }, `Added ${augmented.result.ops.length} rule(s) common in similar ${primaryArchetype} apps`, "rule_bank");
       sheet = ra.sheet;
@@ -258,15 +298,26 @@ export class Engine {
     // "crud-saas" question must not outrank the invoicing-specific ones on an invoicing app. Live finding.
     const primary = sheet.archetypes[0];
     const w = this.config.secondaryArchetypeWeight;
-    const nodes: NodeDef[] = merged.nodes
+    const nodes: NodeDef[] = routed.nodes
       .filter((n) => !notApplicable.has(n.id))
       .map((n) => (adjust.has(n.id) ? { ...n, consequence: adjust.get(n.id)! } : n))
       .map((n) => (n.archetype !== "core" && n.archetype !== primary ? { ...n, consequence: Math.round(n.consequence * w * 10) / 10 } : n));
     const planOps: PatchOp[] = [];
     for (const n of nodes) planOps.push({ op: "add_decision", id: n.id, topic: n.topic, question: n.question, options: n.options.map((o) => ({ id: o.id, label: o.label })), consequence: n.consequence });
     const bespokeDefs: NodeDef[] = [];
+    let bespokeDeduped = 0;
     for (const b of plan.bespoke) {
-      if (b.options.length < 2 || nodes.some((n) => n.id === b.id)) continue;
+      if (b.options.length < 2) continue;
+      // Semantic dedup, not id equality. The exact-id check let a re-asked question through under a new id:
+      // bespoke "x2 / Concurrent Edit Handling — if two users edit the same Financial Record at once…" shipped
+      // beside catalog `concurrency` — "what happens when two people edit the same thing at once?" — and the
+      // owner saw one question twice, at two different confidences. (findDuplicateNode still matches on id.)
+      const dup = findDuplicateNode(b, [...nodes, ...bespokeDefs]);
+      if (dup) {
+        bespokeDeduped++;
+        this.log(`bespoke ${b.id} ("${b.question}") dropped: already asked as ${dup.id} ("${dup.question}")`);
+        continue;
+      }
       const bid = b.id.startsWith("x") ? b.id : `x_${b.id}`;
       const dec: Decision = { id: bid, topic: b.topic, question: b.question, options: b.options, status: "open", consequence: Math.max(0, Math.min(5, b.consequence)), source: "plan" };
       planOps.push({ op: "add_decision", id: bid, topic: b.topic, question: b.question, options: b.options, consequence: dec.consequence });
@@ -298,7 +349,18 @@ export class Engine {
     };
     await this.store.saveSession(session);
     await this.store.updateProject({ ...project, phase: "correcting", latest_version: sheet.version, updated_at: this.now() });
-    await this.emit(session, "plan_created", { nodes: nodes.length, bespoke: bespokeDefs.length, not_applicable: [...notApplicable], fixed: plan.fixed_by_sheet.length, rejected: pl.rejected.length, usage: planRes.usage, latency_ms: planRes.latency_ms });
+    await this.emit(session, "plan_created", {
+      nodes: nodes.length,
+      bespoke: bespokeDefs.length,
+      bespoke_deduped: bespokeDeduped,
+      not_applicable: [...notApplicable],
+      same_as_merged: merged.same_as.map((m) => `${m.loser}->${m.winner}`),
+      routed_out: routed.dropped.map((d) => d.id),
+      fixed: plan.fixed_by_sheet.length,
+      rejected: pl.rejected.length,
+      usage: planRes.usage,
+      latency_ms: planRes.latency_ms,
+    });
 
     if (this.opts.eagerWorlds ?? true) {
       await this.sampleWorlds(id, "initial");
@@ -368,7 +430,9 @@ export class Engine {
           worlds.push(makeWorld(`w${session.resample_count}_${bi}_${wi}`, rep.assignment, (Math.max(0.1, w.weight) / totalW) * (1 / batches), reason === "initial" ? "sampled" : "resampled"));
         });
       });
-      session.belief.worlds = normalizeWeights(worlds);
+      // Soft graph evidence, once, on the worlds just built (never on anything already weighted). Identity
+      // when no graph is configured, which is the default — see EngineOptions.designGraph.
+      session.belief.worlds = normalizeWeights(applyGraphWeights(worlds, this.opts.designGraph, { archetypes: sheet.archetypes }));
       session.resample_count += 1;
       session.precomputed = {}; // belief changed; speculative cards may be stale
       session.updated_at = this.now();
@@ -380,6 +444,7 @@ export class Engine {
         repairs,
         conflicts,
         inapplicable,
+        graph_version: this.opts.designGraph?.version ?? null,
         latency_ms: Date.now() - t0,
         usage: results.map((r) => r.usage),
         models: [...new Set(results.map((r) => r.model))],
@@ -752,13 +817,17 @@ export class Engine {
         worlds.push(makeWorld(`w${session.resample_count}_${bi}_${wi}`, rep.assignment, (Math.max(0.1, w.weight) / totalW) * (1 / batches), "resampled"));
       });
     });
+    // Soft graph evidence on the NEW worlds only. The survivors below already absorbed it when they were
+    // sampled (they carry the `graph_weighted` stamp), and re-applying the same edges to them after every
+    // answer would count one 40-row correlation once per resample. Identity when no graph is configured.
+    const fresh = applyGraphWeights(worlds, this.opts.designGraph, { archetypes: sheet.archetypes });
     // keep the surviving high-weight old worlds too (rejuvenation, not replacement)
     const survivors = normalizeWeights(session.belief.worlds.filter((w) => w.weight > 1 / (session.belief.worlds.length * 4))).map((w) => ({ ...w, weight: w.weight * 0.5 }));
-    session.belief.worlds = normalizeWeights([...survivors, ...worlds.map((w) => ({ ...w, weight: w.weight * 0.5 }))]);
+    session.belief.worlds = normalizeWeights([...survivors, ...fresh.map((w) => ({ ...w, weight: w.weight * 0.5 }))]);
     session.resample_count += 1;
     session.precomputed = {};
     await this.store.saveSession(session);
-    await this.emit(session, "worlds_sampled", { reason: "resample", count: session.belief.worlds.length, ess: ess(session.belief.worlds), usage: results.map((r) => r.usage) });
+    await this.emit(session, "worlds_sampled", { reason: "resample", count: session.belief.worlds.length, ess: ess(session.belief.worlds), graph_version: this.opts.designGraph?.version ?? null, usage: results.map((r) => r.usage) });
   }
 
   /** Update belief after node=option is settled; apply hard edges and soft implications as commits. */

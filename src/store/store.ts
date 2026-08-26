@@ -8,7 +8,8 @@ export interface Store {
   createProject(p: ProjectRecord): Promise<void>;
   updateProject(p: ProjectRecord): Promise<void>;
   getProject(id: string): Promise<ProjectRecord | null>;
-  listProjects(): Promise<ProjectRecord[]>;
+  /** Most recently updated first. When ownerId is supplied, return only that owner's projects. */
+  listProjects(ownerId?: string): Promise<ProjectRecord[]>;
 
   appendCommit(c: Commit): Promise<void>;
   listCommits(projectId: string): Promise<Commit[]>;

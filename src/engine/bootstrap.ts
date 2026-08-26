@@ -42,11 +42,18 @@ export async function buildEngine(opts: BootstrapOptions = {}): Promise<{ engine
   // reported-confidence recalibration map, each a JSON file produced by `npm run learn`.
   const priors = await readJsonEnvFile(process.env.ZADUM_PRIORS_FILE);
   const recal = await readJsonEnvFile(process.env.ZADUM_RECALIBRATION_FILE);
+  // ZADUM_GRAPH_FILE — the design graph (docs/MINING.md stage 4), the third harness-gated opt-in and the
+  // most invasive of the three, since it reweights the sampled worlds the selector reasons over. Parsed
+  // through `DesignGraphSchema` rather than trusted as JSON: a graph is a file a human may have hand-edited
+  // while promoting a candidate, and a malformed one must fail here rather than silently skew a belief.
+  const graphRaw = await readJsonEnvFile(process.env.ZADUM_GRAPH_FILE);
+  const designGraph = graphRaw ? (await import("../learning/design_graph.js")).DesignGraphSchema.parse(graphRaw) : null;
   const engine = new Engine(store, llm, catalogs, {
     ...opts.engine,
     ...(ruleBankDir ? { ruleBankDir } : {}),
     ...(priors && !opts.engine?.populationPriors ? { populationPriors: priors as never } : {}),
     ...(recal && !opts.engine?.recalibration ? { recalibration: recal as never } : {}),
+    ...(designGraph && !opts.engine?.designGraph ? { designGraph } : {}),
     ...(process.env.ZADUM_CONTRARIAN === "1" && opts.engine?.contrarianSampling === undefined ? { contrarianSampling: true } : {}),
     ...(process.env.ZADUM_EVIDENCE === "1" && opts.engine?.evidenceOnContext === undefined ? { evidenceOnContext: true } : {}),
   });

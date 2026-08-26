@@ -595,6 +595,11 @@ describe("cost discipline and CLI defaults", () => {
     expect(parseArgs(["--all"]).all).toBe(true);
     expect(parseArgs(["--doc-type", "repo"]).docType).toBe("repo");
     expect(() => parseArgs(["--doc-type", "tweets"])).toThrow(/doc-type/);
+    expect(() => parseArgs(["--wat"])).toThrow(/unknown argument/);
+    expect(() => parseArgs(["--limit"])).toThrow(/needs a value/);
+    expect(() => parseArgs(["--limit", "NaN"])).toThrow(/whole number/);
+    expect(() => parseArgs(["--all", "--limit", "2"])).toThrow(/either --limit or --all/);
+    expect(parseArgs(["--yes-spend"]).yesSpend).toBe(true);
   });
 
   it("estimates cost from token counts, honouring price overrides", () => {

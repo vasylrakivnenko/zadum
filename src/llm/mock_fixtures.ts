@@ -227,12 +227,17 @@ function section(req: LLMRequest<unknown>): SectionOut {
       break;
     case "actors_permissions": {
       const acts = pick("ACTIONS");
-      L.push("| Actor | Action | Object |", "|---|---|---|");
+      // A real matrix is actions × actors with a ✓/✗ verdict per cell — the shape the permission contract is
+      // read in, and the shape `missing_matrix_row` looks for. The stub owes the same shape.
+      const actorNames = pick("ACTORS").map((a) => a.replace(/^- \[\w+\] /, "").split(" — ")[0]!.trim());
+      L.push(`| Action | ${actorNames.join(" | ")} |`, `|---|${actorNames.map(() => ":-:").join("|")}|`);
       for (const a of acts) {
         const id = /\[(\w+)\]/.exec(a)?.[1] ?? "";
         const body = a.replace(/^- \[\w+\] /, "").split(" — ")[0]!;
         const parts = body.split(" ");
-        L.push(`| ${parts[0]} | ${parts.slice(1, -1).join(" ")} | ${parts.at(-1)} | ⟨src: a:${id}⟩`);
+        const actor = parts[0]!;
+        const label = `${parts.slice(1, -1).join(" ")} ${parts.at(-1)}`;
+        L.push(`| ${label} (${id}) ⟨src: a:${id}⟩ | ${actorNames.map((n) => (n === actor ? "✓" : "✗")).join(" | ")} |`);
       }
       traces.push({ anchor: "permissions table", sources: ids(acts).map((i) => `a:${i}`) });
       break;
@@ -244,6 +249,22 @@ function section(req: LLMRequest<unknown>): SectionOut {
         L.push(`### ${n.replace(/^- \[\w+\] /, "").split(" — ")[0]} ⟨src: n:${id}⟩`, n.replace(/^- \[\w+\] /, ""));
       }
       traces.push({ anchor: "entities", sources: ids(nouns).map((i) => `n:${i}`) });
+      // The compiler is required to state the import contract whenever the Sheet calls for a file import
+      // (COMPILER_SYSTEM's data_model guide, and spec_checks' `missing_import_contract` gate). The stub owes
+      // the same shape, or the mock spec can never be deliverable.
+      const imp = settledDecisions(req.user).find((d) => d.id === "data_import" && !/^no\b|none/i.test(d.label));
+      if (imp) {
+        L.push(
+          "",
+          `### Import contract ⟨src: d:${imp.id}⟩`,
+          "- Accepted formats: `.csv` and `.xlsx`; UTF-8 encoding; comma delimiter for CSV; first worksheet only.",
+          "- Required headers, in any order, matched case-insensitively after trimming: see the entity fields above.",
+          "- Date format `YYYY-MM-DD`; numbers use `.` as the decimal separator and no thousands separator; currency is a bare decimal with no symbol.",
+          "- A text column naming another entity resolves by exact name after trimming and case-folding; a row that does not resolve is rejected and reported, never silently created.",
+          "- The uploaded file is retained and referenced from the import record.",
+        );
+        traces.push({ anchor: "import contract", sources: [`d:${imp.id}`] });
+      }
       break;
     }
     case "rules_invariants": {
@@ -267,9 +288,36 @@ function section(req: LLMRequest<unknown>): SectionOut {
     default:
       L.push(`(${sec}) derived from the Sheet. ⟨src: default⟩`);
   }
+  // Settled decisions, stated as consequences and traced — the way a real compiled section carries them.
+  // Without this the stub spec cites no decision anywhere, so the compile gate's trace-coverage check fires
+  // on every mock run and the demo can never reach `done`: the test double could not pass the machinery it
+  // exists to exercise. Round-robin over the sections keeps each decision in exactly one place.
+  const mine = settledDecisions(req.user).filter((_, i) => MOCK_SECTION_ORDER[i % MOCK_SECTION_ORDER.length] === sec);
+  if (mine.length) {
+    L.push("", ...mine.map((d) => `- ${d.question} — ${d.label} ⟨src: d:${d.id}⟩`));
+    traces.push({ anchor: "decisions reflected here", sources: mine.map((d) => `d:${d.id}`) });
+  }
   // machine-readable echo so the mock reverse can round-trip
   L.push("", `<!-- sheet-echo ${sec}\n${sheetBlock.trim()}\n-->`);
   return { markdown: L.join("\n"), traces };
+}
+
+/**
+ * Fixed order so a decision lands in the same section on every run — the mock must stay deterministic.
+ * `state_machines` is absent on purpose: it is compiled through the IR path, which never reaches this
+ * builder, so a decision assigned there would silently never be written down.
+ */
+const MOCK_SECTION_ORDER = ["overview", "actors_permissions", "data_model", "rules_invariants", "acceptance_scenarios", "journeys", "non_goals_defaults", "glossary"] as const;
+
+/** Parse `decisionsToText` back out of the prompt: "- <id> [<status> 95%] <question> → <chosen> (\"<label>\")". */
+function settledDecisions(user: string): { id: string; question: string; label: string }[] {
+  const block = user.split("DECISION LOG:")[1] ?? "";
+  const out: { id: string; question: string; label: string }[] = [];
+  for (const line of block.split("\n")) {
+    const m = /^- (\S+) \[(\w+)[^\]]*\] (.+?) → (?:\S+ \("(.*)"\)|\(open\))$/.exec(line.trim());
+    if (m && m[4] !== undefined) out.push({ id: m[1]!, question: m[3]!, label: m[4]! });
+  }
+  return out;
 }
 
 function critic(req: LLMRequest<unknown>): CriticOut {

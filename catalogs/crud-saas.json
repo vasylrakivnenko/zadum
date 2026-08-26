@@ -1,6 +1,6 @@
 {
   "id": "crud-saas",
-  "version": "2026.08.23-1",
+  "version": "2026.08.25-1",
   "archetype": "crud-saas",
   "description": "Generic 'keep track of things with a team' apps (CRM-lite, project/task trackers, asset and client registers). Priors skew toward small teams sharing one workspace.",
   "nodes": [
@@ -233,7 +233,9 @@
         "single_assignee_due": 0.55,
         "multi_assignee_watchers": 0.25
       },
-      "tags": []
+      "tags": [
+        "record_workflow"
+      ]
     },
     {
       "id": "record_activity_feed",
@@ -269,7 +271,9 @@
         "comments": 0.239,
         "comments_mentions_activity": 0.444
       },
-      "tags": []
+      "tags": [
+        "record_workflow"
+      ]
     },
     {
       "id": "record_relationships",
@@ -333,7 +337,9 @@
         "list_board_calendar": 0.194,
         "saved_custom_views": 0.194
       },
-      "tags": []
+      "tags": [
+        "record_workflow"
+      ]
     },
     {
       "id": "record_automation",
@@ -389,7 +395,9 @@
         "none": 0.382,
         "templates": 0.618
       },
-      "tags": []
+      "tags": [
+        "record_workflow"
+      ]
     },
     {
       "id": "record_duplicates",
@@ -479,7 +487,9 @@
         "assignee_and_mentions": 0.5,
         "subscribers": 0.25
       },
-      "tags": []
+      "tags": [
+        "record_workflow"
+      ]
     },
     {
       "id": "record_bulk_edit",
@@ -504,7 +514,9 @@
         "one_at_a_time": 0.4,
         "bulk_actions": 0.6
       },
-      "tags": []
+      "tags": [
+        "record_workflow"
+      ]
     },
     {
       "id": "record_recurring",
@@ -517,13 +529,7 @@
         },
         {
           "id": "recurring_records",
-          "label": "Yes — they are created automatically on a schedule",
-          "implies": [
-            {
-              "node": "recurring_scheduled",
-              "option": "recurring_records"
-            }
-          ]
+          "label": "Yes — they are created automatically on a schedule"
         }
       ],
       "consequence": 2,
@@ -535,7 +541,15 @@
         "no": 0.6,
         "recurring_records": 0.4
       },
-      "tags": []
+      "tags": [],
+      "same_as": {
+        "node": "recurring_scheduled",
+        "prefer": "other",
+        "map": {
+          "no": "none",
+          "recurring_records": "recurring_records"
+        }
+      }
     }
   ]
 }

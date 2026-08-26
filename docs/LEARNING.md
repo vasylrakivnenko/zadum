@@ -30,10 +30,19 @@ human-behavior signal; every change is an experiment gated by the harness.
 | Loop | What learns | Mechanism | Status |
 |---|---|---|---|
 | A. In-session | each output | best-of-N + critic, round-trip, story; (todo: card/draft pre-screen rubric) | partly built |
-| B. Statistical | priors, consequence weights, θ/ε/τ, phrasings, catalog pruning | counts, bandits, replay — pure arithmetic | **estimators built** (`src/learning/`, `npm run learn`); not yet wired into the engine (harness-gated) |
+| B. Statistical | priors, consequence weights, θ/ε/τ, phrasings, catalog pruning, **joint structure (design graph)** | counts, bandits, replay — pure arithmetic | **estimators built** (`src/learning/`, `npm run learn`); design graph built (`npm run mine:graph`); neither wired on by default (harness-gated) |
 | C. Semantic | catalog nodes, prompts, exemplars, archetypes | LLM proposes diffs → harness + replay must win → versioned promotion | corpus mining built (`docs/MINING.md`); proposal loop todo |
 
 ## Estimators — implemented in `src/learning/` (report: `npm run learn -- [--data-dir .zadum] [--out dir]`)
+
+Every project is tagged `user`, `mock`, `experiment`, or `legacy`. Reports use only `user` projects by default;
+this prevents demos and benchmarks from silently changing production priors. An operator can deliberately add
+other sources with `--include-origin experiment` (or `mock`/`legacy`) for a named analysis: the flag **adds** to
+the user population rather than replacing it, so it can never quietly fit priors on harness runs alone. A
+project written before origins existed counts as `legacy` on both stores — the file store records no origin at
+all, Postgres backfilled the column to `'legacy'` (migration 0002) — so `--include-origin legacy` reaches the
+same projects either way.
+
 - `population_priors.ts`: observations = card answers + default overrides (never our own defaults); shrinkage
   catalog → global → archetype with pseudo-count n0; `mixWithCatalog()` is the plug-in point for
   `Engine.createProject` (deliberately not wired yet — gate it on a harness win).
@@ -58,6 +67,59 @@ human-behavior signal; every change is an experiment gated by the harness.
 - **Catalog evolution**: promote recurring bespoke nodes (same node in ≥m sessions with real disagreement); demote
   nodes with ~zero entropy and no overrides (stop sampling them); split archetypes when final Sheets cluster.
 - **Critic self-test**: planted-violation specs → catch rate, continuously.
+
+## Loop B — the design graph (evidence matrix → soft priors)
+
+Built 2026-08-25. The estimators above learn **marginals** (what fraction of invoicing apps lock a sent
+invoice). The design graph learns **joint structure** (given online payments, how often do webhooks appear) —
+which is what the sampled-worlds belief actually needs, because a world is a joint assignment and a marginal
+prior cannot express "these two go together".
+
+Pipeline and semantics: **docs/MINING.md → "Stage 4 — the evidence matrix and the design graph"**. The parts
+that matter to learning:
+
+- **Rows are decisions, not words.** Two layers are kept apart on purpose: an *evidence row* records what an
+  artifact visibly contains (lexicon features), a *decision row* records what it appears to have decided
+  (catalog nodes). The graph is learned from the second only.
+- **Row sources, ranked exactly as §"Sources of truth" ranks them.** `session` rows (a real owner answered a
+  real card, or corrected a default, or corrected the compiled spec) are the strongest and the scarcest;
+  `spec_doc` and `repo` rows are inferred and plentiful. They are **never pooled by default** — statistics are
+  produced per source kind and per archetype first, and a pooled view is opt-in and Simpson-checked.
+  Untouched defaults are still not evidence: counting them would let the priors confirm themselves, and would
+  let the graph learn its own output. Same Goodhart guardrail, one layer up.
+- **`unobserved` is not `absent`.** A row that could not have observed a node contributes to no count for it.
+  Every denominator is built from `DecisionCell.observable`, and the invariant
+  `n11+n10+n01+n00 = eligible_n` is checked on every pair.
+- **No verbalised confidence.** Every probability is a smoothed count ratio (Jeffreys) with a Wilson interval.
+  This repo already measured its own verbalised-confidence pipeline as not yet epistemically usable; the graph
+  does not reintroduce it through the side door.
+- **Learned edges never become laws.** `classifyPair()` can emit only `soft_positive`, `soft_negative` or
+  `unknown`; hard relations are read from the catalog and validated to carry `status: "authored"`. Statistics
+  propose hard rules into a separate candidates file; a human promotes one by editing the catalog.
+
+### How it reaches the runtime (harness-gated, OFF by default)
+
+`EngineOptions.designGraph`, following the exact precedent of `populationPriors` and `recalibration`:
+
+1. sample worlds as today → 2. repair with hard catalog rules as today → 3. apply the soft graph likelihood
+**once**, to newly sampled worlds only → 4. normalize → 5. the existing selector runs unchanged.
+
+Four invariants, each with a test: a user answer **dominates** the graph; the likelihood is **never re-applied**
+after an answer (double counting); a soft edge **never deletes a world** (weights shrink, never reach zero);
+and with no graph the belief is **byte-identical** to today. Edge influence is shrunk by support (`n/(n+n0)`)
+and clamped, so one thin-sample edge cannot dominate a world set.
+
+The graph is not enabled by default until: no hard-constraint regressions, no baseline regression, tested on
+held-out data, and a harness graph-on/graph-off arm shows a measurable improvement or no material harm. Same
+bar the rule bank cleared (ADR-027), same bar `contrarianSampling` has not yet cleared.
+
+### Rationale text is a product feature, not a debug view
+
+Because every edge carries support counts and an interval, a default can explain itself in the owner's terms:
+*"Webhooks are included because 31 of 41 comparable, observable projects with online payments also used them.
+Estimated probability 0.76, 95% interval 0.61–0.87."* `explainEdge()` hedges explicitly below a support floor
+and never renders a missing interval as a range — an unsupported statistic presented as certainty is worse
+than no explanation.
 
 ## Loop C — improvement proposals (weekly job, later)
 Inputs: failure clusters (high-override defaults, high-"other" cards, high-edit drafts, story corrections,

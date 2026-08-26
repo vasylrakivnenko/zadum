@@ -62,6 +62,17 @@ one-liner ──► drafter ──► Sheet v1 ──► planner ──► decis
 | `mining/concepts.ts` | Stage 2: polarity-aware concept extraction (LLM) → option-level prior hints, new concepts (`npm run mine:concepts`) | IO via LLM |
 | `mining/rule_bank.ts` / `rule_bank_schema.ts` | Stage 3: clusters extracted rules into per-archetype patterns (`npm run mine:rules`) → `catalogs/rule-bank/*.json` | IO via LLM |
 | `engine/rule_bank.ts` | Loads a mined rule bank for one archetype (graceful null if unmined) | IO |
+| `mining/lexicon.ts` | Stage 4: the feature lexicon — binary observables, witness loci, `maps_to` a catalog node+option (`catalogs/lexicon/lexicon.json`) | pure + loader |
+| `mining/taxonomy.ts` | Stage 4: layer overlay over the 135 catalog nodes (`catalogs/taxonomy/overlay.json`); unknown node = failure, unclassified node = report | pure + loader |
+| `mining/corpus.ts` | Stage 4: repo/spec ingestion — shallow pinned clones, stable artifact ids, digest hashes, archetype-stratified sampling, `--yes-spend` gate (`npm run mine:corpus`) | IO (git) |
+| `mining/condense.ts` / `label.ts` | Stage 4: artifact → bounded digest + available loci; LLM labelling with `present`/`absent`/**`unobserved`** enforced in code | IO via LLM |
+| `mining/label_eval.ts` | Stage 4: gold-set precision, run-to-run consensus, per-category/source/archetype breakdowns (`npm run label:eval`) | pure + loader |
+| `mining/matrix.ts` | Stage 4: evidence rows → **decision rows** (observed/unobserved/conflict), consensus, version gating (`npm run mine:matrix`) | pure + CLI |
+| `mining/element_stats.ts` | Stage 4: per-element prevalence, entropy, IDF over the decision matrix (`npm run mine:elements`) | pure + CLI |
+| `mining/cooccurrence.ts` | Stage 4: stratified 2×2 counts → `PairStat`, Simpson-checked (`npm run mine:graph`) | pure + CLI |
+| `learning/design_graph.ts` | Stage 4: edge semantics, Wilson/Jeffreys estimators, `classifyPair` (can never emit a hard relation), validation | pure |
+| `learning/graph_cli.ts` | `npm run graph:validate` (CI gate) / `npm run graph:report` (human view) | IO |
+| `core/evidence_graph.ts` | Runtime: soft graph likelihood over sampled worlds — applied once, never deletes a world, always loses to a user answer. **Off by default** | pure |
 | `engine/rule_augment.ts` | Turns bank patterns + a draft Sheet into deduped `add_rule` ops via the `augmentRules` LLM fn | IO via LLM |
 | `harness/judge.ts` | LLM-judge semantic recall (actors/nouns/rules/non_goals) — the fix for lexical matching's synonym-blindness (ADR-024/028) | IO via LLM |
 | `core/thoroughness.ts` | `quick`/`standard`/`thorough` presets → SelectorConfig/CompileOptions overrides (ADR-029) | pure |
@@ -199,6 +210,27 @@ The LLM only ever proposes `add_rule` text; `rule_augment.ts` dedupes determinis
 Live-validated: rules recall (LLM-judge) 0%→80% on the invoicing gold, no cost to decision recovery or latency
 (docs/EVALS.md). A missing/corrupt bank is a silent no-op — this is an enhancement layer, never a dependency.
 
+## 8b. The evidence layer (offline) and the design graph (optional runtime input)
+
+A second offline pipeline, parallel to the rule bank and equally optional at runtime: a corpus of repos and
+spec documents is condensed, labelled feature-by-feature with an explicit **`unobserved`** verdict, aggregated
+into a *decision* matrix over catalog nodes, and turned into a versioned **design graph** of soft, scoped,
+interval-carrying associations. Full semantics in `docs/MINING.md` → "Stage 4"; the learning view in
+`docs/LEARNING.md` → "Loop B — the design graph".
+
+Two architectural rules keep it from contaminating the deterministic core:
+
+1. **Evidence and decisions are separate representations.** What an artifact *contains* (lexicon features) is
+   never confused with what it *decided* (catalog nodes). The graph is learned from decisions only.
+2. **Learned edges are never laws.** `classifyPair()` can emit only `soft_positive` / `soft_negative` /
+   `unknown`; hard edges are read from `catalogs/*.json` and `validateGraph()` refuses any graph where a hard
+   relation carries a learned status. Hard-rule *proposals* go to a separate candidates file for a human.
+
+At runtime the graph is an optional prior on newly sampled worlds (`EngineOptions.designGraph`, off by
+default): applied once, never re-applied after an answer, never able to delete a world, and always beaten by a
+user answer and by `propagateHard`. Rule 1 of CLAUDE.md is unchanged — the LLM still never writes to the Sheet,
+and now the corpus does not either.
+
 ## 9. Running
 
 ```
@@ -211,6 +243,13 @@ npm run zadum -- compile <id> --out out/<id> --candidates 3
 npm run zadum -- --scoring joint_entropy --lookahead 2 cards <id>   # try another selection criterion
 npm run harness -- --mock --sweep --variants 3     # compare criteria + calibrate θ
 npm run mine:rules -- --extractions <stage2-file>  # (re)build the rule bank from mined corpus rules
+npm run taxonomy                                   # validate the layer overlay against every catalog
+npm run mine:corpus -- --dry-run --limit 20        # what a labelling run would cost (live needs --yes-spend)
+npm run mine:matrix -- --mock                      # corpus → labels → decision matrix, end to end, no credentials
+npm run mine:elements -- --matrix <decisions.jsonl>
+npm run mine:graph -- --matrix <decisions.jsonl> --out mining-results
+npm run graph:validate -- --graph <graph.json>     # CI gate: numeric probabilities, no learned hard edges
+npm run graph:report -- --graph <graph.json>
 npm run harness -- --gold <g> --judge                          # LLM-judge semantic recall alongside lexical
 npm run harness -- --gold <g> --rule-bank-dir <empty-dir>       # A/B the rule bank
 DATABASE_URL=postgres://localhost/zadum npm run db:migrate   # Postgres instead of the file store

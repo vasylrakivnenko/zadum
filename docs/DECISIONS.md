@@ -758,3 +758,263 @@ were done serially. Integrating them exposed three real consistency defects that
 **Consequences.** Root tests 428 → 509, web 21 → 29; every defect above carries the probe that found it as a
 regression test. Worlds are no longer complete by construction — a deliberate, documented semantic change.
 The mock demo now runs the refine loop, so CI covers the headline feature end to end.
+
+## ADR-039 — The gates were the defect: deterministic checks, a round-trip that works, and rules applied to the ledger (2026-08-25)
+
+**Context.** An outside reviewer read a live compile — project `f9280b97`, "internal dashboard based on our
+excel files with financials" — and returned sixteen findings, six of them contradictions between Rules the
+spec itself calls inviolable. Every one was confirmed against the artifacts. But the run data said something
+worse than the review did:
+
+- `critic: {verdict: "pass", score: 10, violations: [], omissions: []}` in one round. **Rule 6's gate passed a
+  spec with six rule contradictions.** An LLM verdict on a 51KB document cannot be the gate.
+- `roundtrip.recall.rules = 0.2`, `non_goals = 0.0` — **false**. The reverse compiler had recovered every rule
+  and every non-goal; they were paraphrases, and `jaccard(a,b) >= 0.5` over raw word sets scored them as both
+  "missing" and "extra". Meanwhile `extra` held 14 actions the spec invented that nothing looked at. The one
+  mechanical signal was producing noise where recall belonged and hiding the real finding in the ignored half.
+- The reviewer read three answered-but-unimplemented decisions as template answers. The event log says the
+  owner chose all three deliberately — 52 seconds on the assignment card, the longest deliberation of the
+  session, and an explicit hand override of the recurring default in the defaults review. The compiler
+  received user-grade answers and propagated them to nothing.
+- `card_loop_stopped` fired at 5 cards, θ=24, with the best remaining question worth 22.624 — 94% of θ — and
+  that question became the worst defect in the spec. On 4 of the 5 cards the owner answered, the belief's
+  argmax was wrong; 41 of 48 decisions were then defaulted from that same belief.
+- Staleness was `latestSheet.version !== sheet.version`. A background story check that raised three
+  confidences from 95% to 97% stamped the spec STALE and, because `done` requires a fresh Sheet, stranded the
+  project in `compiling` — over a change no artifact in the bundle can see.
+
+**Decision.** Stop asking a model whether the spec is good, and check what can be checked.
+
+1. **Deterministic gates, alongside the critic, not behind it.** `blockingReasons()` decides deliverability
+   from the critic AND mechanical findings AND round-trip recall AND the ledger AND semantic staleness;
+   `markDone` is gated on it being empty. Three checkers feed it: `core/spec_checks.ts` (trace coverage,
+   duplicate headings, prose in matrix cells, `etc.` in enums, untestable assertions, missing matrix rows,
+   computed fields without formulas, missing import contract), `core/spec_ir.ts` (three new lifecycle codes),
+   and `core/ledger_checks.ts` (below). High findings feed one **targeted** repair round that re-runs only the
+   sections they point at — a finding in the glossary is no reason to pay for a second document.
+
+2. **A trace marker is a claim, not an implementation.** The first version of the coverage check ran at 75%
+   false positives: the compiler emits three marker syntaxes (`d:x5`, bare `x5`, `record_assignment:option`)
+   and it accepted one. Fixing that alone would have made it *miss* `record_views`, cited on two journey
+   headings and implemented nowhere. So it is split: `untraced_decision` (medium, advisory) for no citation at
+   all, and `unimplemented_decision` (high, gating) when a decision the owner personally answered has none of
+   its chosen option's distinctive words anywhere in the body.
+
+3. **Rules beat assumptions in the ledger, not only in the spec.** `ruleContradictions()` pairs restrictive
+   `access` rules against settled decisions that grant more. Advisory by construction and it never rewrites an
+   answer: a defaulted one belongs in the owner's next review, a resolved one is the owner's own word, which
+   Rule 3 says stands. Two arms, both narrow — a looser first version fired six times on the real Sheet and
+   only two were real, so the permission verb must come from the *answer* (not its question), and the
+   generic-principal arm requires a "who may…" question.
+
+4. **The round-trip matcher measures paraphrase, so it had to stop using word overlap.** `core/textmatch.ts`
+   combines rarity-weighted overlap, containment, and shared entity phrases, with one-to-one greedy
+   assignment; `core/roundtrip.ts` uses it and exports `scopeCreep()` over `extra`. On the same live run:
+   **recall 0.56 → 1.00**, zero false "missing", and 32 genuine scope-creep items (11 invented rules, 14
+   invented actions, 3 invented nouns) become visible for the first time.
+
+5. **Staleness is semantic.** `sheetFingerprint()` covers answers, statuses, rules, nouns, actors, actions and
+   non-goals, plus confidence only as the bucket the confirm-first list can see. A version bump that changes
+   nothing the spec is built from is reported (`sheet_moved`) but no longer disqualifying.
+
+6. **Duplicate questions are a catalog defect, not a rendering one.** `same_as` declares two nodes the same
+   question; the loser never reaches the planner, and its edges are carried onto the winner through an option
+   map. One equivalence declared so far (`record_recurring` → `recurring_scheduled`) — the rest were examined
+   and rejected as genuinely independent. `topicIncoherence()` reports settled decisions that share a topic and
+   disagree; bespoke nodes are deduplicated against planned ones by question similarity, which drops the mined
+   `x2` "Concurrent Edit Handling" that was core `concurrency` asked a second time at a different confidence.
+
+7. **The stop rule gets a relative floor — and it ships OFF.** `relativeStopFloor` refuses to converge while
+   the best remaining question is still worth a fraction of the mean already asked. Off-policy replay says the
+   crossover for the real incident is 0.531 and the shipped arm gains +0.92pp AUC at 0.3–0.4, but it also has
+   a ratchet (each admitted card lowers the mean, admitting the next: one mock session went 2 → 11 cards), and
+   the evidence is mock beliefs whose card values run 33–124 against a shipped θ of 24. CLAUDE.md says the
+   harness decides selector questions, so the mechanism ships disabled and every `--sweep` now reports
+   `floor_curves` over a grid for it to be decided on.
+
+**Consequences.** Root tests 514 → 672. On the reviewed artifact the gate now blocks with 4 high findings
+(3 computed fields with no formula collapsed to one, no import contract, two answered-but-unimplemented
+decisions) where the compiler shipped `pass`, score 10. The mock demo still reaches `done`, which required
+making the mock fixtures carry trace markers, an import contract and a real permissions matrix — a test double
+that could not pass the machinery it exists to exercise was itself a defect. `scripts/mock-harness-baseline.json`
+was regenerated deliberately (AUC 0.380265 → 0.350995): removing the duplicate node re-rolls every sampled
+world because the mock sampler seeds from the rendered prompt, and a control that deleted an arbitrary
+unrelated node moved AUC further (0.334138), so the movement is mock chaos, not a selector regression.
+
+**Addendum (same day) — `unimplemented_decision` is two bands, and word counting is not the instrument.**
+Replaying the same session through the new pipeline put four decisions in front of the gate, and only two
+were real. Hand-labelling every resolved decision on both specs (11 points: 4 unimplemented, 7 implemented)
+showed the missing-word *fraction* cannot separate them — the true cases sit at 25%, 29%, 43%, 100% and the
+false ones at 33% and 40%, interleaved. Worse, the proxy is unreliable in both directions: `record_views`
+("saved personal and shared views") scored 3 of its 4 words *present* on three unrelated usages — "the change
+is saved", "shared pool", "user views the report". It was a coincidental catch.
+
+So the verdict moved to `textmatch.bestMatch` over the spec's PROSE, with the word scan kept only as a cheap
+prefilter. Excluding table ROWS from the chunk set is what made the two classes separable — a permissions row
+("View Financial Record | ✓ | ✓") is a verdict, not an implementation, and matching a label against one is
+how a matrix row masqueraded as a saved-views feature. The observed spread:
+
+    unimplemented: 0.000, 0.299, 0.309, 0.323    implemented: 0.330, 0.350, 0.489, 0.722, 0.790, 0.871, 0.953
+
+They separate perfectly — but by 0.007, on 11 points. Far too thin to gate a compile on, so `high` is set at
+0.30 where the evidence is unambiguous, and 0.30–0.45 is reported as `partially_implemented_decision`
+(medium, non-gating). That deliberately demotes one true finding rather than risk blocking a good compile on
+a 2% difference. Answers that only remove scope ("No", "None", "Nobody", "Never") are skipped entirely: there
+is no content they could have added, so their absence is not evidence.
+
+**What the replay showed.** Same one-liner, same answers, same two overrides: the spec that shipped at
+`critic: pass, score 10` is now **not deliverable**. The critic fails it (score 5, then 3 on a second compile)
+with violations in the same families the human reviewer found by hand, and the lifecycle checkers catch the
+terminal-state contradiction three independent ways. Both Tier-2 holes closed on their own: the spec now
+carries a full `### Import Contract` (formats, headers with types, case-insensitive category resolution,
+row-level dedup, error policy, file retention) and `### Derived Fields & Sign Conventions` with the actual
+formulas for `total_revenue`, `total_expenses` and `net_income`. Three compiles of that same project, each fixing only what the
+previous gate named, moved monotonically without ever clearing:
+
+| | mechanical highs | critic | dominant reason |
+|---|---|---|---|
+| run 1 | 7 | fail, 5, 8 violations | terminal states with exits; 2 weak `unimplemented_decision` |
+| run 2 (sign convention + 6 mis-routed workflow decisions answered) | 5 | fail, 3, 7 violations | `r1` × permissions matrix, 5 of 7 violations |
+| run 3 (`record_edit_rights` made to agree with `r1`) | 2 | fail, 3, 4 violations | `r9` × lifecycle × import contract |
+| run 4 (`r2` removed as subsumed by `r9`) | 2 | fail, 4, 4 violations | a fresh rule-pair cluster each pass |
+
+Every fix removed exactly the class it targeted and exposed the next one, which is the behaviour a gate
+should have. Run 2's blocker was one 47%-confidence assumption — `record_edit_rights` said ownership decides
+editing while `r1` said only Accountants may — and the compiler faithfully rendered that into the matrix: the
+ledger check named the root, the critic named the symptom in five places. Run 3 cleared it and surfaced a
+genuine catalog gap on the way: none of `record_edit_rights`' three options expresses "by role", so a
+role-restricted app has no honest answer to it.
+
+Two findings survived all three runs and are compiler defects, not input ones: `approval_workflow = "One
+approver"` is never implemented (best paraphrase match 0.00), and the derived-field formulas are unstable —
+run 1 emitted `total_revenue = ∑(…)`, runs 2 and 3 did not, while run 3 still printed a "Sign convention"
+line. A human skimming would have seen the heading and moved on; `computed_field_without_formula` caught
+that the convention was stated and the arithmetic was not.
+
+Run 4 answered the `r9` knot the way the Sheet's own settled answers pointed (`x1` = restrict_delete and
+`x6` = partial_accept both say a Category is never orphaned and bad rows are never stored), through the
+ordinary edit path: plain English in, **one** validated op out — `{"op":"remove_rule","ref":"r2"}`, nothing
+else. That cluster vanished and a different real one took its place. The lesson is not that the gate is
+unsatisfiable but that **iterating compiles is the wrong way to satisfy it**: the critic surfaces one
+rule-pair cluster per pass, so each compile buys one fix, and the remaining blockers after four runs are
+compiler defects rather than input ones.
+
+Four such defects are now measured, all reproducible across runs:
+`approval_workflow = "One approver"` is never implemented (best paraphrase match 0.00, four compiles running,
+the word "approv" appearing nowhere outside the ledger table); the derived-field formulas are unstable
+(present in run 1, gone in 2–4, while run 3 still printed a "Sign convention" line); the spec resolves an
+awkward settled decision by declaring it a **non-goal** ("No recurring/scheduled automation…") instead of
+implementing it; and trace markers are corrupting.
+
+**`unknown_trace_id` — the defect that was invisible because nothing checked it.** The compiler drifts into
+citing the chosen OPTION id in place of the decision id: `⟨src: d:recurring_records⟩` where
+`recurring_scheduled` is the decision and `recurring_records` merely its answer. Across the four compiles the
+real markers stayed pinned at 46 while the bogus ones went **1 → 1 → 12 → 24**, so each spec looked better
+traced than the last while its citations became meaningless. It also explains most of the companion noise:
+of run 4's 25 `untraced_decision` findings, **18 are decisions the spec does cite — under their option id**.
+The check reports only explicit `d:` citations (a bare id in `⟨src: a1, n2, x3⟩` is ambiguous by design) and
+names the decision that was meant, so the fix is mechanical.
+
+Two checks were corrected by what the replay exposed. `"Nobody — people check the app"` reached the gate as a
+high finding, so answers that only remove scope now include `nobody`/`no one`/`nowhere`. And `r4` ("Budgets
+are view-only to Executives; only Finance Managers update targets") was read as a restriction on *seeing* —
+it grants that and restricts updating — so `view-only`/`read-only` now removes the view family from a rule's
+restricted set. A third defect was fixed in the compiler rather than the checker: the lifecycle IR emitted
+actor **ids** (`p1`, `p3`) where names belong, producing four `unknown_actor` findings and a spec that read
+"p3 categorizes the transaction". An id that matches a Sheet actor exactly is a formatting slip, not a design
+error, so `normalizeMachineActors` rewrites it before the check runs.
+
+**Not fixed, deliberately.** θ itself is untouched — recalibrating it needs a live sweep over more than three
+archetypes, and the shipped 24 comes from n=3. `record_assignment` remains a known miss: the owner asked for
+due dates, the spec mentions them without modelling a Due Date field, and word presence cannot see that. The
+critic is still asked to enumerate O(n²) rule pairs from prose rather than being handed the pairs.
+
+## ADR-040 — The evidence layer: two matrices, and why a statistic is never allowed to become a law (2026-08-25)
+
+**Context.** The catalogs encode 135 decisions and their hard logical edges, and `src/core/worlds.ts` reasons
+over *joint* assignments — but every prior the engine has is a **marginal**. `population_priors.ts` can say
+"71% of invoicing apps are multi-currency"; nothing can say "given online payments, webhooks follow". A world
+is a joint object and it was being sampled from marginal knowledge, so the sampler's only source of joint
+structure was the LLM's own guesswork, re-derived from scratch every session.
+
+Milestone 59 built the observation half of the fix (lexicon, condenser, labeller with an explicit
+`unobserved`, the detectability experiment) and stopped there deliberately, because the next step is where
+this kind of pipeline usually goes wrong: turning observations into probabilities and probabilities into
+rules. This ADR records the six commitments that make that step safe, each one implemented as a mechanism
+rather than a guideline.
+
+**Decision.**
+
+1. **Two representations, never one.** An *evidence row* (`zadum.evidence-row.v1`) records what an artifact
+   visibly contains — lexicon features. A *decision row* (`zadum.decision-row.v1`) records what it appears to
+   have decided — catalog nodes. The design graph is learned from the **decision** layer only. Collapsing them
+   would make the graph learn which libraries people import rather than which choices people make, and would
+   cut the audit trail from a probability back to a quote. `stripe_checkout` in a manifest is an observation;
+   `payments_in_app = collect_online` is a decision, and the aggregation between them is explicit, inspectable
+   code (`aggregateRow`) rather than a join.
+
+2. **`unobserved` is not `absent`, and the denominator proves it.** Every decision cell carries
+   `observable` — was this row ever *eligible* to say anything about this node. Only eligible rows enter any
+   count. The 2×2 table is defined over rows where **both** nodes were observed, which makes the rule an
+   arithmetic invariant (`n11+n10+n01+n00 === eligible_n`) that `validatePairStat` checks on every pair rather
+   than a discipline someone has to remember. A row that could not have seen a node is not an n00; it is not
+   anything. The five distinct reasons a cell is unobserved (`not_askable_in_source`, `silent`,
+   `negative_only`, `run_disagreement`, `no_mapped_feature`) are preserved, because "we couldn't look",
+   "we looked and it was quiet" and "our two runs disagreed" are three different facts.
+
+3. **A licensed negative never selects another option.** `absent` for `no_login_at_all` is evidence against
+   `user_accounts = none`; it is **not** evidence for `multi_user`, even when `multi_user` is the only other
+   option. This is the rule most likely to be broken by accident, precisely where it is most wrong — a
+   two-option node where "not A" looks like it must mean B. Negatives are recorded in `negative_feature_ids`
+   and used for nothing else; the cell stays `unobserved` with reason `negative_only`.
+
+4. **Conflicts and disagreements are preserved, never smoothed.** Two options of one node with positive
+   evidence produce `status: "conflict"` with both candidates and their quotes — no tie-break, no first-wins.
+   Repeated labelling runs that disagree collapse to `unobserved` with reason `run_disagreement`, unless a
+   configured consensus rule is met; a tie can never be a majority. Averaging `present` and `absent` into 0.5
+   would manufacture a probability out of a failure to measure. The mock end-to-end run over four real
+   invoicing documents surfaces six conflicts (`invoice_delivery: hosted_link vs pdf_email` among them) — that
+   is the mechanism working, and each one is a lexicon question worth answering.
+
+5. **Learned edges can never become laws — enforced by types, not policy.** `classifyPair()` is the only
+   function that turns a statistic into a relation, and its return type admits exactly `soft_positive`,
+   `soft_negative`, `unknown`. There is **no code path** from a number to `hard_implies` / `hard_excludes` /
+   `equivalent`; those are read from `catalogs/*.json`, and `validateGraph()` refuses any graph containing a
+   hard relation whose status is not `authored` (`npm run graph:validate` is the CI gate). Statistics may
+   *propose*: `hardCandidates()` requires `eligible_n ≥ 100`, **zero** violations on raw counts (one
+   counterexample kills a proposal), and a lower bound ≥ 0.995 — and writes to a separate candidates file that
+   a human reads before editing a catalog. A 100%-in-140-repos association is not a law; it is a fact about
+   GitHub in 2026. Hard exclusions themselves were added to the catalog schema in this session (`excludes`,
+   symmetric, with unit propagation), so an author now has somewhere to put a promoted rule.
+
+6. **Stratify first, pool last, and say when pooling lied.** Statistics are computed per archetype and per
+   source kind before any aggregate. A pooled view is opt-in, always labelled `archetype: null`, and any
+   pooled edge whose sign disagrees with one of its own strata is stamped `simpsons_warning` — printed
+   *above* the numbers it invalidates, and **dropped entirely** by the runtime accessor, because a
+   known-confounded number is worse than no number. Repos and specs are not interchangeable: milestone 59
+   measured `records_workflow` favouring specs 3.6× while `integrations_sync` favours repos 2.2×.
+
+**Estimators.** Smoothing is a documented Beta prior (Jeffreys, `a = b = 0.5`) so a zero-count cell cannot
+assert `p = 0`; intervals are **Wilson**, chosen over the normal approximation exactly because the interesting
+cells are `k = 0` or `k = n` at small `n`, where the normal approximation collapses to a point and a thin
+sample becomes a fake impossibility. A soft edge additionally requires its interval for `p(B|A)` to exclude
+the baseline `p(B)` — a large point estimate whose interval straddles the baseline is `unknown`, and the
+report says so in words. **No number anywhere in this pipeline came from a model stating its confidence**;
+the labeller returns discrete verdicts and quotes and is forbidden to emit confidence at all.
+
+**Runtime: off by default, and structurally unable to overrule anyone.** The graph reaches the engine through
+`EngineOptions.designGraph`, following the precedent of `populationPriors` and `recalibration`: applied
+**once** to newly sampled worlds, never re-applied after an answer (double counting), never able to drive a
+world's weight to zero, shrunk by support and clamped so one thin edge cannot dominate, and always beaten by a
+user answer and by `propagateHard`. With no graph, belief is byte-identical to today — a named regression
+test. It stays off until a harness graph-on/graph-off arm shows improvement or no material harm on held-out
+data: the bar the rule bank cleared (ADR-027) and `contrarianSampling` has not.
+
+**Consequences.** Nine new modules and ~200 tests; `npm run mine:matrix -- --mock` runs corpus → labels →
+decision matrix end to end with no credentials. The honest gaps, recorded rather than hidden: the gold set for
+label calibration holds **4 artifacts / 42 hand-adjudicated cells against a target of 30 artifacts**, and all
+four are `spec_doc`, so the by-source-type precision breakdown has only one population; **33 of 135 catalog
+nodes have no lexicon feature at all**, so the matrix is structurally blind to them and says so in every
+report; and no live corpus run has been made against the new pipeline yet, so every number above is a
+mechanism, not a measurement. Rule 1 of CLAUDE.md is unchanged and now extends one layer further: the LLM
+never writes to the Sheet, and neither does the corpus.

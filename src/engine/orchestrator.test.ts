@@ -224,6 +224,7 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     const stubs = c.bundle.find((b) => b.name === "sheet-tests.ts")!.content;
     for (const r of (await engine.getState("p3")).sheet.rules) expect(stubs).toContain(`${r.id} (`);
     expect(stubs).toContain("it.todo(");
+    expect(c.blocking).toEqual([]); // the deterministic gate: nothing mechanical stands in the way of delivery
     expect((await engine.getState("p3")).session.phase).toBe("done");
     const types = (await store.listEvents("p3")).map((e) => e.type);
     expect(types).toContain("card_loop_stopped");
@@ -834,19 +835,46 @@ describe("Engine end-to-end (mock LLM, memory store)", () => {
     await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q6" });
     await engine.finishCards("q6");
     await engine.acceptDefaults("q6");
-    // simulate a mid-compile edit: after compile's initial read, the latest sheet is one version ahead
+    // simulate a mid-compile edit: after compile's initial read, the latest sheet carries a rule the compiled
+    // one does not. Staleness is judged on CONTENT (sheetFingerprint), so the edit has to be a real one.
     let calls = 0;
     const realGet = store.getLatestSheet.bind(store);
     store.getLatestSheet = async (id: string) => {
       const s = await realGet(id);
       calls += 1;
-      return s && calls > 1 ? { ...s, version: s.version + 1 } : s;
+      return s && calls > 1 ? { ...s, version: s.version + 1, rules: [...s.rules, { id: "r99", text: "An invoice may never be sent twice.", kind: "state" as const, source: "user_edit:x" }] } : s;
     };
     const r = await compileProject(engine, "q6", { story: false, roundTrip: false });
     expect(r.stale).toBe(true);
     expect(r.spec).toMatch(/STALE/);
     expect(JSON.parse(r.bundle.find((b) => b.name === "compile-report.json")!.content).stale).toBe(true);
     expect((await engine.getState("q6")).session.phase).not.toBe("done");
+  });
+
+  it("a Sheet that moved without changing anything the spec is built from is NOT stale (claim 4c)", async () => {
+    // The live regression: a background story check raised three confidences from 95% to 97%, bumping the
+    // version. The spec was stamped STALE and, because `done` requires a fresh Sheet, the project was
+    // stranded in "compiling" forever — over a change no artifact in the bundle can see.
+    const { engine, store } = await makeEngine();
+    await engine.createProject("an invoicing app for small bookkeeping firms", { id: "q6b" });
+    await engine.finishCards("q6b");
+    await engine.acceptDefaults("q6b");
+    let calls = 0;
+    const realGet = store.getLatestSheet.bind(store);
+    store.getLatestSheet = async (id: string) => {
+      const s = await realGet(id);
+      calls += 1;
+      if (!s || calls <= 1) return s;
+      // a confidence bump on an already-confident decision: no answer changes, no confirm-first row changes
+      const decisions = s.decisions.map((d) => (d.status === "defaulted" && (d.confidence ?? 0) >= 0.9 ? { ...d, confidence: Math.min(0.99, (d.confidence ?? 0.9) + 0.02) } : d));
+      return { ...s, version: s.version + 1, decisions };
+    };
+    const r = await compileProject(engine, "q6b", { story: false, roundTrip: false });
+    expect(r.stale).toBe(false);
+    expect(r.spec).not.toMatch(/STALE/);
+    const report = JSON.parse(r.bundle.find((b) => b.name === "compile-report.json")!.content);
+    expect(report.stale).toBe(false);
+    expect(report.sheet_moved).toBe(true); // still reported honestly, just not disqualifying
   });
 
   it("acceptDefaults re-defaults children reopened during review, so compiling never starts open", async () => {

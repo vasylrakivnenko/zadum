@@ -14,7 +14,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildEngine } from "../engine/bootstrap.js";
-import { roundTripReport, type RoundTripReport } from "../engine/compile.js";
+import { roundTripReport, type RoundTripReport } from "../core/roundtrip.js";
 import type { Engine } from "../engine/orchestrator.js";
 
 export interface DriftResult {

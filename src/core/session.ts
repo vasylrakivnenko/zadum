@@ -24,6 +24,9 @@ export interface Card {
   latency_ms?: number;
   phrasing_arm?: string; // bandit arm id (learning loop B)
   precomputed?: boolean;
+  /** the one-step value this card scored when it was dealt — the stop rule's relative floor reads the
+   *  session's history of these, and until now the number existed only in the event log. */
+  value1?: number;
 }
 
 export type AnswerKind = "option" | "you_decide" | "other" | "skip" | "undo";
@@ -96,6 +99,7 @@ export type EventType =
   | "compile_started"
   | "compile_section"
   | "critic_result"
+  | "spec_checked" // deterministic gate over the assembled spec (spec_ir + spec_checks)
   | "roundtrip_result"
   | "compile_done"
   | "story_corrected"
@@ -119,6 +123,10 @@ export interface ZEvent {
 export interface ProjectRecord {
   id: string;
   one_liner: string;
+  /** Stable owner identity supplied by a trusted caller (the web session layer). Missing on legacy/CLI data. */
+  owner_id?: string;
+  /** Data provenance. Learning uses only real user projects unless an operator explicitly opts in to more. */
+  origin?: "user" | "mock" | "experiment" | "legacy";
   created_at: string;
   updated_at: string;
   phase: Phase;

@@ -33,7 +33,7 @@ const { engine, store } = await buildEngine({
 const id = `thesis_${goldId.replace(/[^a-z0-9]+/gi, "-")}${maxCardsArg === undefined ? "" : `-c${maxCards}`}`;
 console.log(`[${goldId}] drafting…`);
 const t0 = Date.now();
-await engine.createProject(gold.one_liner, { id });
+await engine.createProject(gold.one_liner, { id, origin: "experiment" });
 
 let res = maxCards > 0 ? await engine.startCards(id) : ({ kind: "stop" } as const);
 let n = 0;

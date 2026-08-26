@@ -12,6 +12,7 @@ import {
   valueWithLookahead,
   totalUncertainty,
   entropyBits,
+  relativeFloor,
   DEFAULT_SELECTOR_CONFIG,
   DEFAULT_THETA,
 } from "./selector.js";
@@ -410,6 +411,162 @@ describe("ec2 (expected weight of inter-region edges cut)", () => {
     expect(DEFAULT_THETA.risk).toBe(7);
     expect(DEFAULT_THETA.weighted_entropy).toBe(24);
     expect(DEFAULT_THETA.joint_entropy).toBe(1.25);
+  });
+});
+
+// ---------- relative stop floor ----------
+
+/**
+ * The live defect this mechanism exists for (`.zadum/projects/f9280b97`, weighted_entropy, θ=24):
+ * five cards worth these one-step values, then `converged` with the best remaining question at 22.624 —
+ * 94% of θ and 53% of the mean question the session had just been happy to ask. That question
+ * (`recurring_scheduled`) took a wrong default, contradicted another decision, and shipped.
+ */
+const LIVE_ASKED = [38.993, 55.644, 47.543, 34.81, 35.963];
+const LIVE_TOP_REMAINING = 22.624;
+
+/**
+ * A belief whose best open question is worth exactly `LIVE_TOP_REMAINING` under weighted_entropy: one
+ * question that settles a cluster of perfectly correlated decisions, which is what a 22-point question is in
+ * practice. value1 = Σ consequence over the cluster (every node 50/50, answering any of them settles all).
+ * `recurring_scheduled` carries the highest consequence so it ranks first on the tie.
+ */
+function liveTailBelief(): { b: Belief; open: string[] } {
+  const cs: [string, number][] = [
+    ["recurring_scheduled", 5],
+    ["reporting", 4.9],
+    ["record_activity_feed", 4.9],
+    ["record_pipeline", 4.9],
+    ["localization", 2.924], // Σ = 22.624
+  ];
+  const nodes = cs.map(([id, c]) => def(id, c, ["a", "b"]));
+  const worlds = ["a", "b"].map((v, i) => mkWorld(`w${i}`, Object.fromEntries(nodes.map((n) => [n.id, v])), 0.5, "sampled"));
+  return { b: { nodes, worlds, alpha: 0 }, open: nodes.map((n) => n.id) };
+}
+
+describe("relative stop floor (θ is absolute; value1's scale is not)", () => {
+  const shipped = (relativeStopFloor?: number) => resolveConfig({ scoring: "weighted_entropy", ...(relativeStopFloor !== undefined ? { relativeStopFloor } : {}) });
+
+  it("is OFF by default and byte-identical to the fixed-θ behaviour", () => {
+    // The mechanism ships inert: the harness decides whether it goes on (CLAUDE.md).
+    expect(DEFAULT_SELECTOR_CONFIG.relativeStopFloor).toBe(0);
+    expect(resolveConfig().relativeStopFloor).toBe(0);
+    expect(resolveConfig({ scoring: "risk" }).relativeStopFloor).toBe(0);
+
+    const { b, open } = liveTailBelief();
+    expect(rankOpen(b, open, undefined, "weighted_entropy")[0]!.nodeId).toBe("recurring_scheduled");
+    expect(rankOpen(b, open, undefined, "weighted_entropy")[0]!.value1).toBeCloseTo(LIVE_TOP_REMAINING, 6);
+    // the real incident, replayed at the shipped default: still stops, still "converged"
+    const d = decideNext(b, open, shipped(), LIVE_ASKED);
+    expect(d.action).toBe("stop");
+    if (d.action === "stop") expect(d.reason).toBe("converged");
+
+    // and every pre-existing case decides identically whether cardsShown is a count or the values
+    const toy = belief();
+    const toyOpen = ["client_login", "client_portal", "currency", "theme"];
+    const cases: [Belief, string[], ReturnType<typeof resolveConfig>, number][] = [
+      [toy, toyOpen, resolveConfig({ theta: 1.5 }), 0],
+      [toy, toyOpen, DEFAULT_SELECTOR_CONFIG, 0],
+      [toy, ["theme"], resolveConfig({ theta: 1.5 }), 1],
+      [toy, ["client_login"], resolveConfig({ theta: 1.5 }), 12],
+      [b, open, shipped(), 5],
+    ];
+    for (const [bb, oo, cfg, n] of cases) {
+      const byCount = decideNext(bb, oo, cfg, n);
+      const byValues = decideNext(bb, oo, cfg, Array.from({ length: n }, (_, i) => 30 + i));
+      expect(byValues).toEqual(byCount);
+      expect("held_open_by" in byValues && byValues.held_open_by).toBeFalsy();
+    }
+  });
+
+  it("keeps the loop open on the real incident once the floor is on", () => {
+    const { b, open } = liveTailBelief();
+    const mean = LIVE_ASKED.reduce((a, v) => a + v, 0) / LIVE_ASKED.length;
+    expect(mean).toBeCloseTo(42.5906, 4);
+    // 22.624 is 53.1% of the mean question this session had just been asking
+    expect(LIVE_TOP_REMAINING / mean).toBeCloseTo(0.5312, 4);
+
+    const held = decideNext(b, open, shipped(0.4), LIVE_ASKED);
+    expect(held.action).toBe("ask");
+    if (held.action === "ask") {
+      expect(held.node.nodeId).toBe("recurring_scheduled"); // the decision that shipped wrong
+      expect(held.held_open_by).toBe("relative_floor");
+    }
+    // the crossover is exactly value1 / mean: 0.53 keeps it open, 0.54 does not
+    expect(decideNext(b, open, shipped(0.53), LIVE_ASKED).action).toBe("ask");
+    expect(decideNext(b, open, shipped(0.54), LIVE_ASKED).action).toBe("stop");
+    // 0.6 prices this question as "small for this session" and stops, exactly like θ alone
+    const stopped = decideNext(b, open, shipped(0.6), LIVE_ASKED);
+    expect(stopped.action).toBe("stop");
+    if (stopped.action === "stop") expect(stopped.reason).toBe("converged");
+  });
+
+  it("never defeats max_cards (Rule 7) or no_open", () => {
+    const { b, open } = liveTailBelief();
+    const big = Array.from({ length: 12 }, () => 200); // floor would be 180 — far above the top question
+    const capped = decideNext(b, open, shipped(0.9), big);
+    expect(capped.action).toBe("stop");
+    if (capped.action === "stop") expect(capped.reason).toBe("max_cards");
+    // and past the cap, and with a lowered per-round cap
+    expect(decideNext(b, open, resolveConfig({ relativeStopFloor: 0.9, maxCards: 3 }), big.slice(0, 4)).action).toBe("stop");
+    const empty = decideNext(b, [], shipped(0.9), LIVE_ASKED);
+    expect(empty.action).toBe("stop");
+    if (empty.action === "stop") expect(empty.reason).toBe("no_open");
+  });
+
+  it("is inert without a usable scale: <2 cards, a plain count, or a degenerate mean", () => {
+    const { b, open } = liveTailBelief();
+    const stops = (cardsShown: number | readonly number[], floor = 0.4) => {
+      const d = decideNext(b, open, shipped(floor), cardsShown);
+      expect(d.action).toBe("stop");
+      if (d.action === "stop") expect(d.reason).toBe("converged");
+    };
+    stops([]); // no cards yet
+    stops([LIVE_ASKED[0]!]); // one card is not a "scale for this session"
+    stops(5); // a plain count carries no values — every existing caller keeps today's behaviour
+    stops([0, 0]); // zero mean
+    stops([1e-12, -1e-12]); // mean rounds to 0
+    stops([-40, -45]); // negative mean
+    stops([Number.NaN, 40]); // a caller logged a NaN value1
+    stops([Number.POSITIVE_INFINITY, 40]);
+    stops([Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]);
+    stops(LIVE_ASKED, 0); // disabled
+    stops(LIVE_ASKED, -1); // nonsense fraction
+    stops(LIVE_ASKED, Number.NaN);
+    // two cards IS a usable scale
+    const two = decideNext(b, open, shipped(0.4), [38.993, 55.644]);
+    expect(two.action).toBe("ask");
+  });
+
+  it("reports held_open_by only when the floor is what kept the loop going", () => {
+    const { b, open } = liveTailBelief();
+    // θ low enough that the card is worth asking on its own merit → no flag to log
+    const onMerit = decideNext(b, open, resolveConfig({ theta: 10, relativeStopFloor: 0.4 }), LIVE_ASKED);
+    expect(onMerit.action).toBe("ask");
+    if (onMerit.action === "ask") expect(onMerit.held_open_by).toBeUndefined();
+    const held = decideNext(b, open, shipped(0.4), LIVE_ASKED);
+    if (held.action === "ask") expect(held.held_open_by).toBe("relative_floor");
+  });
+
+  it("exposes the floor itself, in value1 units, as a total function", () => {
+    expect(relativeFloor(LIVE_ASKED, 0.4)).toBeCloseTo(17.036, 3);
+    expect(relativeFloor(LIVE_ASKED, 0.6)).toBeCloseTo(25.554, 3);
+    for (const bad of [undefined, [], [40], [0, 0], [-1, -1], [Number.NaN, 1]] as (readonly number[] | undefined)[])
+      expect(relativeFloor(bad, 0.4)).toBeUndefined();
+    for (const f of [0, -0.1, Number.NaN, Number.NEGATIVE_INFINITY]) expect(relativeFloor(LIVE_ASKED, f)).toBeUndefined();
+  });
+
+  it("is carried by resolveConfig and mergeConfig like every other knob", () => {
+    expect(resolveConfig({ relativeStopFloor: 0.4 }).relativeStopFloor).toBe(0.4);
+    // the explicitly-undefined trap that once erased theta must not erase this either
+    expect(resolveConfig({ relativeStopFloor: undefined }).relativeStopFloor).toBe(0);
+    const stored = resolveConfig({ scoring: "risk", relativeStopFloor: 0.4 });
+    expect(mergeConfig(stored, {}).relativeStopFloor).toBe(0.4);
+    expect(mergeConfig(stored, { relativeStopFloor: 0.6 }).relativeStopFloor).toBe(0.6);
+    expect(mergeConfig(stored, { relativeStopFloor: undefined }).relativeStopFloor).toBe(0.4);
+    expect(mergeConfig({}, {}).relativeStopFloor).toBe(0);
+    // it is scoring-independent (unlike θ): switching scoring must not re-base it
+    expect(mergeConfig(stored, { scoring: "weighted_entropy" }).relativeStopFloor).toBe(0.4);
   });
 });
 

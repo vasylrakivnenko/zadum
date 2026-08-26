@@ -56,15 +56,15 @@ export class FileStore implements Store {
   async getProject(id: string) {
     return this.readJson<ProjectRecord>(path.join(this.pdir(id), "project.json"));
   }
-  async listProjects() {
+  async listProjects(ownerId?: string) {
     const root = path.join(this.dataDir, "projects");
     const ids = await fs.readdir(root).catch(() => [] as string[]);
     const out: ProjectRecord[] = [];
     for (const id of ids) {
       const p = await this.getProject(id);
-      if (p) out.push(p);
+      if (p && (ownerId === undefined || p.owner_id === ownerId)) out.push(p);
     }
-    return out.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    return out.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   }
 
   async appendCommit(c: Commit) {
@@ -139,8 +139,10 @@ export class MemoryStore implements Store {
   async getProject(id: string) {
     return this.projects.get(id) ?? null;
   }
-  async listProjects() {
-    return [...this.projects.values()];
+  async listProjects(ownerId?: string) {
+    return [...this.projects.values()]
+      .filter((p) => ownerId === undefined || p.owner_id === ownerId)
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   }
   async appendCommit(c: Commit) {
     CommitSchema.parse(c);

@@ -17,6 +17,22 @@ ZADUM_MOCK=1 npm run dev          # no API key needed: scripted MockLLM (invoici
 With a live model: `ANTHROPIC_API_KEY=… npm run dev` (or an `ant auth login` profile; the engine loads the repo-root
 `.env` too). `npm run build && npm start` for production. `npm run typecheck` runs `tsc --noEmit`.
 
+For production, set a stable `ZADUM_AUTH_SECRET` of at least 32 characters. The MVP uses a signed, HttpOnly
+browser session: projects are private to that browser session, including every artifact and mutation route.
+Clearing the cookie loses access until a future account/recovery layer is added. Requests are also rate-limited;
+the defaults below are per running web process.
+
+**Set `ZADUM_TRUST_PROXY=1` when — and only when — a reverse proxy that overwrites `x-forwarded-for` sits in
+front of the app.** `x-forwarded-for` / `x-real-ip` are attacker-supplied otherwise, and a spoofable key turns a
+per-IP limit into no limit at all, so without the flag those headers are ignored. Callers that no key can tell
+apart (no valid session cookie, no trusted IP) then share one bucket, sized `ZADUM_RATE_SHARED_FACTOR` × the
+limit: a process-wide backstop rather than a per-caller limit. Configure the proxy flag to get real per-visitor
+limits on the creation route, which is the LLM-spend guard.
+
+Projects created before ownership metadata was introduced are intentionally not exposed through the web app.
+They remain available to the local CLI/store and are tagged as legacy data rather than silently assigned to the
+first browser that asks for them.
+
 The dev/build scripts pass `--webpack`: the engine is ESM TypeScript with `.js` import specifiers, which webpack
 maps back to `.ts` via `experimental.extensionAlias` (Turbopack does not resolve them — see `next.config.ts`).
 
@@ -29,6 +45,12 @@ maps back to `.ts` via `experimental.extensionAlias` (Turbopack does not resolve
 | `ZADUM_CATALOG_DIR` | `../../catalogs` | decision catalogs |
 | `ZADUM_LLM_CACHE` | unset | `1` → wrap the live LLM in `CachedLLM` (replays) |
 | `DATABASE_URL` | unset | use `PgStore` instead of files (handled by `buildEngine`) |
+| `ZADUM_AUTH_SECRET` | random in development; **required in production** | signs anonymous browser credentials used for project ownership |
+| `ZADUM_TRUST_PROXY` | unset | `1` → read `x-forwarded-for`/`x-real-ip`; only set it behind a proxy that overwrites them |
+| `ZADUM_RATE_CREATE` | `5` per 10 min/IP (or session) | project-creation limit — the LLM-spend guard |
+| `ZADUM_RATE_EXPENSIVE` | `20` per min/session | compile/refine/evidence/verification/gap limit |
+| `ZADUM_RATE_WRITE`, `ZADUM_RATE_READ` | `120`, `300` per min/session | other API limits |
+| `ZADUM_RATE_SHARED_FACTOR` | `20` | multiplier for the one bucket shared by callers nothing identifies |
 | `ANTHROPIC_API_KEY`, `ZADUM_MODEL_*` | — | live model config (see `src/llm/client.ts`) |
 
 ## Route map
@@ -81,6 +103,10 @@ apps/web/
 
 Notes
 
+- All `/api/projects` handlers go through the central security wrapper, in this order: same-origin check (before
+  any identity is minted, so a rejected cross-origin probe gets no cookie), signed session, rate limit, owner
+  check. A project owned by another session returns 404. `lib/ownership.ts#ownedProject` is the single owner
+  rule; server-rendered pages call it too rather than re-implementing the comparison.
 - The engine's speculative precompute saves `session.json` in the background and `FileStore` writes are not atomic,
   so a read can land mid-write; `lib/state.ts#retryRead` retries `SyntaxError`s a few times.
 - Mock mode always plays the invoicing fixtures regardless of the one-liner.

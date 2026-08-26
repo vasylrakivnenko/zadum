@@ -137,7 +137,7 @@ export async function verifyEvalOnGold(
 ): Promise<VerifyEvalMetrics> {
   const budget = opts.budget ?? 4;
   const id = `${opts.idPrefix ?? "ve"}_${opts.regime}_${gold.id.replace(/[^a-z0-9]+/gi, "-")}`;
-  await engine.createProject(gold.one_liner, { id });
+  await engine.createProject(gold.one_liner, { id, origin: "experiment" });
 
   if (opts.regime === "normal") {
     // same card-loop pattern as runGold (src/harness/run.ts), minus its optional instrumentation

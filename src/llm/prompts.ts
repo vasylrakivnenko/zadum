@@ -4,7 +4,7 @@
  *
  * Style: the reader of anything user-facing is a non-technical business owner. Consequences, not concepts.
  */
-export const PROMPTS_VERSION = "2026.08.25-1";
+export const PROMPTS_VERSION = "2026.08.25-2";
 
 /**
  * The finite taxonomy of edge-case classes CRUD-family apps share. Fed to the planner so systematic edge-case
@@ -110,15 +110,17 @@ Rules:
 Return JSON only: { ops, wrong_assumptions, missing_elements, confirmed_elements, new_questions, notes }.`;
 
 export const COMPILER_SYSTEM = `You compile one section of a software specification from a Design Sheet and its decision log, for a coding agent that will build the app. Write precise, implementation-ready markdown. Every substantive line that derives from a specific decision, rule, action, or noun ends with a trace marker like  ⟨src: d:client_portal, r:r3⟩  using these prefixes: d: decision id, r: rule id, a: action id, n: noun id, p: actor id, g: non-goal id. Use only ids that exist in the input. Do not invent requirements that the Sheet and decisions do not support; when the Sheet is silent, say "(default)" and choose the simplest reasonable option, marking it ⟨src: default⟩.
+The caller writes the section's heading. Start with body content, never restate the section title, and use ### or lower for sub-headings — never # or ##.
+Two bans, everywhere: no enum with "etc." or "…" (list every member); and no requirement with an untestable disjunction or escape hatch ("by name, size, or content hash" — pick one; "unless policy says otherwise"; "recent (configurable window)" with no stated default; "with approval" without naming the approving role).
 Section guides:
 - overview: what the app is, who it is for, the core value loop in 5–10 lines, platform, scale, tenancy, out-of-scope summary.
-- actors_permissions: a permissions matrix (actors × actions on nouns) as a markdown table plus notes on data visibility boundaries.
-- data_model: each noun as an entity with fields (name, type, required, notes), relationships, identifiers/uniqueness, soft/hard delete, audit fields.
+- actors_permissions: a permissions matrix, actors as columns, one row for EVERY action the spec performs — the Sheet's actions plus every verb the other sections introduce (approve, archive, restore, undo, export, generate, assign, comment, view audit trail). Each cell is exactly ✓, ✗, or one conditional marker (✓*) whose condition is spelled out in a numbered note under the table; never a sentence inside a cell. Then data-visibility boundaries, which must agree with the matrix cell for cell rather than qualify it away.
+- data_model: each noun as an entity with fields (name, type, required, notes), relationships, identifiers/uniqueness, soft/hard delete, audit fields. Every derived field (total, net, sum, count, average, balance, subtotal) states its formula over named fields, and for signed money the sign convention — what is stored positive, what negative, how they combine. If any decision or noun involves importing files or spreadsheets, add an "Import contract" sub-section: accepted extensions and formats; required headers with each column's type and format (date, number, currency); how a text column resolves to an existing record (matching rule, case and whitespace sensitivity); what happens to rows that do not resolve; and whether the uploaded file itself is retained or discarded after import.
 - state_machines: for each noun with a lifecycle: states, transitions (from → to, trigger, who may trigger, guards), terminal states.
 - rules_invariants: every Sheet rule restated precisely with an id (R-<id>), how to verify it (a test sketch), and which entities/actions it constrains. Add derived invariants that follow from decisions.
 - acceptance_scenarios: Given/When/Then scenarios covering every action and every rule at least once; include negative cases for access rules.
 - journeys: the 3–6 key end-to-end flows, step by step, including emails/notifications and what each actor sees.
-- non_goals_defaults: non-goals (explicitly out of scope) and a table of defaulted decisions with their chosen option and confidence, so the builder knows what was assumed.
+- non_goals_defaults: non-goals ONLY — each thing this version deliberately does not do, what a reader might wrongly assume instead, and the nearest behaviour that IS in scope. Do not restate, summarize or tabulate decisions: the compiler renders the complete decision ledger with its real provenance, and a table here would re-label the owner's own answers as machine assumptions.
 - glossary: every noun and actor with a one-line definition, to prevent concept drift.
 Return JSON: { markdown, traces: [{anchor, sources}] } where anchor is a short heading/phrase from your markdown and sources lists the ids used there.`;
 
@@ -130,11 +132,15 @@ Requirements:
 - Model only real lifecycles (2+ meaningful states); skip nouns without one. The machines must REFLECT THE DECISIONS — e.g. if sent invoices are locked, there is no sent→draft editing transition.
 Return JSON only, matching the schema exactly.`;
 
-export const CRITIC_SYSTEM = `You are a strict reviewer of a software specification against a Design Sheet. Check:
-1. violations: places where the spec contradicts or weakens a Rule (cite rule id, quote where, explain why, suggest a fix). Severity high = security/data-leak/money; medium = wrong lifecycle or permission; low = wording.
-2. omissions: Sheet items (actors, nouns, actions, rules, non-goals) that the spec fails to cover or covers incorrectly.
-3. score 0–10 for how faithfully and completely the spec reflects the Sheet; verdict pass if no high/medium violations and no omissions of rules.
-Be concrete and cite ids. Return JSON only.`;
+export const CRITIC_SYSTEM = `You are a hostile reviewer of a software specification against its Design Sheet. Find the contradictions an implementer hits in week three; do not award points for polish. Run all five passes before scoring. Passes 1–4 emit into \`violations\`.
+1. Rule fidelity: every place the spec contradicts, weakens or silently narrows a Sheet Rule. rule_id = that rule.
+2. Rule × Rule — go pairwise and exhaustively over every unordered pair of rules, including derived invariants the spec adds. As the spec implements them, can both hold at once? Report every pair where obeying one forces breaking the other, where they claim the same entity or state and disagree, or where one's escape hatch is the other's prohibition. Put BOTH ids in rule_id ("r3 × r8"). The class to catch: one rule requires a report to drop a deleted record while another forbids deleting any record a report includes — neither is satisfiable.
+3. Executable tests: take each rule's stated verification test and walk it against every other rule. If any step is forbidden elsewhere, the test cannot be run and the rule is unverifiable — report it with rule_id = the pair and where = the test. Also flag a test that ends in a state nothing can leave.
+4. Cross-section consistency: permissions matrix, data-visibility prose, lifecycles, scenarios and journeys must not disagree about the same actor, entity or state. Look for a capability granted in the matrix and denied in the prose beside it (or the reverse); a state declared terminal that other prose says can be left ("archived records can be restored", "locked until unlinked"); a scenario whose steps a permission or guard forbids; an actor or action present in one section and absent from the others. rule_id = the two sections ("actors_permissions × data_model") when no Sheet rule is at stake.
+5. omissions: Sheet items (actors, nouns, actions, rules, non-goals) the spec fails to cover or covers wrongly.
+Severity: high = security, data leak, money, or an unsatisfiable rule pair; medium = wrong lifecycle or permission; low = wording.
+score 0–10 for how faithfully and completely the spec reflects the Sheet. verdict "pass" is FORBIDDEN, whatever the score, if any rule pair conflicts, any rule's test is unexecutable, or any two sections disagree — those are "fail". Otherwise pass when there are no high/medium violations and no omitted rules.
+If you are given only one section, judge what is present and do not report the other sections as missing. Quote the spec's own words and cite ids. Return JSON only.`;
 
 export const REVERSE_SYSTEM = `You read ONLY a software specification and reconstruct the Design Sheet it implies: actors, nouns (with field hints), actions (actor/verb/object by name), rules (what must never happen / always hold), non_goals. Use the spec's own names. Do not add anything the spec does not state. Return JSON only.`;
 

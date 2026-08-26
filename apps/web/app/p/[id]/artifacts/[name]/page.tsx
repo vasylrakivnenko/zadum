@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { TopBar } from "@/components/TopBar";
 import { getEngine } from "@/lib/engine";
-import { retryRead } from "@/lib/state";
+import { ownedProject } from "@/lib/ownership";
+import { AUTH_COOKIE, ownerForCredential } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function ArtifactPage({ params }: { params: Promise<{ id: string; name: string }> }) {
   const { id, name: rawName } = await params;
   const name = decodeURIComponent(rawName);
-  const h = await getEngine();
-  const [artifacts, project] = await Promise.all([h.store.listArtifacts(id), retryRead(() => h.store.getProject(id))]);
+  // Ownership before any other project IO: listing the artifacts first would do the work anyway and make
+  // response time an oracle for whether someone else's project id exists.
+  const project = await ownedProject(id, ownerForCredential((await cookies()).get(AUTH_COOKIE)?.value));
+  if (!project) notFound();
+  const artifacts = await (await getEngine()).store.listArtifacts(id);
   const art = artifacts.find((a) => a.name === name);
-  if (!art || !project) notFound();
+  if (!art) notFound();
   return (
     <>
       <TopBar id={id} oneLiner={project.one_liner} phase={project.phase} current="compile" />

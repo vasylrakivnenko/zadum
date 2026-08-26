@@ -1,0 +1,869 @@
+{
+  "schema": "zadum.taxonomy-overlay.v1",
+  "version": "2026.08.25-1",
+  "description": "Taxonomy overlay: the row/column vocabulary of the evidence matrix, laid over the decision catalogs. Every entry REFERENCES a catalog node id — the overlay never restates a node's question, topic or options, so the catalogs stay the single source of truth.",
+  "layers": [
+    {
+      "id": "scope_and_archetype",
+      "label": "Scope and archetype",
+      "parent_id": null
+    },
+    {
+      "id": "actors_and_access",
+      "label": "Actors and access",
+      "parent_id": null
+    },
+    {
+      "id": "domain_and_workflow",
+      "label": "Domain and workflow",
+      "parent_id": null
+    },
+    {
+      "id": "data_and_lifecycle",
+      "label": "Data and lifecycle",
+      "parent_id": null
+    },
+    {
+      "id": "payments_and_commercial",
+      "label": "Payments and commercial",
+      "parent_id": null
+    },
+    {
+      "id": "communication_and_integrations",
+      "label": "Communication and integrations",
+      "parent_id": null
+    },
+    {
+      "id": "operations_and_reporting",
+      "label": "Operations and reporting",
+      "parent_id": null
+    },
+    {
+      "id": "platform_and_quality",
+      "label": "Platform and quality",
+      "parent_id": null
+    },
+    {
+      "id": "security_and_compliance",
+      "label": "Security and compliance",
+      "parent_id": null
+    },
+    {
+      "id": "other",
+      "label": "Other",
+      "parent_id": null
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "invoicing_model",
+      "layer_id": "scope_and_archetype",
+      "category": "billing_relationship",
+      "status": "canonical"
+    },
+    {
+      "node_id": "invoice_numbering",
+      "layer_id": "data_and_lifecycle",
+      "category": "identifiers",
+      "status": "canonical"
+    },
+    {
+      "node_id": "invoice_edit_after_send",
+      "layer_id": "domain_and_workflow",
+      "category": "invoice_lifecycle",
+      "status": "canonical"
+    },
+    {
+      "node_id": "payment_recording",
+      "layer_id": "payments_and_commercial",
+      "category": "payment_capture",
+      "status": "canonical"
+    },
+    {
+      "node_id": "partial_payments",
+      "layer_id": "payments_and_commercial",
+      "category": "payment_capture",
+      "status": "canonical"
+    },
+    {
+      "node_id": "taxes",
+      "layer_id": "payments_and_commercial",
+      "category": "tax",
+      "status": "canonical"
+    },
+    {
+      "node_id": "currencies",
+      "layer_id": "payments_and_commercial",
+      "category": "currency",
+      "status": "canonical"
+    },
+    {
+      "node_id": "recurring_invoices",
+      "layer_id": "domain_and_workflow",
+      "category": "recurrence",
+      "status": "canonical"
+    },
+    {
+      "node_id": "overdue_reminders",
+      "layer_id": "communication_and_integrations",
+      "category": "dunning",
+      "status": "canonical"
+    },
+    {
+      "node_id": "late_fees",
+      "layer_id": "payments_and_commercial",
+      "category": "late_fees",
+      "status": "canonical"
+    },
+    {
+      "node_id": "estimates",
+      "layer_id": "domain_and_workflow",
+      "category": "quoting",
+      "status": "canonical"
+    },
+    {
+      "node_id": "credit_notes",
+      "layer_id": "payments_and_commercial",
+      "category": "refunds",
+      "status": "canonical"
+    },
+    {
+      "node_id": "expenses",
+      "layer_id": "scope_and_archetype",
+      "category": "billable_scope",
+      "status": "canonical"
+    },
+    {
+      "node_id": "time_tracking",
+      "layer_id": "scope_and_archetype",
+      "category": "billable_scope",
+      "status": "canonical"
+    },
+    {
+      "node_id": "invoice_delivery",
+      "layer_id": "communication_and_integrations",
+      "category": "document_delivery",
+      "status": "canonical"
+    },
+    {
+      "node_id": "accounting_sync",
+      "layer_id": "communication_and_integrations",
+      "category": "integrations",
+      "status": "canonical"
+    },
+    {
+      "node_id": "invoice_statuses",
+      "layer_id": "domain_and_workflow",
+      "category": "invoice_lifecycle",
+      "status": "canonical"
+    },
+    {
+      "node_id": "branding",
+      "layer_id": "platform_and_quality",
+      "category": "branding",
+      "status": "canonical"
+    },
+    {
+      "node_id": "deposits",
+      "layer_id": "payments_and_commercial",
+      "category": "payment_capture",
+      "status": "canonical"
+    },
+    {
+      "node_id": "invoice_po_reference",
+      "layer_id": "data_and_lifecycle",
+      "category": "reference_fields",
+      "status": "canonical"
+    },
+    {
+      "node_id": "invoice_discounts",
+      "layer_id": "payments_and_commercial",
+      "category": "discounts",
+      "status": "canonical"
+    },
+    {
+      "node_id": "payment_terms",
+      "layer_id": "payments_and_commercial",
+      "category": "payment_terms",
+      "status": "canonical"
+    },
+    {
+      "node_id": "link_expiry",
+      "layer_id": "actors_and_access",
+      "category": "external_link_access",
+      "status": "canonical"
+    },
+    {
+      "node_id": "link_access",
+      "layer_id": "actors_and_access",
+      "category": "external_link_access",
+      "status": "canonical"
+    },
+    {
+      "node_id": "auto_reminder_schedule",
+      "layer_id": "communication_and_integrations",
+      "category": "dunning",
+      "status": "canonical"
+    },
+    {
+      "node_id": "late_fee_basis",
+      "layer_id": "payments_and_commercial",
+      "category": "late_fees",
+      "status": "canonical"
+    },
+    {
+      "node_id": "credit_note_numbering",
+      "layer_id": "data_and_lifecycle",
+      "category": "identifiers",
+      "status": "canonical"
+    },
+    {
+      "node_id": "recurring_failure_handling",
+      "layer_id": "payments_and_commercial",
+      "category": "payment_failure",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_who_books",
+      "layer_id": "actors_and_access",
+      "category": "booking_actors",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_resource_model",
+      "layer_id": "scope_and_archetype",
+      "category": "resource_model",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_service_catalog",
+      "layer_id": "data_and_lifecycle",
+      "category": "service_catalog",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_availability_rules",
+      "layer_id": "domain_and_workflow",
+      "category": "availability",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_buffers",
+      "layer_id": "domain_and_workflow",
+      "category": "availability",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_slot_capacity",
+      "layer_id": "domain_and_workflow",
+      "category": "capacity",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_recurring",
+      "layer_id": "domain_and_workflow",
+      "category": "recurrence",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_waitlist",
+      "layer_id": "domain_and_workflow",
+      "category": "waitlist",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_cancellation_policy",
+      "layer_id": "domain_and_workflow",
+      "category": "cancellation",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_reschedule",
+      "layer_id": "domain_and_workflow",
+      "category": "rescheduling",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_no_show",
+      "layer_id": "domain_and_workflow",
+      "category": "no_shows",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_prepayment",
+      "layer_id": "payments_and_commercial",
+      "category": "prepayment",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_confirmation",
+      "layer_id": "domain_and_workflow",
+      "category": "booking_lifecycle",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_reminders",
+      "layer_id": "communication_and_integrations",
+      "category": "reminders",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_calendar_sync",
+      "layer_id": "communication_and_integrations",
+      "category": "integrations",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_time_zones",
+      "layer_id": "platform_and_quality",
+      "category": "time_zones",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_intake_form",
+      "layer_id": "data_and_lifecycle",
+      "category": "intake_data",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_locations",
+      "layer_id": "scope_and_archetype",
+      "category": "locations",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_walk_ins",
+      "layer_id": "operations_and_reporting",
+      "category": "staff_operations",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_pricing_variation",
+      "layer_id": "payments_and_commercial",
+      "category": "pricing",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_customer_records",
+      "layer_id": "data_and_lifecycle",
+      "category": "customer_records",
+      "status": "canonical"
+    },
+    {
+      "node_id": "booking_staff_schedule_control",
+      "layer_id": "actors_and_access",
+      "category": "permissions",
+      "status": "canonical"
+    },
+    {
+      "node_id": "user_accounts",
+      "layer_id": "actors_and_access",
+      "category": "identity",
+      "status": "canonical"
+    },
+    {
+      "node_id": "roles",
+      "layer_id": "actors_and_access",
+      "category": "permissions",
+      "status": "canonical"
+    },
+    {
+      "node_id": "external_access",
+      "layer_id": "actors_and_access",
+      "category": "external_access",
+      "status": "canonical"
+    },
+    {
+      "node_id": "tenancy",
+      "layer_id": "actors_and_access",
+      "category": "tenancy",
+      "status": "canonical"
+    },
+    {
+      "node_id": "invite_flow",
+      "layer_id": "actors_and_access",
+      "category": "onboarding",
+      "status": "canonical"
+    },
+    {
+      "node_id": "identity_provider",
+      "layer_id": "actors_and_access",
+      "category": "authentication",
+      "status": "canonical"
+    },
+    {
+      "node_id": "concurrency",
+      "layer_id": "data_and_lifecycle",
+      "category": "concurrency",
+      "status": "canonical"
+    },
+    {
+      "node_id": "audit_trail",
+      "layer_id": "security_and_compliance",
+      "category": "auditability",
+      "status": "canonical"
+    },
+    {
+      "node_id": "notifications",
+      "layer_id": "communication_and_integrations",
+      "category": "notifications",
+      "status": "canonical"
+    },
+    {
+      "node_id": "offline",
+      "layer_id": "platform_and_quality",
+      "category": "connectivity",
+      "status": "canonical"
+    },
+    {
+      "node_id": "platform",
+      "layer_id": "platform_and_quality",
+      "category": "runtime_surface",
+      "status": "canonical"
+    },
+    {
+      "node_id": "data_import",
+      "layer_id": "data_and_lifecycle",
+      "category": "import",
+      "status": "canonical"
+    },
+    {
+      "node_id": "data_export",
+      "layer_id": "data_and_lifecycle",
+      "category": "export",
+      "status": "canonical"
+    },
+    {
+      "node_id": "deletion",
+      "layer_id": "data_and_lifecycle",
+      "category": "deletion",
+      "status": "canonical"
+    },
+    {
+      "node_id": "data_scale",
+      "layer_id": "platform_and_quality",
+      "category": "scale",
+      "status": "canonical"
+    },
+    {
+      "node_id": "integrations",
+      "layer_id": "communication_and_integrations",
+      "category": "integrations",
+      "status": "canonical"
+    },
+    {
+      "node_id": "payments_in_app",
+      "layer_id": "payments_and_commercial",
+      "category": "money_movement",
+      "status": "canonical"
+    },
+    {
+      "node_id": "localization",
+      "layer_id": "platform_and_quality",
+      "category": "localization",
+      "status": "canonical"
+    },
+    {
+      "node_id": "attachments",
+      "layer_id": "data_and_lifecycle",
+      "category": "attachments",
+      "status": "canonical"
+    },
+    {
+      "node_id": "approval_workflow",
+      "layer_id": "domain_and_workflow",
+      "category": "approvals",
+      "status": "canonical"
+    },
+    {
+      "node_id": "recurring_scheduled",
+      "layer_id": "domain_and_workflow",
+      "category": "recurrence",
+      "status": "canonical"
+    },
+    {
+      "node_id": "public_facing",
+      "layer_id": "actors_and_access",
+      "category": "public_access",
+      "status": "canonical"
+    },
+    {
+      "node_id": "compliance_sensitivity",
+      "layer_id": "security_and_compliance",
+      "category": "regulatory_sensitivity",
+      "status": "canonical"
+    },
+    {
+      "node_id": "retention",
+      "layer_id": "security_and_compliance",
+      "category": "retention",
+      "status": "canonical"
+    },
+    {
+      "node_id": "customization",
+      "layer_id": "platform_and_quality",
+      "category": "customization",
+      "status": "canonical"
+    },
+    {
+      "node_id": "reporting",
+      "layer_id": "operations_and_reporting",
+      "category": "reporting",
+      "status": "canonical"
+    },
+    {
+      "node_id": "client_portal_scope",
+      "layer_id": "actors_and_access",
+      "category": "external_access",
+      "status": "canonical"
+    },
+    {
+      "node_id": "workspace_structure",
+      "layer_id": "data_and_lifecycle",
+      "category": "workspace_structure",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_ownership",
+      "layer_id": "actors_and_access",
+      "category": "record_visibility",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_edit_rights",
+      "layer_id": "actors_and_access",
+      "category": "permissions",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_custom_fields",
+      "layer_id": "data_and_lifecycle",
+      "category": "schema_flexibility",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_pipeline",
+      "layer_id": "domain_and_workflow",
+      "category": "stages",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_assignment",
+      "layer_id": "domain_and_workflow",
+      "category": "assignment",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_activity_feed",
+      "layer_id": "communication_and_integrations",
+      "category": "collaboration",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_relationships",
+      "layer_id": "data_and_lifecycle",
+      "category": "relationships",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_views",
+      "layer_id": "operations_and_reporting",
+      "category": "views",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_automation",
+      "layer_id": "domain_and_workflow",
+      "category": "automation",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_templates",
+      "layer_id": "operations_and_reporting",
+      "category": "templates",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_duplicates",
+      "layer_id": "data_and_lifecycle",
+      "category": "data_quality",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_search",
+      "layer_id": "operations_and_reporting",
+      "category": "search",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_watchers",
+      "layer_id": "communication_and_integrations",
+      "category": "notifications",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_bulk_edit",
+      "layer_id": "operations_and_reporting",
+      "category": "bulk_actions",
+      "status": "canonical"
+    },
+    {
+      "node_id": "record_recurring",
+      "layer_id": "domain_and_workflow",
+      "category": "recurrence",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_goods_type",
+      "layer_id": "scope_and_archetype",
+      "category": "what_is_sold",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_product_variants",
+      "layer_id": "data_and_lifecycle",
+      "category": "product_model",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_inventory",
+      "layer_id": "operations_and_reporting",
+      "category": "inventory",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_storefront_access",
+      "layer_id": "actors_and_access",
+      "category": "public_access",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_checkout_accounts",
+      "layer_id": "actors_and_access",
+      "category": "identity",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_shipping",
+      "layer_id": "payments_and_commercial",
+      "category": "shipping_pricing",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_tax",
+      "layer_id": "payments_and_commercial",
+      "category": "tax",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_discounts",
+      "layer_id": "payments_and_commercial",
+      "category": "discounts",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_payment_methods",
+      "layer_id": "payments_and_commercial",
+      "category": "payment_methods",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_order_lifecycle",
+      "layer_id": "domain_and_workflow",
+      "category": "order_lifecycle",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_cancellations",
+      "layer_id": "domain_and_workflow",
+      "category": "cancellation",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_returns",
+      "layer_id": "domain_and_workflow",
+      "category": "returns",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_subscriptions",
+      "layer_id": "domain_and_workflow",
+      "category": "recurrence",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_currency",
+      "layer_id": "payments_and_commercial",
+      "category": "currency",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_reviews",
+      "layer_id": "domain_and_workflow",
+      "category": "reviews_and_trust",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_abandoned_cart",
+      "layer_id": "communication_and_integrations",
+      "category": "recovery_messaging",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_gift_cards",
+      "layer_id": "payments_and_commercial",
+      "category": "stored_value",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_wholesale",
+      "layer_id": "payments_and_commercial",
+      "category": "pricing_tiers",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_fulfilment",
+      "layer_id": "operations_and_reporting",
+      "category": "fulfilment",
+      "status": "canonical"
+    },
+    {
+      "node_id": "shop_category_structure",
+      "layer_id": "data_and_lifecycle",
+      "category": "taxonomy",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_supply_type",
+      "layer_id": "scope_and_archetype",
+      "category": "what_is_sold",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_seller_onboarding",
+      "layer_id": "actors_and_access",
+      "category": "onboarding",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_listing_approval",
+      "layer_id": "domain_and_workflow",
+      "category": "moderation",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_listing_visibility",
+      "layer_id": "actors_and_access",
+      "category": "public_access",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_buyer_accounts",
+      "layer_id": "actors_and_access",
+      "category": "identity",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_pricing_control",
+      "layer_id": "payments_and_commercial",
+      "category": "pricing",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_transaction_mode",
+      "layer_id": "domain_and_workflow",
+      "category": "order_lifecycle",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_payment_flow",
+      "layer_id": "payments_and_commercial",
+      "category": "money_movement",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_fee_model",
+      "layer_id": "payments_and_commercial",
+      "category": "fees",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_payout_timing",
+      "layer_id": "payments_and_commercial",
+      "category": "payouts",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_disputes",
+      "layer_id": "domain_and_workflow",
+      "category": "disputes",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_reviews",
+      "layer_id": "domain_and_workflow",
+      "category": "reviews_and_trust",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_messaging",
+      "layer_id": "communication_and_integrations",
+      "category": "messaging",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_discovery",
+      "layer_id": "operations_and_reporting",
+      "category": "search",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_geography",
+      "layer_id": "scope_and_archetype",
+      "category": "geography",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_identity_verification",
+      "layer_id": "security_and_compliance",
+      "category": "identity_verification",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_cancellation",
+      "layer_id": "domain_and_workflow",
+      "category": "cancellation",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_fulfilment",
+      "layer_id": "operations_and_reporting",
+      "category": "fulfilment",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_seller_tax_docs",
+      "layer_id": "payments_and_commercial",
+      "category": "tax",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_seller_dashboard",
+      "layer_id": "operations_and_reporting",
+      "category": "reporting",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_promotions",
+      "layer_id": "payments_and_commercial",
+      "category": "discounts",
+      "status": "canonical"
+    },
+    {
+      "node_id": "mp_taxonomy_control",
+      "layer_id": "data_and_lifecycle",
+      "category": "taxonomy",
+      "status": "canonical"
+    }
+  ]
+}

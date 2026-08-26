@@ -18,6 +18,7 @@
  */
 import type { Store } from "../store/store.js";
 import type { ZEvent } from "../core/session.js";
+import { learningProjectIds } from "./projects.js";
 
 export interface SessionTrace {
   project_id: string;
@@ -115,14 +116,14 @@ export function thetaGrid(traces: SessionTrace[], steps = 10): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
-/** IO: replay every project that showed at least one card. */
+/** IO: replay every eligible real-user project that showed at least one card, or an explicit trusted id set. */
 export async function replayTheta(store: Store, thetas: number[], projectIds?: string[]): Promise<ThetaPoint[]> {
   const traces = await collectTraces(store, projectIds);
   return thetaTable(traces, thetas);
 }
 
 export async function collectTraces(store: Store, projectIds?: string[]): Promise<SessionTrace[]> {
-  const ids = projectIds ?? (await store.listProjects()).map((p) => p.id).sort();
+  const ids = projectIds ?? (await learningProjectIds(store));
   const traces: SessionTrace[] = [];
   for (const id of ids) {
     const t = traceFromEvents(id, await store.listEvents(id));

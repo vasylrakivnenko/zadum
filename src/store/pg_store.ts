@@ -63,6 +63,14 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
     );
     `,
   },
+  {
+    id: "0002_project_ownership_and_origin",
+    sql: `
+    alter table projects add column if not exists owner_id text;
+    alter table projects add column if not exists origin text not null default 'legacy';
+    create index if not exists projects_owner_idx on projects(owner_id, updated_at desc);
+    `,
+  },
 ];
 
 export class PgStore implements Store {
@@ -89,9 +97,10 @@ export class PgStore implements Store {
   }
 
   async createProject(p: ProjectRecord) {
-    await this.sql`insert into projects (id, one_liner, phase, latest_version, created_at, updated_at)
-      values (${p.id}, ${p.one_liner}, ${p.phase}, ${p.latest_version}, ${p.created_at}, ${p.updated_at})
-      on conflict (id) do update set one_liner = excluded.one_liner, phase = excluded.phase, latest_version = excluded.latest_version, updated_at = excluded.updated_at`;
+    await this.sql`insert into projects (id, one_liner, owner_id, origin, phase, latest_version, created_at, updated_at)
+      values (${p.id}, ${p.one_liner}, ${p.owner_id ?? null}, ${p.origin ?? "legacy"}, ${p.phase}, ${p.latest_version}, ${p.created_at}, ${p.updated_at})
+      on conflict (id) do update set one_liner = excluded.one_liner, owner_id = excluded.owner_id, origin = excluded.origin,
+        phase = excluded.phase, latest_version = excluded.latest_version, updated_at = excluded.updated_at`;
   }
   async updateProject(p: ProjectRecord) {
     await this.createProject(p);
@@ -100,8 +109,12 @@ export class PgStore implements Store {
     const rows = await this.sql<ProjectRow[]>`select * from projects where id = ${id}`;
     return rows[0] ? toProject(rows[0]) : null;
   }
-  async listProjects() {
-    const rows = await this.sql<ProjectRow[]>`select * from projects order by created_at`;
+  async listProjects(ownerId?: string) {
+    // updated_at desc matches projects_owner_idx (migration 0002), so the owner-scoped listing the web app
+    // makes on every page load is an index scan with no sort — and arrives already in the order it wants.
+    const rows = ownerId === undefined
+      ? await this.sql<ProjectRow[]>`select * from projects order by updated_at desc`
+      : await this.sql<ProjectRow[]>`select * from projects where owner_id = ${ownerId} order by updated_at desc`;
     return rows.map(toProject);
   }
 
@@ -159,13 +172,22 @@ export class PgStore implements Store {
   }
 }
 
-interface ProjectRow { id: string; one_liner: string; phase: string; latest_version: number; created_at: Date; updated_at: Date }
+interface ProjectRow { id: string; one_liner: string; owner_id: string | null; origin: string; phase: string; latest_version: number; created_at: Date; updated_at: Date }
 interface CommitRow { id: string; project_id: string; version: number; parent_version: number; source_kind: string; source_ref: string | null; message: string; ops: Commit["ops"]; cascaded: Commit["cascaded"]; rejected: Commit["rejected"]; sheet: Sheet; created_at: Date }
 interface EventRow { id: string; project_id: string; ts: Date; type: string; payload: Record<string, unknown>; tags: ZEvent["tags"] }
 interface ArtifactRow { project_id: string; name: string; kind: string; content: string; meta: Record<string, unknown> | null; created_at: Date }
 
 function toProject(r: ProjectRow): ProjectRecord {
-  return { id: r.id, one_liner: r.one_liner, phase: r.phase as ProjectRecord["phase"], latest_version: r.latest_version, created_at: new Date(r.created_at).toISOString(), updated_at: new Date(r.updated_at).toISOString() };
+  return {
+    id: r.id,
+    one_liner: r.one_liner,
+    ...(r.owner_id ? { owner_id: r.owner_id } : {}),
+    origin: r.origin as NonNullable<ProjectRecord["origin"]>,
+    phase: r.phase as ProjectRecord["phase"],
+    latest_version: r.latest_version,
+    created_at: new Date(r.created_at).toISOString(),
+    updated_at: new Date(r.updated_at).toISOString(),
+  };
 }
 function toCommit(r: CommitRow): Commit {
   return {

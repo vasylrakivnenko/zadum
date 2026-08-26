@@ -490,7 +490,7 @@ program
     const { engine, store } = await engineFromOpts();
     const t0 = Date.now();
     console.log(`1) Drafting from: "${o.oneLiner}"`);
-    const r = await engine.createProject(o.oneLiner, {});
+    const r = await engine.createProject(o.oneLiner, { origin: "experiment" });
     console.log(renderSheetMarkdown(r.sheet));
     console.log(`2) Correction moment — applying: "Clients log into a portal to see and pay their invoices"`);
     const e = await engine.applyUserEdit(r.project.id, "Clients log into a portal to see and pay their invoices");

@@ -26,13 +26,15 @@
  * (This repo already measured its own verbalised-confidence pipeline as not yet epistemically usable; see
  * docs/STATUS.md on recalibration.json.)
  *
- * CLI: npm run label -- --doc-type spec_doc [--limit 10] [--all] [--mock] [--dry-run] [--out mining-results]
+ * CLI: npm run label -- --doc-type spec_doc [--limit 10] [--all] [--mock] [--dry-run]
+ *                       [--yes-spend] [--out mining-results]
  */
 import "../env.js";
 import { z } from "zod";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { helpRequested, parseFlags, UsageError } from "../cli/flags.js";
 import { parallelMap, type LLM, type LLMUsage } from "../llm/client.js";
 import {
   categoriesById,
@@ -427,33 +429,72 @@ interface Args {
   concurrency: number;
   repoCache: string;
   model: string;
+  yesSpend: boolean;
 }
 
+export const LABEL_USAGE = `label — turn condensed artifacts into evidence-backed feature rows
+
+  npm run label -- [--doc-type repo|spec_doc] [--limit N | --all] [--mock] [--dry-run]
+                    [--out <dir>] [--model <id>] [--max-digest-tokens N]
+                    [--batch-size N] [--concurrency N] [--repo-cache <dir>] [--yes-spend]
+
+  --mock       scripted labels, no credentials and no cost
+  --dry-run    print document/call/token/cost estimates without calling a model
+  --yes-spend  required for every non-mock, non-dry live run`;
+
+const LABEL_FLAGS = {
+  value: ["--doc-type", "--limit", "--out", "--max-digest-tokens", "--batch-size", "--concurrency", "--repo-cache", "--model"],
+  boolean: ["--all", "--mock", "--dry-run", "--yes-spend"],
+} as const;
+
 export function parseArgs(argv: string[]): Args {
-  const flag = (name: string, dflt?: string) => {
-    const i = argv.indexOf(name);
-    return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1]! : dflt;
-  };
-  const dt = flag("--doc-type", "spec_doc")!;
-  if (dt !== "repo" && dt !== "spec_doc") throw new Error(`--doc-type must be repo|spec_doc (got "${dt}")`);
-  return {
+  const flags = parseFlags(argv, LABEL_FLAGS);
+  if (flags.has("--all") && flags.has("--limit")) throw new UsageError("use either --limit or --all, not both");
+  const dt = flags.value("--doc-type", "spec_doc");
+  if (dt !== "repo" && dt !== "spec_doc") throw new UsageError(`--doc-type must be repo|spec_doc (got "${dt}")`);
+  const parsed: Args = {
     docType: dt,
-    limit: Number(flag("--limit", "10")),
-    all: argv.includes("--all"),
-    mock: argv.includes("--mock"),
-    dryRun: argv.includes("--dry-run"),
-    out: flag("--out", "mining-results")!,
-    maxTokens: Number(flag("--max-digest-tokens", "20000")),
-    batchSize: Number(flag("--batch-size", String(DEFAULT_BATCH_SIZE))),
-    concurrency: Number(flag("--concurrency", "2")),
-    repoCache: flag("--repo-cache", path.resolve(here, "../../.cache/repos"))!,
-    model: flag("--model", "claude-opus-4-8")!,
+    limit: Number(flags.value("--limit", "10")),
+    all: flags.has("--all"),
+    mock: flags.has("--mock"),
+    dryRun: flags.has("--dry-run"),
+    out: flags.value("--out", "mining-results"),
+    maxTokens: Number(flags.value("--max-digest-tokens", "20000")),
+    batchSize: Number(flags.value("--batch-size", String(DEFAULT_BATCH_SIZE))),
+    concurrency: Number(flags.value("--concurrency", "2")),
+    repoCache: flags.value("--repo-cache", path.resolve(here, "../../.cache/repos")),
+    model: flags.value("--model", "claude-opus-4-8"),
+    yesSpend: flags.has("--yes-spend"),
   };
+  for (const [name, value, min] of [
+    ["--limit", parsed.limit, 1],
+    ["--max-digest-tokens", parsed.maxTokens, 1],
+    ["--batch-size", parsed.batchSize, 1],
+    ["--concurrency", parsed.concurrency, 1],
+  ] as const) {
+    if (!Number.isInteger(value) || value < min) throw new UsageError(`${name} must be a whole number >= ${min}`);
+  }
+  return parsed;
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  const args = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  if (helpRequested(argv)) {
+    console.log(LABEL_USAGE);
+    process.exit(0);
+  }
+  let args: Args;
+  try {
+    args = parseArgs(argv);
+  } catch (e) {
+    console.error(`${(e as Error).message}\n\n${LABEL_USAGE}`);
+    process.exit(2);
+  }
+  if (!args.mock && !args.dryRun && !args.yesSpend) {
+    console.error(`live labeling is blocked without --yes-spend\n\n${LABEL_USAGE}`);
+    process.exit(2);
+  }
   const { lexicon, catalogVersion } = await loadValidatedLexicon();
   const manifest = await loadManifest();
   const { condenseRepo, condenseSpecDoc, readRepoDir } = await import("./condense.js");

@@ -37,7 +37,7 @@ import type { Sheet } from "../core/sheet.js";
 import type { SessionState } from "../core/session.js";
 import { distribution, maxOption } from "../core/worlds.js";
 import { normName } from "../core/ids.js";
-import type { Scoring } from "../core/selector.js";
+import { relativeFloor, type Scoring } from "../core/selector.js";
 import { makeVariants, rng } from "./perturb.js";
 
 export const GoldSchema = z.object({
@@ -243,7 +243,7 @@ export async function runGold(
   const byInteraction: number[] = [];
   let interactions = 0;
   const id = `${opts.idPrefix ?? "h"}_${gold.id.replace(/[^a-z0-9]+/gi, "-")}_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
-  const created = await engine.createProject(gold.one_liner, { id, ...(opts.withContext && gold.extra_context ? { extra_context: gold.extra_context } : {}) });
+  const created = await engine.createProject(gold.one_liner, { id, origin: "experiment", ...(opts.withContext && gold.extra_context ? { extra_context: gold.extra_context } : {}) });
   const noiseR = opts.noise && opts.noise.p > 0 ? rng(((opts.noise.seed ?? 7) * 2654435761) ^ hashSeed(gold.id)) : null;
   let noiseEvents = 0;
   const semanticPromise = opts.judge
@@ -419,6 +419,8 @@ export interface ThetaPoint {
   theta: number;
   mean_cards: number;
   mean_recovery: number;
+  /** present only when the point was replayed with a relative stop floor (see SelectorConfig) */
+  relative_stop_floor?: number;
 }
 
 /**
@@ -427,17 +429,29 @@ export interface ThetaPoint {
  * first card whose one-step value fell below theta, and the prefix up to that point is unchanged.
  * This turns theta calibration into arithmetic over logged runs instead of N more LLM-burning sessions.
  */
-export function cardsUnderTheta(m: SessionMetrics, theta: number): number {
-  const i = m.card_value1.findIndex((v) => v < theta);
-  return i < 0 ? m.card_value1.length : i;
+export function cardsUnderTheta(m: SessionMetrics, theta: number, floor = 0): number {
+  // Without a floor this is one scan: stop before the first card that fell under theta. With one, a card that
+  // theta rejects is still asked while it is worth `floor` × the mean of the cards already asked, so the walk
+  // has to be sequential — and it uses the shipped `relativeFloor` so what is calibrated is what runs.
+  if (floor <= 0) {
+    const i = m.card_value1.findIndex((v) => v < theta);
+    return i < 0 ? m.card_value1.length : i;
+  }
+  const shown: number[] = [];
+  for (const v of m.card_value1) {
+    const f = relativeFloor(shown, floor);
+    if (v < theta && !(f !== undefined && v >= f)) break;
+    shown.push(v);
+  }
+  return shown.length;
 }
 
-export function thetaCurve(sessions: SessionMetrics[], thetas: number[]): ThetaPoint[] {
+export function thetaCurve(sessions: SessionMetrics[], thetas: number[], floor = 0): ThetaPoint[] {
   return thetas.map((theta) => {
-    const cards = sessions.map((m) => cardsUnderTheta(m, theta));
+    const cards = sessions.map((m) => cardsUnderTheta(m, theta, floor));
     const recs = sessions.map((m, i) => recoveryAt(m, cards[i]!));
     const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
-    return { theta, mean_cards: mean(cards), mean_recovery: mean(recs) };
+    return { theta, mean_cards: mean(cards), mean_recovery: mean(recs), ...(floor > 0 ? { relative_stop_floor: floor } : {}) };
   });
 }
 
@@ -549,17 +563,24 @@ export const DEFAULT_ARMS: Arm[] = [
   { label: "weighted_entropy+2ply", scoring: "weighted_entropy", lookahead: 2 },
 ];
 
-export type EngineFactory = (config: { scoring: Scoring; lookahead: 1 | 2; theta?: number; maxCards: number }) => Promise<Engine>;
+export type EngineFactory = (config: { scoring: Scoring; lookahead: 1 | 2; theta?: number; maxCards: number; relativeStopFloor?: number }) => Promise<Engine>;
 
 export interface ArmResult {
   arm: Arm;
   /** what each theta would have cost/recovered, replayed from the equal-budget run */
   theta_curve: ThetaPoint[];
+  /** the same replay with a relative stop floor, per candidate floor — the evidence for turning it on.
+   *  The floor only ever ADMITS cards theta rejected, so a floor arm costs more cards; the question the
+   *  sweep answers is whether it buys more recovery per card than simply lowering theta by the same amount. */
+  floor_curves: { floor: number; curve: ThetaPoint[] }[];
   /** equal-budget run (θ disabled): measures ORDERING quality only */
   budget: { summary: Summary; sessions: SessionMetrics[] };
   /** natural run at the arm's own θ: measures STOPPING behaviour */
   natural: { summary: Summary; sessions: SessionMetrics[] };
 }
+
+/** Floors worth replaying. 0.5 is the value the first replay study recommended; the rest bracket it. */
+export const FLOOR_GRID = [0.3, 0.4, 0.5, 0.6];
 
 export async function sweep(makeEngine: EngineFactory, golds: Gold[], arms: Arm[] = DEFAULT_ARMS, budget = 12, log: (s: string) => void = () => {}): Promise<ArmResult[]> {
   const out: ArmResult[] = [];
@@ -583,6 +604,7 @@ export async function sweep(makeEngine: EngineFactory, golds: Gold[], arms: Arm[
     out.push({
       arm,
       theta_curve: thetaCurve(budgetSessions, thetaGrid(budgetSessions)),
+      floor_curves: FLOOR_GRID.map((floor) => ({ floor, curve: thetaCurve(budgetSessions, thetaGrid(budgetSessions), floor) })),
       budget: { summary: aggregate(budgetSessions), sessions: budgetSessions },
       natural: { summary: aggregate(naturalSessions), sessions: naturalSessions },
     });
@@ -661,6 +683,9 @@ if (isMain) {
   const reviewDepthArg = reviewIdx >= 0 ? args[reviewIdx + 1] : undefined;
   const review = reviewIdx >= 0 ? { depth: reviewDepthArg && /^\d+$/.test(reviewDepthArg) ? Number(reviewDepthArg) : 8, catchProb: Number(flag("--catch-prob") ?? 1) } : undefined;
   const noiseP = Number(flag("--noise") ?? 0);
+  // Off by default in the engine (see SelectorConfig.relativeStopFloor). The sweep always REPLAYS a grid of
+  // floors from the equal-budget run; this flag is for running a live arm at one of them.
+  const relativeStopFloor = flag("--relative-stop-floor") !== undefined ? Number(flag("--relative-stop-floor")) : undefined;
   const withContext = args.includes("--with-context");
   const verifyB = flag("--verify") !== undefined ? Number(flag("--verify")) : undefined;
   // --mix is repeatable: every occurrence contributes one arm "<cards>,<verify>"
@@ -683,8 +708,8 @@ if (isMain) {
         store,
         engine: {
           precompute: false,
-          config: { scoring: config.scoring, lookahead: config.lookahead, maxCards: config.maxCards, ...(config.theta !== undefined ? { theta: config.theta } : {}) },
-          arm: `${config.scoring}/la${config.lookahead}${config.theta !== undefined ? `/θ${config.theta}` : ""}`,
+          config: { scoring: config.scoring, lookahead: config.lookahead, maxCards: config.maxCards, ...(config.theta !== undefined ? { theta: config.theta } : {}), ...(relativeStopFloor !== undefined ? { relativeStopFloor } : {}) },
+          arm: `${config.scoring}/la${config.lookahead}${config.theta !== undefined ? `/θ${config.theta}` : ""}${relativeStopFloor !== undefined ? `/floor${relativeStopFloor}` : ""}`,
           ...(ruleBankDir ? { ruleBankDir } : {}),
         },
       })

@@ -11,6 +11,7 @@ import { calibrationReport, calTable, cardSamples, overrideSamples, formatCalibr
 import { replayTheta, cardsUnderTheta, thetaTable, traceFromEvents, thetaGrid, formatThetaTable } from "./theta_replay.js";
 import { rewardFromEvents, update, updateAll, choose, mulberry32, sampleBeta, armMeans } from "./phrasing_bandit.js";
 import { runLearning, formatReport, allCatalogNodes } from "./report.js";
+import { learningProjectIds, originOf, parseLearningOrigins } from "./projects.js";
 
 // ---------- fixtures: real events from mock sessions ----------
 
@@ -24,7 +25,9 @@ async function makeEngine() {
 
 /** createProject → startCards → answer every card with options[pick] → finishCards → override one default. */
 async function runSession(engine: Engine, id: string, pick: 0 | 1, extras: { undoFirst?: boolean; youDecideFirst?: boolean } = {}) {
-  await engine.createProject("an invoicing app for small bookkeeping firms", { id });
+  // These are synthetic estimator fixtures deliberately opted into the learning population. Production mock
+  // and harness projects use origin=mock/experiment and are excluded by default.
+  await engine.createProject("an invoicing app for small bookkeeping firms", { id, origin: "user" });
   let res = await engine.startCards(id);
   let first = true;
   let guard = 0;
@@ -383,6 +386,26 @@ describe("phrasing bandit", () => {
 });
 
 describe("report", () => {
+  it("uses only real user projects unless origins are explicitly opted in", async () => {
+    const store = new MemoryStore();
+    const base = { one_liner: "x", phase: "drafting" as const, latest_version: 0, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" };
+    await store.createProject({ ...base, id: "real", origin: "user" });
+    await store.createProject({ ...base, id: "mock", origin: "mock" });
+    await store.createProject({ ...base, id: "eval", origin: "experiment" });
+    await store.createProject({ ...base, id: "old" });
+    expect(await learningProjectIds(store)).toEqual(["real"]);
+    expect(await learningProjectIds(store, ["mock", "experiment"])).toEqual(["eval", "mock"]);
+    // A project written before origins existed has none on the file store and "legacy" on Postgres; both
+    // stores must answer the same question, and --include-origin legacy must be able to reach it.
+    expect(await learningProjectIds(store, ["legacy"])).toEqual(["old"]);
+    expect(originOf({ origin: undefined })).toBe("legacy");
+    // --include-origin ADDS to the user population: replacing it would silently fit priors on harness runs.
+    expect(parseLearningOrigins("experiment")).toEqual(["user", "experiment"]);
+    expect(parseLearningOrigins("user,experiment,user")).toEqual(["user", "experiment"]);
+    expect(await learningProjectIds(store, parseLearningOrigins("mock"))).toEqual(["mock", "real"]);
+    expect(() => parseLearningOrigins("user,unknown")).toThrow(/unknown learning origin/);
+  });
+
   it("runs every estimator and renders", async () => {
     const { store, catalogs } = await getFixture();
     const r = await runLearning(store, catalogs);

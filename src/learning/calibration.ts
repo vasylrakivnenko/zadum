@@ -15,6 +15,7 @@
 import type { Store } from "../store/store.js";
 import type { ZEvent } from "../core/session.js";
 import type { Sheet } from "../core/sheet.js";
+import { learningProjectIds } from "./projects.js";
 
 export interface CalSample {
   project_id: string;
@@ -161,9 +162,9 @@ export function calTable(samples: CalSample[]): CalTable {
   return { n: N, bins, ece, brier: N ? brierTotal / N : 0 };
 }
 
-/** IO: the report over every project in the store. */
+/** IO: the report over real user projects by default, or an explicit trusted id set. */
 export async function calibrationReport(store: Store, projectIds?: string[]): Promise<CalibrationReport> {
-  const ids = projectIds ?? (await store.listProjects()).map((p) => p.id).sort();
+  const ids = projectIds ?? (await learningProjectIds(store));
   const cards: CalSample[] = [];
   const overrides: CalSample[] = [];
   const defaults: CalSample[] = [];

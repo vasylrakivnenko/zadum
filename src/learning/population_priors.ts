@@ -19,6 +19,7 @@
 import type { Store } from "../store/store.js";
 import type { NodeDef } from "../core/catalog.js";
 import type { ZEvent } from "../core/session.js";
+import { learningProjectIds } from "./projects.js";
 import type { Sheet } from "../core/sheet.js";
 
 /** `refinement` = corrected while reading the compiled spec (`spec_refined`) — same grade of evidence as an
@@ -80,7 +81,7 @@ export function observationsFromEvents(projectId: string, archetypes: string[], 
 
 /** IO: walk projects (all, or the given ids), read the final Sheet + events, and extract observations. */
 export async function collectObservations(store: Store, projectIds?: string[]): Promise<Observation[]> {
-  const ids = projectIds ?? (await store.listProjects()).map((p) => p.id).sort();
+  const ids = projectIds ?? (await learningProjectIds(store));
   const out: Observation[] = [];
   for (const id of ids) {
     const [sheet, events] = await Promise.all([store.getLatestSheet(id), store.listEvents(id)]);

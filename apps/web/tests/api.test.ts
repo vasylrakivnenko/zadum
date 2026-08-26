@@ -8,11 +8,19 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { resetRateLimits } from "@/lib/security";
 
 const dataDir = mkdtempSync(path.join(tmpdir(), "zadum-web-test-"));
 process.env.ZADUM_MOCK = "1";
 process.env.ZADUM_DATA_DIR = dataDir;
+process.env.ZADUM_AUTH_SECRET = "test-only-auth-secret-that-is-at-least-32-characters";
 delete process.env.DATABASE_URL; // never let a configured Postgres leak into the test store
+// One long flow legitimately runs past 20 compile/refine/evidence/verification/gap calls in a minute, and
+// this suite is not the rate-limit test: the limits themselves are asserted in tests/security.test.ts and in
+// the "security wrapper" block at the bottom of this file, which sets its own.
+process.env.ZADUM_RATE_EXPENSIVE = "1000";
+process.env.ZADUM_RATE_WRITE = "1000";
+process.env.ZADUM_RATE_READ = "1000";
 
 // Import routes only after env is pinned (lib/engine reads env lazily, but keep the order airtight).
 const routes = {
@@ -35,13 +43,48 @@ const routes = {
   specDownload: () => import("@/app/api/projects/[id]/spec/download/route"),
 };
 
-function req(body?: unknown): Request {
-  return new Request("http://test.local/api", { method: "POST", ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { "content-type": "application/json" } }) });
+let sessionCookie = "";
+
+function rememberSession(res: Response): void {
+  const value = res.headers.get("set-cookie")?.split(";", 1)[0];
+  if (value) sessionCookie = value;
+}
+
+/**
+ * The URL each handler is actually reached at. Handlers read the id from `params`, not the path, so the `p1`
+ * is arbitrary — but lib/security.ts classifies the rate limit *from the path*, so a request built at a
+ * synthetic `/api` would be counted against the wrong bucket and leave that classification untested.
+ */
+const P = {
+  projects: "/api/projects",
+  project: "/api/projects/p1",
+  start: "/api/projects/p1/cards/start",
+  answer: "/api/projects/p1/cards/answer",
+  cont: "/api/projects/p1/cards/continue",
+  story: "/api/projects/p1/story",
+  storyCorrect: "/api/projects/p1/story/correct",
+  finish: "/api/projects/p1/cards/finish",
+  compile: "/api/projects/p1/compile",
+  verification: "/api/projects/p1/verification",
+  verificationAnswer: "/api/projects/p1/verification/answer",
+  gaps: "/api/projects/p1/gaps",
+  evidence: "/api/projects/p1/evidence",
+  acceptDefaults: "/api/projects/p1/defaults/accept",
+  spec: "/api/projects/p1/spec",
+  specRefine: "/api/projects/p1/spec/refine",
+  specDownload: "/api/projects/p1/spec/download",
+} as const;
+
+function req(path: string, body?: unknown, cookie = sessionCookie): Request {
+  const headers = new Headers();
+  if (body !== undefined) headers.set("content-type", "application/json");
+  if (cookie) headers.set("cookie", cookie);
+  return new Request(`http://test.local${path}`, { method: "POST", headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 
 /** A GET whose query string the handler reads (`?max=…`). */
-function getReq(query = ""): Request {
-  return new Request(`http://test.local/api${query}`);
+function getReq(path: string, query = ""): Request {
+  return new Request(`http://test.local${path}${query}`, { headers: sessionCookie ? { cookie: sessionCookie } : {} });
 }
 
 function params(id: string) {
@@ -55,11 +98,14 @@ async function json(res: Response): Promise<any> {
 let id = "";
 
 beforeAll(async () => {
+  resetRateLimits(); // the limiter's buckets are process-global: never inherit another suite's quota
   const { POST } = await routes.projects();
-  const res = await POST(req({ one_liner: "an invoicing app for small bookkeeping firms" }));
+  const res = await POST(req(P.projects, { one_liner: "an invoicing app for small bookkeeping firms" }));
+  rememberSession(res);
   expect(res.status).toBe(201);
   const body = await json(res);
   id = body.project.id;
+  expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   expect(body.sheet.decisions.length).toBeGreaterThan(0);
 }, 60_000);
 
@@ -70,7 +116,7 @@ afterAll(() => {
 describe("project state", () => {
   it("GET /api/projects/[id] returns the wire state with a curve array", async () => {
     const { GET } = await routes.project();
-    const res = await GET(req(), params(id));
+    const res = await GET(req(P.project), params(id));
     expect(res.status).toBe(200);
     const s = await json(res);
     expect(s.project.id).toBe(id);
@@ -80,15 +126,31 @@ describe("project state", () => {
 
   it("create rejects a missing one_liner", async () => {
     const { POST } = await routes.projects();
-    const res = await POST(req({}));
+    const res = await POST(req(P.projects, {}));
     expect(res.status).toBe(400);
   });
+
+  it("does not expose a project to a different browser session", async () => {
+    const { GET } = await routes.project();
+    const res = await GET(req(P.project, undefined, ""), params(id));
+    expect(res.status).toBe(404);
+    expect(res.headers.get("set-cookie")).toContain("zadum_session=");
+  });
+
+  it("lists only the current browser's projects", async () => {
+    const { GET, POST } = await routes.projects();
+    const outsider = await json(await POST(req(P.projects, { one_liner: "a separate browser's invoicing project" }, "")));
+    const body = await json(await GET(getReq(P.projects)));
+    expect(body.projects.length).toBeGreaterThan(0);
+    expect(body.projects.some((p: any) => p.id === id)).toBe(true);
+    expect(body.projects.some((p: any) => p.id === outsider.project.id)).toBe(false);
+  }, 60_000);
 });
 
 describe("card loop", () => {
   it("start deals a card with settledness and top values", async () => {
     const { POST } = await routes.start();
-    const res = await POST(req(), params(id));
+    const res = await POST(req(P.start), params(id));
     expect(res.status).toBe(200);
     const { deal, state } = await json(res);
     expect(["card", "stop"]).toContain(deal.kind);
@@ -102,11 +164,11 @@ describe("card loop", () => {
 
   it("answering the pending card returns implications, the next deal, and a grown curve", async () => {
     const { GET } = await routes.project();
-    const s = await json(await GET(req(), params(id)));
+    const s = await json(await GET(req(P.project), params(id)));
     expect(s.card?.kind).toBe("card");
     const optionId = s.card.card.options[0].option_id;
     const { POST } = await routes.answer();
-    const res = await POST(req({ kind: "option", option_id: optionId, think_ms: 500 }), params(id));
+    const res = await POST(req(P.answer, { kind: "option", option_id: optionId, think_ms: 500 }), params(id));
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(["card", "stop"]).toContain(body.next.kind);
@@ -119,7 +181,7 @@ describe("card loop", () => {
 
   it("POST /cards/continue responds with a deal (pending card or a fresh one past θ)", async () => {
     const { POST } = await routes.cont();
-    const res = await POST(req(), params(id));
+    const res = await POST(req(P.cont), params(id));
     expect(res.status).toBe(200);
     const { deal, state } = await json(res);
     expect(["card", "stop"]).toContain(deal.kind);
@@ -128,21 +190,21 @@ describe("card loop", () => {
 
   it("answer validates its body", async () => {
     const { POST } = await routes.answer();
-    expect((await POST(req({ kind: "nonsense" }), params(id))).status).toBe(400);
-    expect((await POST(req({ kind: "option" }), params(id))).status).toBe(400);
+    expect((await POST(req(P.answer, { kind: "nonsense" }), params(id))).status).toBe(400);
+    expect((await POST(req(P.answer, { kind: "option" }), params(id))).status).toBe(400);
   });
 });
 
 describe("story walkthrough", () => {
   it("GET /story is 404 before the spec compiles", async () => {
     const { GET } = await routes.story();
-    const res = await GET(req(), params(id));
+    const res = await GET(req(P.story), params(id));
     expect(res.status).toBe(404);
   });
 
   it("POST /story/correct applies a plain-English correction like an edit", async () => {
     const { POST } = await routes.storyCorrect();
-    const res = await POST(req({ text: "Clients also get a reminder email three days before an invoice is due." }), params(id));
+    const res = await POST(req(P.storyCorrect, { text: "Clients also get a reminder email three days before an invoice is due." }), params(id));
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(typeof body.version).toBe("number");
@@ -154,7 +216,7 @@ describe("story walkthrough", () => {
 
   it("POST /story/correct requires text", async () => {
     const { POST } = await routes.storyCorrect();
-    const res = await POST(req({}), params(id));
+    const res = await POST(req(P.storyCorrect, {}), params(id));
     expect(res.status).toBe(400);
   });
 });
@@ -171,24 +233,24 @@ describe("story checks, spec gaps, evidence", () => {
 
   beforeAll(async () => {
     const { POST } = await routes.projects();
-    const body = await json(await POST(req({ one_liner: "an invoicing app for small bookkeeping firms" })));
+    const body = await json(await POST(req(P.projects, { one_liner: "an invoicing app for small bookkeeping firms" })));
     vid = body.project.id;
     const finish = await routes.finish();
-    const res = await finish.POST(req(), params(vid));
+    const res = await finish.POST(req(P.finish), params(vid));
     expect(res.status).toBe(200);
     expect((await json(res)).defaults.length).toBeGreaterThan(0);
   }, 60_000);
 
   it("project state reports how many assumptions a story check could cover", async () => {
     const { GET } = await routes.project();
-    const s = await json(await GET(req(), params(vid)));
+    const s = await json(await GET(req(P.project), params(vid)));
     expect(s.verification.checkable).toBeGreaterThan(0);
     expect(typeof s.verification.pending).toBe("number");
   });
 
   it("GET /verification composes scenarios over the assumed decisions", async () => {
     const { GET } = await routes.verification();
-    const res = await GET(getReq("?max=3"), params(vid));
+    const res = await GET(getReq(P.verification, "?max=3"), params(vid));
     expect(res.status).toBe(200);
     const { probes } = await json(res);
     expect(probes.length).toBeGreaterThan(0);
@@ -204,7 +266,7 @@ describe("story checks, spec gaps, evidence", () => {
 
   it("answering \"that's right\" confirms the bundled assumptions", async () => {
     const { POST } = await routes.verificationAnswer();
-    const res = await POST(req({ probe_id: probeId, ok: true }), params(vid));
+    const res = await POST(req(P.verificationAnswer, { probe_id: probeId, ok: true }), params(vid));
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(typeof body.sheet_version).toBe("number");
@@ -216,22 +278,22 @@ describe("story checks, spec gaps, evidence", () => {
 
   it("pointing at the wrong part resolves that decision to the user's option", async () => {
     const verification = await routes.verification();
-    const { probes } = await json(await verification.GET(getReq(), params(vid)));
+    const { probes } = await json(await verification.GET(getReq(P.verification), params(vid)));
     expect(probes.length).toBeGreaterThan(0);
     const probe = probes[0];
     const wrong = probe.nodes[0];
 
     const project = await routes.project();
-    const state = await json(await project.GET(req(), params(vid)));
+    const state = await json(await project.GET(req(P.project), params(vid)));
     const decision = state.sheet.decisions.find((d: any) => d.id === wrong.node_id);
     const other = decision.options.find((o: any) => o.id !== decision.chosen) ?? decision.options[0];
 
     const answer = await routes.verificationAnswer();
-    const res = await answer.POST(req({ probe_id: probe.id, ok: false, correction: { node_id: wrong.node_id, option_id: other.id } }), params(vid));
+    const res = await answer.POST(req(P.verificationAnswer, { probe_id: probe.id, ok: false, correction: { node_id: wrong.node_id, option_id: other.id } }), params(vid));
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(body.implied).toHaveProperty("hard");
-    const after = await json(await project.GET(req(), params(vid)));
+    const after = await json(await project.GET(req(P.project), params(vid)));
     const corrected = after.sheet.decisions.find((d: any) => d.id === wrong.node_id);
     expect(corrected.status).toBe("resolved");
     expect(corrected.chosen).toBe(other.id);
@@ -239,15 +301,15 @@ describe("story checks, spec gaps, evidence", () => {
 
   it("verification answers validate their body", async () => {
     const { POST } = await routes.verificationAnswer();
-    expect((await POST(req({ ok: true }), params(vid))).status).toBe(400); // no probe_id
-    expect((await POST(req({ probe_id: probeId }), params(vid))).status).toBe(400); // no verdict
-    expect((await POST(req({ probe_id: "no_such_probe", ok: true }), params(vid))).status).toBe(400);
-    expect((await POST(req({ probe_id: probeId, ok: true, correction: { node_id: "x", option_id: "y" } }), params(vid))).status).toBe(400);
+    expect((await POST(req(P.verificationAnswer, { ok: true }), params(vid))).status).toBe(400); // no probe_id
+    expect((await POST(req(P.verificationAnswer, { probe_id: probeId }), params(vid))).status).toBe(400); // no verdict
+    expect((await POST(req(P.verificationAnswer, { probe_id: "no_such_probe", ok: true }), params(vid))).status).toBe(400);
+    expect((await POST(req(P.verificationAnswer, { probe_id: probeId, ok: true, correction: { node_id: "x", option_id: "y" } }), params(vid))).status).toBe(400);
   });
 
   it("POST /evidence reports what moved, labelled through the Sheet", async () => {
     const { POST } = await routes.evidence();
-    const res = await POST(req({ text: "Attached: INVOICE #1043 — Net 30, late fee 1.5%/mo, paid by bank transfer." }), params(vid));
+    const res = await POST(req(P.evidence, { text: "Attached: INVOICE #1043 — Net 30, late fee 1.5%/mo, paid by bank transfer." }), params(vid));
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(Array.isArray(body.shifts)).toBe(true);
@@ -262,23 +324,23 @@ describe("story checks, spec gaps, evidence", () => {
 
   it("POST /evidence requires text", async () => {
     const { POST } = await routes.evidence();
-    expect((await POST(req({}), params(vid))).status).toBe(400);
+    expect((await POST(req(P.evidence, {}), params(vid))).status).toBe(400);
   });
 
   it("GET /gaps is 400 before the spec compiles, then lists candidate questions", async () => {
     const gaps = await routes.gaps();
-    expect((await gaps.GET(getReq(), params(vid))).status).toBe(400);
+    expect((await gaps.GET(getReq(P.gaps), params(vid))).status).toBe(400);
 
     // The story-check tests above resolved decisions, which can reopen a stale gated child (ADR-037), and
     // compile refuses an unfinished ledger (ADR-036). Accepting the review is the real flow's next step and
     // re-defaults anything reopened, so this mirrors the product rather than working around the gate.
     const accept = await routes.acceptDefaults();
-    expect((await accept.POST(req({}), params(vid))).status).toBe(200);
+    expect((await accept.POST(req(P.acceptDefaults, {}), params(vid))).status).toBe(200);
     const compile = await routes.compile();
-    const compiled = await compile.POST(req({}), params(vid));
+    const compiled = await compile.POST(req(P.compile, {}), params(vid));
     expect(compiled.status, await compiled.clone().text()).toBe(200);
 
-    const res = await gaps.GET(getReq("?max=4"), params(vid));
+    const res = await gaps.GET(getReq(P.gaps, "?max=4"), params(vid));
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(body.gaps.length).toBeGreaterThan(0);
@@ -292,21 +354,21 @@ describe("story checks, spec gaps, evidence", () => {
 
   it("POST /gaps adds the top N as open decisions and reopens the card loop", async () => {
     const gaps = await routes.gaps();
-    const res = await gaps.POST(req({ apply: 1 }), params(vid));
+    const res = await gaps.POST(req(P.gaps, { apply: 1 }), params(vid));
     expect(res.status).toBe(200);
     const body = await json(res);
     expect(body.applied.length).toBe(1);
     const project = await routes.project();
-    const state = await json(await project.GET(req(), params(vid)));
+    const state = await json(await project.GET(req(P.project), params(vid)));
     expect(state.session.phase).toBe("cards");
     expect(state.sheet.decisions.some((d: any) => d.id === body.applied[0] && d.status === "open")).toBe(true);
   }, 120_000);
 
   it("POST /gaps validates apply", async () => {
     const gaps = await routes.gaps();
-    expect((await gaps.POST(req({}), params(vid))).status).toBe(400);
-    expect((await gaps.POST(req({ apply: 0 }), params(vid))).status).toBe(400);
-    expect((await gaps.POST(req({ apply: "two" }), params(vid))).status).toBe(400);
+    expect((await gaps.POST(req(P.gaps, {}), params(vid))).status).toBe(400);
+    expect((await gaps.POST(req(P.gaps, { apply: 0 }), params(vid))).status).toBe(400);
+    expect((await gaps.POST(req(P.gaps, { apply: "two" }), params(vid))).status).toBe(400);
   });
 });
 
@@ -337,13 +399,13 @@ describe("spec workspace", () => {
 
   beforeAll(async () => {
     const { POST } = await routes.projects();
-    const body = await json(await POST(req({ one_liner: "a booking app for a hair salon" })));
+    const body = await json(await POST(req(P.projects, { one_liner: "a booking app for a hair salon" })));
     sid = body.project.id;
   }, 60_000);
 
   it("GET /spec before a compile is an ordinary empty state, not an error", async () => {
     const { GET } = await routes.spec();
-    const res = await GET(req(), params(sid));
+    const res = await GET(req(P.spec), params(sid));
     expect(res.status).toBe(200);
     const b = await json(res);
     expect(b.has_spec).toBe(false);
@@ -356,12 +418,12 @@ describe("spec workspace", () => {
 
   it("after a compile it returns the markdown, the bundle, the critic verdict, and no staleness", async () => {
     const finish = await routes.finish();
-    expect((await finish.POST(req(), params(sid))).status).toBe(200);
+    expect((await finish.POST(req(P.finish), params(sid))).status).toBe(200);
     const compile = await routes.compile();
-    expect((await compile.POST(req({}), params(sid))).status).toBe(200);
+    expect((await compile.POST(req(P.compile, {}), params(sid))).status).toBe(200);
 
     const { GET } = await routes.spec();
-    const b = await json(await GET(req(), params(sid)));
+    const b = await json(await GET(req(P.spec), params(sid)));
     expect(b.has_spec).toBe(true);
     expect(b.markdown).toContain("# Specification");
     expect(b.artifacts).toContain("spec.md");
@@ -374,7 +436,7 @@ describe("spec workspace", () => {
 
   it("GET /spec/download hands over the artifact as a named file, and 404s an unknown name", async () => {
     const { GET } = await routes.specDownload();
-    const res = await GET(getReq("?name=spec.md"), params(sid));
+    const res = await GET(getReq(P.specDownload, "?name=spec.md"), params(sid));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/markdown");
     const cd = res.headers.get("content-disposition") ?? "";
@@ -382,21 +444,21 @@ describe("spec workspace", () => {
     expect(cd).toContain("-spec.md");
     expect(await res.text()).toContain("# Specification");
 
-    expect((await GET(getReq(), params(sid))).status).toBe(200); // spec.md is the default
-    expect((await GET(getReq("?name=nope.md"), params(sid))).status).toBe(404);
-    expect((await GET(getReq("?name=../../etc/passwd"), params(sid))).status).toBe(404);
+    expect((await GET(getReq(P.specDownload), params(sid))).status).toBe(200); // spec.md is the default
+    expect((await GET(getReq(P.specDownload, "?name=nope.md"), params(sid))).status).toBe(404);
+    expect((await GET(getReq(P.specDownload, "?name=../../etc/passwd"), params(sid))).status).toBe(404);
   });
 
   it("POST /spec/refine validates its body", async () => {
     const { POST } = await routes.specRefine();
-    expect((await POST(req({}), params(sid))).status).toBe(400); // nothing to act on
-    expect((await POST(req({ comments: [{}] }), params(sid))).status).toBe(400); // a comment needs text
-    expect((await POST(req({ comments: "later" }), params(sid))).status).toBe(400);
+    expect((await POST(req(P.specRefine, {}), params(sid))).status).toBe(400); // nothing to act on
+    expect((await POST(req(P.specRefine, { comments: [{}] }), params(sid))).status).toBe(400); // a comment needs text
+    expect((await POST(req(P.specRefine, { comments: "later" }), params(sid))).status).toBe(400);
   });
 
   it("POST /spec/refine returns what it understood plus either a new spec or a reason it is blocked", async () => {
     const { POST } = await routes.specRefine();
-    const res = await POST(req({ comments: [{ quote: "A client never sees another client's booking", text: "stylists should see every booking, not just their own" }] }), params(sid));
+    const res = await POST(req(P.specRefine, { comments: [{ quote: "A client never sees another client's booking", text: "stylists should see every booking, not just their own" }] }), params(sid));
     expect(res.status).toBe(200);
     const b = await json(res);
     for (const k of ["wrong_assumptions", "missing_elements", "confirmed_elements", "new_questions"]) expect(Array.isArray(b.extraction[k])).toBe(true);
@@ -482,5 +544,39 @@ describe("story.md parsing", () => {
     expect(s.title).toBe("A Tuesday at the firm");
     expect(s.steps).toEqual(["Dana opens the app.", "She drafts an invoice."]);
     expect(s.checks).toHaveLength(2);
+  });
+});
+
+/**
+ * The wrapper itself, on real paths. lib/security.ts picks the limit from the request path, so these assert
+ * what a synthetic `/api` request never could: that a POST to /api/projects is counted against the small
+ * create bucket (the LLM-spend guard) rather than the 120/min write bucket, and that the 429 it produces
+ * still carries the counters — the call that throws never returns, so they can only come off the error.
+ */
+describe("security wrapper", () => {
+  it("counts project creation against the create limit and reports the 429 fully", async () => {
+    resetRateLimits();
+    process.env.ZADUM_RATE_CREATE = "3";
+    try {
+      const { POST } = await routes.projects();
+      // Rejected bodies never reach the engine, so these cost nothing but still consume creation quota.
+      for (let i = 0; i < 3; i++) expect((await POST(req(P.projects, {}))).status).toBe(400);
+      const limited = await POST(req(P.projects, {}));
+      expect(limited.status).toBe(429); // 4 > 3: the write limit (120) would not have fired
+      expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
+      expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
+      expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(0);
+    } finally {
+      delete process.env.ZADUM_RATE_CREATE;
+      resetRateLimits();
+    }
+  });
+
+  it("rejects a cross-origin mutation without minting a credential for it", async () => {
+    const res = await (await routes.projects()).POST(
+      new Request("http://test.local/api/projects", { method: "POST", headers: { origin: "http://attacker.test" } }),
+    );
+    expect(res.status).toBe(403);
+    expect(res.headers.get("set-cookie")).toBeNull();
   });
 });
