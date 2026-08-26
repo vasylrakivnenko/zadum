@@ -925,3 +925,66 @@ why it shouldn't be quoted at all yet: **win rate was perfectly monotone in spec
 The runner now computes a `length_bias` diagnostic (share of decided verdicts won by the longer spec) on every
 run, warns loudly at ≥80%, and stores it in the results JSON. Until a length-matched tournament design exists,
 entropy and genuine-gaps are the quotable instruments; pw-win is a tiebreaker with a posted health warning.
+
+## Scenario replay — grading the artifact, not the recovery (`scripts/scenario.ts`, 2026-08-26)
+
+The harness measures *decision recovery* against a gold Sheet: did we settle the right options. ADR-039
+showed that can be fine while the document is not — critic `pass, score 10` on a spec with six rule
+contradictions. So a second instrument grades the **artifact**, from a one-liner plus a scripted set of
+answers, and reports several independent judgements side by side rather than one number:
+
+    npx tsx scripts/scenario.ts --scenario scenarios/excel-financials.json \
+        --model claude-opus-4-8 --judge claude-opus-4-8 --yes-spend [--contrarian] [--stop-floor 0.5]
+
+`scenarios/excel-financials.json` replays the **real** session `f9280b97` — the owner's own answers and
+default overrides, lifted from that project's event log, including the `record_assignment` card they spent
+52 seconds on. Auto-answering from our own belief would grade the pipeline against its own guess, which is
+the one comparison guaranteed to look good.
+
+### First live run (Opus 4.8, baseline arm)
+
+The ADR-039 gates work as designed. Before, on the same input:
+
+| | ADR-039 incident | this run |
+|---|---|---|
+| critic | `pass · 10 · 0 violations` | **`fail · 6.5 · 6 violations`** |
+| round-trip rules recall | `0.2` (a false negative) | `0.86` |
+| `spec_checks` | did not exist | **6 findings** incl. `untraced_decision` |
+| deliverable? | shipped | **blocked** — "the critic returned fail" |
+| owner's deliberate answers reaching the body | 3 reached nothing | **0 missing** |
+
+### What the outside judge found that the gates did not
+
+An independent Opus reading the spec cold: `needs_work, 5/10`, five contradictions, five unbuildable
+requirements, six things "a builder would still have to ask". Its verdict on where the damage lives is worth
+quoting, because it names a section rather than a symptom:
+
+> "The lifecycle/state-machine section contradicts the very invariants (R-6, R-4/R-12, Dashboard View
+> ownership, Period status enum) the rest of the document treats as inviolable — the section that should
+> reconcile behaviour instead introduces the most damaging conflicts."
+
+Two of those were **mechanically checkable and unchecked**, so they are now checked
+(`lifecycle_state_not_in_enum`, high severity):
+
+    Period  data model `status enum(open, closed)`    ·  lifecycle "starts in `empty` … 3 states"
+    User    data model `status enum(invited, active)`  ·  lifecycle "… deactivated"
+
+The critic *did* catch a sibling defect on that run (the Account Line lifecycle contradicting R-6) and
+correctly failed the spec. That is not a substitute: an LLM noticing something once is not the same as it
+being checked. Validated on 38 real `spec.md` files on disk — 2 flagged, both the same genuine defect, **zero
+false positives** — and the first implementation scored 0 on a known-bad spec because it stripped
+parentheses but not the compiler's `⟨src: …⟩` markers, which is why a 0-finding result on a known-bad input
+now has its own regression test.
+
+Judge findings still NOT mechanically caught, i.e. the honest remaining gap: rule-pair deadlocks (R-12
+requires reassigning a Category's lines, R-4 forbids editing lines in closed periods, so a Category whose
+lines are all in closed periods can never be archived), an `AuditEntry.action` enum with no value for
+mutations the rules imply, and lifecycle actors the permissions matrix does not grant.
+
+### Negative results (recorded so nobody re-runs them hopefully)
+
+- **`contrarianSampling` did not increase the questions asked.** Same one-liner, one card either way. See
+  ADR-041.
+- **`theta_replay` cannot diagnose under-asking.** It reports 1.0 cards at θ=0, which reads as "θ is
+  innocent" and is an artifact: replay can only stop earlier than the logged run, never ask an unlogged card.
+

@@ -72,6 +72,9 @@ one-liner ──► drafter ──► Sheet v1 ──► planner ──► decis
 | `mining/cooccurrence.ts` | Stage 4: stratified 2×2 counts → `PairStat`, Simpson-checked (`npm run mine:graph`) | pure + CLI |
 | `learning/design_graph.ts` | Stage 4: edge semantics, Wilson/Jeffreys estimators, `classifyPair` (can never emit a hard relation), validation | pure |
 | `learning/graph_cli.ts` | `npm run graph:validate` (CI gate) / `npm run graph:report` (human view) | IO |
+| `scripts/scrape_and_label.ts` | The live evidence run: `corpus/repos*.json` → pinned clones → digests → Opus labels. Resumable by append; clone/condense phases run free before any spend | IO |
+| `scripts/model_bakeoff.ts` | Which model labels best per dollar, measured against the gold set (`npm run bakeoff`) | IO via LLM |
+| `scripts/scenario.ts` | Replays a one-liner + a real session's answers to a compiled spec, then grades the ARTIFACT: deterministic gates, the critic, and an independent judge model | IO via LLM |
 | `core/evidence_graph.ts` | Runtime: soft graph likelihood over sampled worlds — applied once, never deletes a world, always loses to a user answer. **Off by default** | pure |
 | `engine/rule_augment.ts` | Turns bank patterns + a draft Sheet into deduped `add_rule` ops via the `augmentRules` LLM fn | IO via LLM |
 | `harness/judge.ts` | LLM-judge semantic recall (actors/nouns/rules/non_goals) — the fix for lexical matching's synonym-blindness (ADR-024/028) | IO via LLM |
@@ -231,6 +234,23 @@ default): applied once, never re-applied after an answer, never able to delete a
 user answer and by `propagateHard`. Rule 1 of CLAUDE.md is unchanged — the LLM still never writes to the Sheet,
 and now the corpus does not either.
 
+## 8c. Grading the artifact, not just the recovery
+
+The harness answers "did we settle the right decisions". It cannot answer "is this document any good", and
+ADR-039 is the record of those two coming apart — a spec with six rule contradictions passed the critic with
+`score 10` while its one mechanical signal reported a false `rules recall 0.2`.
+
+`scripts/scenario.ts` closes that gap. It replays a one-liner plus a **real session's own answers** (lifted
+from that project's event log — auto-answering from our own belief would grade the pipeline against its own
+guess) through draft → cards → defaults → compile, then reports three independent judgements side by side:
+the deterministic gates, the critic, and an outside judge model reading the spec cold as a senior requirements
+engineer. Scenarios live in `scenarios/*.json`; `--contrarian` and `--stop-floor` expose the two
+harness-gated selector experiments as arms.
+
+Its first use found both good news and the top open item: the ADR-039 gates work (the same input that once
+shipped is now correctly blocked), and the card loop asks 1-2 questions of a 12-card budget across five live
+runs — ADR-041.
+
 ## 9. Running
 
 ```
@@ -250,6 +270,10 @@ npm run mine:elements -- --matrix <decisions.jsonl>
 npm run mine:graph -- --matrix <decisions.jsonl> --out mining-results
 npm run graph:validate -- --graph <graph.json>     # CI gate: numeric probabilities, no learned hard edges
 npm run graph:report -- --graph <graph.json>
+npx tsx scripts/scrape_and_label.ts --repos corpus/repos-small.json --all --dry-run   # measured cost, free
+npx tsx scripts/model_bakeoff.ts --dry-run                                            # which model to label with
+npx tsx scripts/scenario.ts --scenario scenarios/salon-booking.json --mock            # grade a spec, free
+ZADUM_MODEL=claude-opus-4-8 npm run zadum -- new "…"                                  # run the PRODUCT on Opus
 npm run harness -- --gold <g> --judge                          # LLM-judge semantic recall alongside lexical
 npm run harness -- --gold <g> --rule-bank-dir <empty-dir>       # A/B the rule bank
 DATABASE_URL=postgres://localhost/zadum npm run db:migrate   # Postgres instead of the file store

@@ -322,15 +322,22 @@ describe("end-to-end: corpus → labels → matrix → statistics → graph", ()
     }
   });
 
-  it("reports its own blindness rather than hiding it", async () => {
+  it("can name any node the lexicon cannot see, and currently sees them all", async () => {
     const { nodeIndex } = await pipeline();
     const { lexicon } = await loadValidatedLexicon();
     const blind = uncoveredNodes(lexicon, nodeIndex);
-    // A real, honest state of the world: some catalog nodes have no lexicon feature at all. The pipeline must
-    // be able to name them — silence about blindness is how a matrix pretends to be complete.
-    expect(Array.isArray(blind)).toBe(true);
-    expect(blind.length).toBeGreaterThan(0);
-    for (const n of blind) expect(nodeIndex.has(n)).toBe(true);
+    // The lexicon now covers all 135 catalog nodes (it covered 102 when this pipeline was built, leaving 33
+    // blind). Two separate things are asserted, because they fail for different reasons:
+    //   1. coverage is complete RIGHT NOW — a new catalog node added without a lexicon feature breaks this,
+    //      which is the regression worth catching: the matrix would silently go blind to it.
+    expect(blind).toEqual([]);
+    //   2. the reporting mechanism still works — `uncoveredNodes` must be able to NAME a gap, not just
+    //      return empty. Silence about blindness is how a matrix pretends to be complete, so the honest-report
+    //      path is tested against a lexicon with a node removed rather than against luck.
+    const narrowed = { ...lexicon, features: lexicon.features.filter((f) => f.maps_to?.node !== "user_accounts") };
+    const gap = uncoveredNodes(narrowed, nodeIndex);
+    expect(gap).toContain("user_accounts");
+    for (const n of gap) expect(nodeIndex.has(n)).toBe(true);
   });
 
   it("is deterministic: the same corpus produces the same matrix twice", async () => {

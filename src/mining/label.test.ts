@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
+import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import type Anthropic from "@anthropic-ai/sdk";
 import {
   DOC_TYPES,
   LexiconSchema,
@@ -33,23 +36,29 @@ import {
 } from "./condense.js";
 import {
   ARTIFACT_MARKER,
+  FEATURES_MARKER,
   LabelBatchSchema,
   applyEvidenceRules,
   askableFeatures,
   batchFeatures,
+  cacheHitRate,
   categoryDiscussed,
   estimateCost,
   labelDocument,
   parseArgs,
   parseGithubRepo,
   quoteOccurs,
+  renderLabelPrefix,
   renderLabelPrompt,
+  renderLabelQuestion,
   summarizeRow,
   type Cell,
   type LabelBatch,
+  PRICE_PER_MTOK,
 } from "./label.js";
 import { labelMockHandlers, mockLabelFeatures, parseLabelPrompt } from "./label_mock.js";
-import { MockLLM } from "../llm/client.js";
+import { AnthropicLLM, CachedLLM, MockLLM, type LLMUsage } from "../llm/client.js";
+import { AnthropicFoundryLLM } from "../llm/anthropic_foundry.js";
 import { loadCatalogs } from "../engine/catalogs.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -121,8 +130,16 @@ describe("lexicon: the real catalogs/lexicon/lexicon.json", () => {
   it("is the size and shape the evidence layer needs", async () => {
     const lexicon = await loadLexicon();
     const s = lexiconStats(lexicon);
+    // A sanity band, not a target. The ceiling was 150 when the lexicon covered 102 of the 135 catalog nodes;
+    // closing the remaining 33 (each needing >= 2 features on distinct options, or the node can never reach
+    // `observed`) put the arithmetic floor at ~202, so the old bound was incompatible with full coverage
+    // rather than protective of it. Raised to 300 — wide enough for the rest of the catalog to be covered,
+    // tight enough that a runaway generator adding a thousand features still trips it.
     expect(s.features).toBeGreaterThanOrEqual(120);
-    expect(s.features).toBeLessThanOrEqual(150);
+    expect(s.features).toBeLessThanOrEqual(300);
+    // Every catalog node is observable: a new node added with no lexicon feature would make the matrix
+    // silently blind to it, so coverage is asserted here rather than left to a report nobody reads.
+    expect(s.nodes_covered).toBe(135);
     expect(s.mapped + s.gaps).toBe(s.features);
     // catalog-gap candidates are a legitimate output, not a defect — but they must be a minority
     expect(s.gaps).toBeGreaterThan(0);
@@ -509,6 +526,53 @@ describe("askableFeatures / batchFeatures / prompt", () => {
     expect(parsed.artifact).toBe(d.text);
   });
 
+  /**
+   * The prompt's ORDER is load-bearing, not cosmetic: prompt caching is a prefix match, so the constant
+   * artifact has to precede the per-batch feature list or the prefix is invalidated on every one of the 5-6
+   * calls a document costs. These three tests are the contract the caching depends on.
+   */
+  it("puts the artifact BEFORE the feature list, and is exactly prefix + blank line + question", () => {
+    const d = digest();
+    const features = askableFeatures(TEST_LEXICON, d);
+    const user = renderLabelPrompt(d, features);
+    expect(user.indexOf(ARTIFACT_MARKER)).toBeGreaterThan(-1);
+    expect(user.indexOf(FEATURES_MARKER)).toBeGreaterThan(-1);
+    expect(user.indexOf(ARTIFACT_MARKER)).toBeLessThan(user.indexOf(FEATURES_MARKER));
+    expect(user).toBe(`${renderLabelPrefix(d)}\n\n${renderLabelQuestion(features, d.doc_type)}`);
+    // the question is the tail, and the prefix carries no per-batch bytes
+    expect(user.endsWith(renderLabelQuestion(features, d.doc_type))).toBe(true);
+    expect(renderLabelPrefix(d)).not.toContain(FEATURES_MARKER);
+    expect(renderLabelQuestion(features, d.doc_type)).not.toContain(ARTIFACT_MARKER);
+  });
+
+  it("renders a byte-identical prefix for two different batches of the same document", () => {
+    const d = digest({ available_loci: ["payment_code", "db_schema", "auth_code", "file_tree"] });
+    const batchA = [featureOf("refunds")];
+    const batchB = [featureOf("sso"), featureOf("refunds")];
+    expect(renderLabelQuestion(batchB, d.doc_type)).not.toBe(renderLabelQuestion(batchA, d.doc_type));
+    // ...and yet the leading bytes of the two prompts are the same. One differing byte here would turn every
+    // batch into a cache WRITE (1.25x) and cost more than not caching at all.
+    const prefix = renderLabelPrefix(d);
+    expect(renderLabelPrompt(d, batchA).slice(0, prefix.length)).toBe(prefix);
+    expect(renderLabelPrompt(d, batchB).slice(0, prefix.length)).toBe(prefix);
+  });
+
+  it("the mock parses the NEW order back — features, loci and artifact all recovered", () => {
+    const d = digest({ text: "===== LOCUS: payment_code =====\nrefund the deposit online\n" });
+    const features = [featureOf("refunds"), featureOf("sso")];
+    const parsed = parseLabelPrompt(renderLabelPrompt(d, features));
+    expect(parsed.docType).toBe("repo");
+    expect(parsed.available).toEqual(d.available_loci);
+    expect(parsed.artifact).toBe(d.text);
+    expect(parsed.features.map((f) => f.id)).toEqual(["refunds", "sso"]);
+    expect(parsed.features[1]!.loci).toEqual(featureOf("sso").loci.repo);
+    // an artifact that happens to contain the seam bytes must not fool the split (lastIndexOf, not indexOf)
+    const adversarial = digest({ text: `a repo whose README says\n\n${FEATURES_MARKER}3): nonsense\n` });
+    const p2 = parseLabelPrompt(renderLabelPrompt(adversarial, features));
+    expect(p2.artifact).toBe(adversarial.text);
+    expect(p2.features.map((f) => f.id)).toEqual(["refunds", "sso"]);
+  });
+
   it("the schema stays in the conservative JSON-schema subset (ADR-011)", () => {
     const js = z.toJSONSchema(LabelBatchSchema) as { properties: Record<string, unknown>; required: string[] };
     expect(new Set(js.required)).toEqual(new Set(Object.keys(js.properties)));
@@ -566,6 +630,152 @@ describe("labelDocument", () => {
   });
 });
 
+// ---------- the cacheable-prefix plumbing, end to end ----------
+
+/** A stand-in for the SDK client `AnthropicLLM` wraps, capturing the exact params it would POST. */
+function fakeAnthropic(capture: Record<string, unknown>[]) {
+  return {
+    messages: {
+      parse: async (params: Record<string, unknown>) => {
+        capture.push(params);
+        return {
+          stop_reason: "end_turn",
+          parsed_output: { labels: [] },
+          model: "claude-opus-5",
+          usage: { input_tokens: 7, output_tokens: 3, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+        };
+      },
+    },
+  } as unknown as Anthropic;
+}
+
+/** A stand-in for `fetch`, capturing the parsed request body the Foundry client would send. */
+function fakeFoundryFetch(capture: Record<string, unknown>[]): typeof fetch {
+  return (async (_url: string, init: { body: string }) => {
+    capture.push(JSON.parse(init.body) as Record<string, unknown>);
+    const body = {
+      model: "claude-opus-4-8",
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: JSON.stringify({ labels: [] }) }],
+      usage: { input_tokens: 7, output_tokens: 3 },
+    };
+    return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+  }) as unknown as typeof fetch;
+}
+
+describe("userPrefix: the cache breakpoint reaches both real clients", () => {
+  const models = { strong: "claude-opus-4-8", fast: "claude-opus-4-8" };
+  const base = { fn: "evidence_label", tier: "strong" as const, system: "S", user: "Q", schema: LabelBatchSchema };
+
+  it("AnthropicLLM sends two text blocks with the breakpoint on the prefix — and a bare string without one", async () => {
+    const seen: Record<string, unknown>[] = [];
+    const llm = new AnthropicLLM(models, { client: fakeAnthropic(seen) });
+    await llm.structured({ ...base, userPrefix: "BIG ARTIFACT" });
+    await llm.structured(base);
+
+    const withPrefix = (seen[0]!.messages as { content: unknown }[])[0]!.content;
+    expect(withPrefix).toEqual([
+      { type: "text", text: "BIG ARTIFACT", cache_control: { type: "ephemeral" } },
+      { type: "text", text: "Q" },
+    ]);
+    // REGRESSION: ~15 other LLM functions pass no prefix and must be byte-identical to before this field
+    // existed — a single string, not a one-element block array.
+    expect((seen[1]!.messages as { content: unknown }[])[0]!.content).toBe("Q");
+  });
+
+  it("AnthropicFoundryLLM applies it in BOTH request shapes (structured outputs and forced tool use)", async () => {
+    const structured: Record<string, unknown>[] = [];
+    await new AnthropicFoundryLLM({ baseUrl: "https://r.services.ai.azure.com/anthropic", apiKey: "k", models, fetchImpl: fakeFoundryFetch(structured) }).structured({
+      ...base,
+      userPrefix: "BIG ARTIFACT",
+    });
+    expect(structured[0]!.output_config).toBeDefined();
+    expect((structured[0]!.messages as { content: unknown }[])[0]!.content).toEqual([
+      { type: "text", text: "BIG ARTIFACT", cache_control: { type: "ephemeral" } },
+      { type: "text", text: "Q" },
+    ]);
+
+    // Drive the client onto the fallback shape with the one 400 that downgrades it, then re-assert.
+    const toolShape: Record<string, unknown>[] = [];
+    const downgradeOnce = (async (_url: string, init: { body: string }) => {
+      toolShape.push(JSON.parse(init.body) as Record<string, unknown>);
+      if (toolShape.length === 1) {
+        return new Response(JSON.stringify({ error: { message: "output_config.format.name: Extra inputs are not permitted" } }), { status: 400 });
+      }
+      const body = {
+        model: "claude-opus-4-8",
+        stop_reason: "tool_use",
+        content: [{ type: "tool_use", name: "emit_result", input: { labels: [] } }],
+        usage: { input_tokens: 7, output_tokens: 3 },
+      };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    const c = new AnthropicFoundryLLM({ baseUrl: "https://r.services.ai.azure.com/anthropic", apiKey: "k", models, fetchImpl: downgradeOnce, sleep: () => Promise.resolve() });
+    await c.structured({ ...base, userPrefix: "BIG ARTIFACT" });
+    expect(c.outputMode).toBe("tool_use");
+    const fallback = toolShape[1]!;
+    expect(fallback.tool_choice).toEqual({ type: "tool", name: "emit_result" });
+    expect((fallback.messages as { content: unknown }[])[0]!.content).toEqual([
+      { type: "text", text: "BIG ARTIFACT", cache_control: { type: "ephemeral" } },
+      { type: "text", text: "Q" },
+    ]);
+  });
+
+  it("CachedLLM treats two requests differing only in userPrefix as distinct entries", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zadum-llm-cache-"));
+    let n = 0;
+    const inner = new MockLLM({ evidence_label: () => ({ labels: [{ feature_id: `answer_${++n}`, verdict: "unobserved", evidence: "", loci_checked: [] }] }) });
+    const cached = new CachedLLM(inner, dir);
+    const req = (userPrefix?: string) => ({ ...base, ...(userPrefix ? { userPrefix } : {}) });
+
+    // Same `user` (the batch's feature list is shared by every document), different artifact. Without
+    // userPrefix in the key these two collide and a replay answers document B with document A's labels.
+    const a = await cached.structured(req("ARTIFACT A"));
+    const b = await cached.structured(req("ARTIFACT B"));
+    expect(a.data.labels[0]!.feature_id).toBe("answer_1");
+    expect(b.data.labels[0]!.feature_id).toBe("answer_2");
+    const again = await cached.structured(req("ARTIFACT A"));
+    expect(again.cached).toBe(true);
+    expect(again.data.labels[0]!.feature_id).toBe("answer_1");
+    // and a prefix-less request is still its own entry, unaffected by either
+    expect((await cached.structured(req())).data.labels[0]!.feature_id).toBe("answer_3");
+    expect(inner.calls.length).toBe(3);
+    expect(inner.calls.map((c) => c.userPrefix)).toEqual(["ARTIFACT A", "ARTIFACT B", undefined]);
+  });
+
+  it("labelDocument sends the artifact as the prefix and only the questions as the varying part", async () => {
+    const llm = new MockLLM(labelMockHandlers);
+    const d = digest();
+    await labelDocument(llm, d, TEST_LEXICON);
+    expect(llm.calls[0]!.userPrefix).toBe(renderLabelPrefix(d));
+    expect(llm.calls[0]!.userPrefix).toContain(ARTIFACT_MARKER);
+    expect(llm.calls[0]!.user.startsWith(FEATURES_MARKER)).toBe(true);
+    expect(llm.calls[0]!.user).not.toContain(ARTIFACT_MARKER);
+  });
+});
+
+describe("cache_hit_rate", () => {
+  const usage = (over: Partial<LLMUsage> = {}): LLMUsage => ({ input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, ...over });
+
+  it("is null on a zero denominator rather than a fabricated 0", () => {
+    expect(cacheHitRate(usage())).toBeNull();
+    expect(cacheHitRate(usage({ output_tokens: 500 }))).toBeNull(); // output tokens are not prompt tokens
+    expect(cacheHitRate(usage({ input_tokens: 100 }))).toBe(0); // measured, and really zero
+  });
+
+  it("is cache_read over TOTAL prompt tokens, not over input_tokens alone", () => {
+    // one 20k write then four 20k reads, with 500 uncached question tokens per call
+    expect(cacheHitRate(usage({ cache_creation_input_tokens: 20_000, cache_read_input_tokens: 80_000, input_tokens: 2_500 }))).toBeCloseTo(80_000 / 102_500, 10);
+    expect(cacheHitRate(usage({ cache_read_input_tokens: 1, input_tokens: 1 }))).toBe(0.5);
+  });
+
+  it("rides along on summarizeRow, null on a mock run that reports no tokens", async () => {
+    const row = await labelDocument(new MockLLM(labelMockHandlers), digest(), TEST_LEXICON);
+    expect(summarizeRow(row).cache_hit_rate).toBeNull();
+    expect(summarizeRow({ ...row, usage: usage({ input_tokens: 3, cache_read_input_tokens: 9 }) }).cache_hit_rate).toBe(0.75);
+  });
+});
+
 describe("label_mock", () => {
   it("quotes verbatim lines, over-claims loci on absent, and stays silent with no loci", () => {
     const parsed = parseLabelPrompt(
@@ -604,9 +814,42 @@ describe("cost discipline and CLI defaults", () => {
 
   it("estimates cost from token counts, honouring price overrides", () => {
     const usage = { input_tokens: 1_000_000, output_tokens: 100_000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
-    expect(estimateCost("claude-opus-4-8", usage, {})).toBeCloseTo(15 + 7.5, 5);
+    // Derived from the table rather than hardcoded: this test is about the ARITHMETIC (1M in at the input
+    // rate, 0.1M out at the output rate), and it used to fail whenever a price changed — which is a test
+    // breaking for the one reason it should not. The prices themselves are pinned once, in the test below.
+    const p = PRICE_PER_MTOK["claude-opus-4-8"]!;
+    expect(estimateCost("claude-opus-4-8", usage, {})).toBeCloseTo(p.input + p.output / 10, 5);
     expect(estimateCost("claude-opus-4-8", usage, { ZADUM_PRICE_IN: "1", ZADUM_PRICE_OUT: "0" })).toBeCloseTo(1, 5);
     expect(estimateCost("unknown-model", usage, {})).toBe(0);
+  });
+
+  /**
+   * The ONE place published prices are asserted. It exists because this table silently carried the
+   * pre-Opus-4.6 rate ($15/$75) long after the price dropped to $5/$25, making every mining budget in the
+   * repo 3x too pessimistic — a stale price is invisible until someone makes a spending decision on it.
+   * When Anthropic changes pricing, this test is the thing that should fail, and it is the only one.
+   */
+  it("counts cache writes at 1.25x and cache reads at 0.1x — the estimate must never understate", () => {
+    const p = PRICE_PER_MTOK["claude-opus-4-8"]!;
+    // The measured shape of a cached labelling run: a small full-price input, one write, several reads.
+    const usage = { input_tokens: 9_644, output_tokens: 21_665, cache_creation_input_tokens: 12_887, cache_read_input_tokens: 64_435 };
+    const expected =
+      (9_644 / 1e6) * p.input + (21_665 / 1e6) * p.output + (12_887 / 1e6) * p.input * 1.25 + (64_435 / 1e6) * p.input * 0.1;
+    expect(estimateCost("claude-opus-4-8", usage, {})).toBeCloseTo(expected, 9);
+    // and it must be strictly MORE than the cache-blind figure it used to report
+    const blind = (9_644 / 1e6) * p.input + (21_665 / 1e6) * p.output;
+    expect(estimateCost("claude-opus-4-8", usage, {})).toBeGreaterThan(blind);
+  });
+
+  it("pins the published per-Mtok prices (update BOTH here and PRICE_PER_MTOK when pricing changes)", () => {
+    expect(PRICE_PER_MTOK["claude-opus-4-8"]).toEqual({ input: 5, output: 25 });
+    expect(PRICE_PER_MTOK["claude-opus-5"]).toEqual({ input: 5, output: 25 });
+    expect(PRICE_PER_MTOK["claude-sonnet-5"]).toEqual({ input: 2, output: 10 });
+    expect(PRICE_PER_MTOK["claude-haiku-4-5"]).toEqual({ input: 1, output: 5 });
+    // output is priced at 5x input across the current line-up — a sanity check on a typo'd future edit
+    for (const [id, price] of Object.entries(PRICE_PER_MTOK)) {
+      expect(price.output, `${id} output/input ratio`).toBeCloseTo(price.input * 5, 6);
+    }
   });
 
   it("parses every GitHub source_url shape the corpus manifest actually uses", () => {

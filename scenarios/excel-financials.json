@@ -1,0 +1,16 @@
+{
+  "id": "excel-financials",
+  "one_liner": "internal dashboard based on our excel files with financials",
+  "edits": [],
+  "answers": {
+    "record_assignment": "multi_assignee_watchers",
+    "identity_provider": "magic_link",
+    "record_views": "saved_custom_views",
+    "customization": "fixed"
+  },
+  "overrides": {
+    "approval_workflow": "single_approver",
+    "recurring_scheduled": "recurring_records"
+  },
+  "notes": "Replay of the real session f9280b97 (ADR-039). The answers and overrides are the owner's own, taken from that project's event log: record_assignment took 52s of deliberation (the longest of the session), and approval_workflow + recurring_scheduled were hand-corrected in the defaults review. ADR-039 found all three reached the compiled spec as nothing while the critic returned pass/10. This scenario exists to keep that from happening silently again."
+}

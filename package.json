@@ -41,7 +41,10 @@
     "graph:validate": "tsx src/learning/graph_cli.ts validate",
     "graph:report": "tsx src/learning/graph_cli.ts report",
     "thesis": "tsx src/thesis/run.ts",
-    "models": "tsx src/llm/check.ts"
+    "models": "tsx src/llm/check.ts",
+    "bakeoff": "tsx scripts/model_bakeoff.ts",
+    "scenario": "tsx scripts/scenario.ts",
+    "label:corpus": "tsx scripts/scrape_and_label.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

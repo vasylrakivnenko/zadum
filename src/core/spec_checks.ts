@@ -113,6 +113,7 @@ export function checkSpec(
     ...checkMatrixRows(sections, sheet),
     ...checkComputedFields(sections),
     ...checkImportContract(spec, sheet),
+    ...checkLifecycleStatesAgainstEnums(sections),
   ];
   return findings.sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }
@@ -894,4 +895,120 @@ export function formatSpecFindings(findings: SpecFinding[]): string {
     "STRUCTURAL FINDINGS in the compiled spec (fix every one, then re-emit the affected sections):",
     ...findings.map((f) => `- [${f.severity}] ${f.code}${f.section ? ` in "${f.section}"` : ""}: ${f.message} Fix: ${f.fix_hint}`),
   ].join("\n");
+}
+
+// ---------------------------------------------------------------------------------------------------
+// 11. lifecycle_state_not_in_enum — a state the lifecycle section names that the entity's persisted
+//     status enum has no room for. HIGH: it is not a wording slip, it is a schema the builder cannot
+//     implement. Found on a live Opus spec, twice in one document:
+//
+//       Period  data model `status enum(open, closed)`   ·  lifecycle "starts in `empty` … 3 states"
+//       User    data model `status enum(invited, active)` ·  lifecycle "… deactivated"
+//
+//     The critic did catch a sibling defect on that run (the Account Line lifecycle contradicting R-6)
+//     and correctly failed the spec — but ADR-039's whole lesson is that the critic is not a gate. An
+//     LLM noticing something once is not the same as it being checked, and these two it did not notice.
+//     Mechanical, cross-section, and cheap: parse the enums, parse the state names, compare the sets.
+// ---------------------------------------------------------------------------------------------------
+
+
+/**
+ * The entity name a data-model heading denotes. Real headings carry the compiler's trace markers and
+ * parenthetical qualifiers — `### Period ⟨src: n:n4⟩`, `### Revenue Figure (derived) ⟨src: n:n5⟩` — and the
+ * first version of this check silently matched nothing because it stripped only the parentheses. It scored
+ * zero findings on a spec with two real ones, which is the failure mode a "0 findings" result always deserves
+ * suspicion for.
+ */
+function entityFromHeading(heading: string): string {
+  return heading
+    .replace(/⟨[^⟩]*⟩/g, " ")
+    .replace(/\s*\(.*?\)\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** `| status | enum(open, closed) | …` → the option set, per entity heading. Ignores non-status enums. */
+function statusEnumsByEntity(sections: SpecSection[]): Map<string, { states: Set<string>; raw: string }> {
+  const out = new Map<string, { states: Set<string>; raw: string }>();
+  for (const sec of sections) {
+    const entity = entityFromHeading(sec.heading);
+    if (!entity) continue;
+    for (const line of sec.body.split("\n")) {
+      // TWO syntaxes, both observed in live specs from the same compiler on the same model:
+      //   | status | enum(open, closed) | …            (paren form)
+      //   | status | Enum: draft, finalized, reviewed | (colon form)
+      // The section writer is an LLM writing prose, so it is not consistent about this. The first version of
+      // this check handled only the paren form and therefore scored 0 on a spec whose judge had just reported
+      // two enum-vs-lifecycle contradictions — the defect was there, the parser simply could not see it.
+      const m = /^\s*\|\s*status\s*\|\s*(?:enum\s*\(([^)]*)\)|Enum\s*:\s*([^|]*))\s*\|/i.exec(line);
+      if (!m) continue;
+      const raw = (m[1] ?? m[2] ?? "").trim();
+      if (!raw) continue;
+      const states = new Set(
+        raw
+          .split(",")
+          .map((x) => x.trim().replace(/^[`'"]|[`'"]$/g, "").toLowerCase())
+          .filter(Boolean),
+      );
+      if (states.size) out.set(entity.toLowerCase(), { states, raw });
+    }
+  }
+  return out;
+}
+
+/**
+ * State names a lifecycle section attributes to an entity. Two shapes the compiler actually emits:
+ *   "Each Period starts in `empty` and moves through 3 states."
+ *   a transition table or list whose cells hold `backticked` state names
+ * Only backticked tokens are taken, because prose words are not state names and guessing would produce
+ * false highs on the one check severe enough to block delivery.
+ */
+function lifecycleStatesByEntity(sections: SpecSection[]): Map<string, { states: Set<string>; section: string }> {
+  const out = new Map<string, { states: Set<string>; section: string }>();
+  for (const sec of sections) {
+    const intro = /Each\s+([A-Z][\w ]*?)\s+starts in\s+`([^`]+)`/g;
+    // Every intro position first, so each entity's block can be bounded by the NEXT entity's intro rather
+    // than by a fixed window. A fixed window was the first implementation and it silently attributed the
+    // User lifecycle's states (`invited`, `active`, `deactivated`) to Period, which would have reported a
+    // clean spec as having three orphan states — a false HIGH on the one check severe enough to block a
+    // delivery. Bleeding between blocks is the failure mode to design out, not to tune a constant for.
+    const intros: { entity: string; start: number; first: string }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = intro.exec(sec.body))) intros.push({ entity: m[1]!.trim().toLowerCase(), start: m.index, first: m[2]!.trim().toLowerCase() });
+    for (const [i, it] of intros.entries()) {
+      const end = intros[i + 1]?.start ?? sec.body.length;
+      const found = out.get(it.entity) ?? { states: new Set<string>(), section: sec.heading };
+      found.states.add(it.first);
+      for (const t of sec.body.slice(it.start, end).matchAll(/`([a-z][a-z0-9_]{2,30})`/g)) found.states.add(t[1]!.toLowerCase());
+      out.set(it.entity, found);
+    }
+  }
+  return out;
+}
+
+/** Words that appear backticked in lifecycle prose but are not states — kept explicit and small. */
+const NOT_A_STATE = new Set(["null", "true", "false", "now", "id", "yes", "no", "status", "enum", "archived_at", "archived_by", "created_at", "updated_at"]);
+
+export function checkLifecycleStatesAgainstEnums(sections: SpecSection[]): SpecFinding[] {
+  const enums = statusEnumsByEntity(sections);
+  if (enums.size === 0) return [];
+  const lifecycles = lifecycleStatesByEntity(sections);
+  const findings: SpecFinding[] = [];
+  for (const [entity, life] of lifecycles) {
+    const declared = enums.get(entity);
+    if (!declared) continue; // no persisted status column: the lifecycle may live in another field
+    const orphans = [...life.states].filter((st) => !declared.states.has(st) && !NOT_A_STATE.has(st) && !st.includes("_at") && !st.includes("_by")).sort();
+    if (!orphans.length) continue;
+    findings.push({
+      code: "lifecycle_state_not_in_enum",
+      severity: "high",
+      section: life.section,
+      message:
+        `${entity} lifecycle uses state${orphans.length === 1 ? "" : "s"} ${orphans.map((o) => `\`${o}\``).join(", ")} ` +
+        `but the data model declares status enum(${declared.raw}) — ${orphans.length === 1 ? "that state has" : "those states have"} nowhere to be stored.`,
+      fix_hint:
+        `Either add ${orphans.map((o) => `\`${o}\``).join(", ")} to ${entity}'s status enum, or move ${orphans.length === 1 ? "it" : "them"} onto whichever entity really holds that stage (a pre-persistence state usually belongs to a staging record, not to the persisted row).`,
+    });
+  }
+  return findings.sort((a, b) => (a.message < b.message ? -1 : 1));
 }

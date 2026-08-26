@@ -1,0 +1,4235 @@
+{
+  "project_id": "b805f67d-6d5c-4c75-8610-5ac0081a3f6f",
+  "phase": "compiling",
+  "config": {
+    "scoring": "weighted_entropy",
+    "theta": 24,
+    "tau": 0.9,
+    "epsilon": 0.05,
+    "maxCards": 12,
+    "alpha": 0.08,
+    "minEss": 4,
+    "lookahead": 1,
+    "lookaheadTop": 8,
+    "discount": 1,
+    "softImplyTau": 0.95,
+    "minImplyDelta": 0.1,
+    "secondaryArchetypeWeight": 0.5,
+    "maxCardOptions": 4,
+    "relativeStopFloor": 0
+  },
+  "belief": {
+    "nodes": [
+      {
+        "id": "user_accounts",
+        "topic": "who logs in",
+        "question": "Who needs an account to use the app?",
+        "options": [
+          {
+            "id": "none",
+            "label": "Nobody logs in — one person uses it on their own device"
+          },
+          {
+            "id": "single_user",
+            "label": "Exactly one person logs in (the owner)"
+          },
+          {
+            "id": "multi_user",
+            "label": "Several people log in, possibly with different powers"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "none": 0.1,
+          "single_user": 0.25,
+          "multi_user": 0.65
+        },
+        "implies": {
+          "none": [
+            {
+              "node": "roles",
+              "option": "single"
+            },
+            {
+              "node": "invite_flow",
+              "option": "none"
+            },
+            {
+              "node": "identity_provider",
+              "option": "none"
+            },
+            {
+              "node": "concurrency",
+              "option": "last_write_wins"
+            }
+          ],
+          "single_user": [
+            {
+              "node": "roles",
+              "option": "single"
+            },
+            {
+              "node": "invite_flow",
+              "option": "none"
+            },
+            {
+              "node": "concurrency",
+              "option": "last_write_wins"
+            }
+          ],
+          "multi_user": []
+        },
+        "excludes": {
+          "none": [],
+          "single_user": [],
+          "multi_user": []
+        },
+        "sections": [
+          "actors_permissions",
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "roles",
+        "topic": "who can do what",
+        "question": "Do different people have different powers?",
+        "options": [
+          {
+            "id": "single",
+            "label": "Everyone who logs in can do everything"
+          },
+          {
+            "id": "owner_staff",
+            "label": "An owner/admin plus staff with fewer powers"
+          },
+          {
+            "id": "custom",
+            "label": "Admins define their own roles and permissions"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "single": 0.35,
+          "owner_staff": 0.5,
+          "custom": 0.15
+        },
+        "implies": {
+          "single": [],
+          "owner_staff": [],
+          "custom": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "single": [],
+          "owner_staff": [],
+          "custom": []
+        },
+        "sections": [
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "external_access",
+        "topic": "outside parties",
+        "question": "Do outside parties (customers, clients, vendors) use the app directly?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No — outsiders only receive emails/PDFs/messages"
+          },
+          {
+            "id": "secure_link",
+            "label": "They open a secure link (no account needed)"
+          },
+          {
+            "id": "portal",
+            "label": "They have their own accounts and log in"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.30000000000000004,
+          "secure_link": 0.35000000000000003,
+          "portal": 0.35000000000000003
+        },
+        "implies": {
+          "none": [
+            {
+              "node": "client_portal_scope",
+              "option": "none"
+            }
+          ],
+          "secure_link": [],
+          "portal": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "secure_link": [],
+          "portal": []
+        },
+        "sections": [
+          "actors_permissions",
+          "journeys",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth",
+          "tenancy"
+        ]
+      },
+      {
+        "id": "tenancy",
+        "topic": "one business or many",
+        "question": "Is this for one business, or will many separate businesses use it with their data kept apart?",
+        "options": [
+          {
+            "id": "single_org",
+            "label": "One business (ours)"
+          },
+          {
+            "id": "multi_org",
+            "label": "Many separate businesses, each seeing only its own data"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "single_org": 0.4,
+          "multi_org": 0.6
+        },
+        "implies": {
+          "single_org": [],
+          "multi_org": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "single_org": [],
+          "multi_org": []
+        },
+        "sections": [
+          "data_model",
+          "rules",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "tenancy"
+        ]
+      },
+      {
+        "id": "invite_flow",
+        "topic": "adding people",
+        "question": "How do additional people get access?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No additional people"
+          },
+          {
+            "id": "invite_by_admin",
+            "label": "An admin invites them"
+          },
+          {
+            "id": "self_signup",
+            "label": "Anyone can sign up themselves"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.2,
+          "invite_by_admin": 0.5,
+          "self_signup": 0.3
+        },
+        "implies": {
+          "none": [],
+          "invite_by_admin": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ],
+          "self_signup": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "invite_by_admin": [],
+          "self_signup": []
+        },
+        "sections": [
+          "journeys",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "identity_provider",
+        "topic": "signing in",
+        "question": "How do people sign in?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No sign-in"
+          },
+          {
+            "id": "email_password",
+            "label": "Email + password"
+          },
+          {
+            "id": "magic_link",
+            "label": "Email link, no password"
+          },
+          {
+            "id": "google_microsoft",
+            "label": "Google/Microsoft sign-in"
+          },
+          {
+            "id": "enterprise_sso",
+            "label": "Company single sign-on (SAML/OIDC)"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.05,
+          "email_password": 0.4,
+          "magic_link": 0.2,
+          "google_microsoft": 0.3,
+          "enterprise_sso": 0.05
+        },
+        "implies": {
+          "none": [],
+          "email_password": [],
+          "magic_link": [],
+          "google_microsoft": [],
+          "enterprise_sso": []
+        },
+        "excludes": {
+          "none": [],
+          "email_password": [],
+          "magic_link": [],
+          "google_microsoft": [],
+          "enterprise_sso": []
+        },
+        "sections": [
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "concurrency",
+        "topic": "simultaneous edits",
+        "question": "What happens when two people edit the same thing at once?",
+        "options": [
+          {
+            "id": "last_write_wins",
+            "label": "Rare; the last save wins"
+          },
+          {
+            "id": "guarded",
+            "label": "Common; the app must prevent or merge conflicting edits"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "last_write_wins": 0.75,
+          "guarded": 0.25
+        },
+        "implies": {
+          "last_write_wins": [],
+          "guarded": []
+        },
+        "excludes": {
+          "last_write_wins": [],
+          "guarded": []
+        },
+        "sections": [
+          "rules",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "audit_trail",
+        "topic": "history",
+        "question": "Do you need a record of who changed what and when?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "basic",
+            "label": "Just created/updated by whom and when"
+          },
+          {
+            "id": "full",
+            "label": "A full, viewable history of every change"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.3,
+          "basic": 0.5,
+          "full": 0.2
+        },
+        "implies": {
+          "none": [],
+          "basic": [],
+          "full": []
+        },
+        "excludes": {
+          "none": [],
+          "basic": [],
+          "full": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "notifications",
+        "topic": "reaching people",
+        "question": "How does the app reach people when something happens?",
+        "options": [
+          {
+            "id": "none",
+            "label": "It doesn't — people check the app"
+          },
+          {
+            "id": "email",
+            "label": "Email"
+          },
+          {
+            "id": "email_sms",
+            "label": "Email and SMS"
+          },
+          {
+            "id": "in_app",
+            "label": "Only inside the app (bell/inbox)"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.15,
+          "email": 0.55,
+          "email_sms": 0.1,
+          "in_app": 0.2
+        },
+        "implies": {
+          "none": [],
+          "email": [],
+          "email_sms": [],
+          "in_app": []
+        },
+        "excludes": {
+          "none": [],
+          "email": [],
+          "email_sms": [],
+          "in_app": []
+        },
+        "sections": [
+          "journeys",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "offline",
+        "topic": "connectivity",
+        "question": "Must it work without internet?",
+        "options": [
+          {
+            "id": "online_only",
+            "label": "Online only"
+          },
+          {
+            "id": "offline_tolerant",
+            "label": "Keeps working offline and syncs later"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "online_only": 0.85,
+          "offline_tolerant": 0.15
+        },
+        "implies": {
+          "online_only": [],
+          "offline_tolerant": []
+        },
+        "excludes": {
+          "online_only": [],
+          "offline_tolerant": []
+        },
+        "sections": [
+          "data_model",
+          "rules",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "platform",
+        "topic": "where it runs",
+        "question": "Where is it used?",
+        "options": [
+          {
+            "id": "web",
+            "label": "In a browser, on desktop and phone"
+          },
+          {
+            "id": "web_mobile_first",
+            "label": "In a browser, mostly on phones"
+          },
+          {
+            "id": "native_mobile",
+            "label": "As an installed phone app"
+          },
+          {
+            "id": "desktop_app",
+            "label": "As an installed desktop app"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "web": 0.6,
+          "web_mobile_first": 0.2,
+          "native_mobile": 0.12,
+          "desktop_app": 0.08
+        },
+        "implies": {
+          "web": [],
+          "web_mobile_first": [],
+          "native_mobile": [],
+          "desktop_app": []
+        },
+        "excludes": {
+          "web": [],
+          "web_mobile_first": [],
+          "native_mobile": [],
+          "desktop_app": []
+        },
+        "sections": [
+          "overview",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_import",
+        "topic": "starting data",
+        "question": "Do you start with existing data?",
+        "options": [
+          {
+            "id": "fresh_start",
+            "label": "Start empty"
+          },
+          {
+            "id": "import_spreadsheet",
+            "label": "Import from a spreadsheet/CSV once"
+          },
+          {
+            "id": "migrate_from_tool",
+            "label": "Migrate from another tool"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "fresh_start": 0.4,
+          "import_spreadsheet": 0.45,
+          "migrate_from_tool": 0.15
+        },
+        "implies": {
+          "fresh_start": [],
+          "import_spreadsheet": [],
+          "migrate_from_tool": []
+        },
+        "excludes": {
+          "fresh_start": [],
+          "import_spreadsheet": [],
+          "migrate_from_tool": []
+        },
+        "sections": [
+          "journeys",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_export",
+        "topic": "getting data out",
+        "question": "Do people need to get their data out?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "csv_export",
+            "label": "Download lists as CSV/Excel"
+          },
+          {
+            "id": "full_export_api",
+            "label": "Full export and/or an API"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.2,
+          "csv_export": 0.6,
+          "full_export_api": 0.2
+        },
+        "implies": {
+          "none": [],
+          "csv_export": [],
+          "full_export_api": []
+        },
+        "excludes": {
+          "none": [],
+          "csv_export": [],
+          "full_export_api": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "deletion",
+        "topic": "deleting",
+        "question": "When something is deleted, what really happens?",
+        "options": [
+          {
+            "id": "hard_delete",
+            "label": "It's gone"
+          },
+          {
+            "id": "soft_delete",
+            "label": "It's archived and can be restored"
+          },
+          {
+            "id": "never_delete",
+            "label": "Records are never deleted, only voided/cancelled"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "hard_delete": 0.2,
+          "soft_delete": 0.55,
+          "never_delete": 0.25
+        },
+        "implies": {
+          "hard_delete": [],
+          "soft_delete": [],
+          "never_delete": []
+        },
+        "excludes": {
+          "hard_delete": [],
+          "soft_delete": [],
+          "never_delete": []
+        },
+        "sections": [
+          "rules",
+          "state_machines",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_scale",
+        "topic": "volume",
+        "question": "How much data will there be?",
+        "options": [
+          {
+            "id": "small",
+            "label": "Hundreds of records"
+          },
+          {
+            "id": "medium",
+            "label": "Tens of thousands"
+          },
+          {
+            "id": "large",
+            "label": "Millions"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "small": 0.4,
+          "medium": 0.45,
+          "large": 0.15
+        },
+        "implies": {
+          "small": [],
+          "medium": [],
+          "large": []
+        },
+        "excludes": {
+          "small": [],
+          "medium": [],
+          "large": []
+        },
+        "sections": [
+          "overview",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "integrations",
+        "topic": "other tools",
+        "question": "Does it need to connect to other tools?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "a_few_key",
+            "label": "A few key ones (e.g., accounting, payments, calendar)"
+          },
+          {
+            "id": "many_via_api",
+            "label": "Many — it needs a public API / webhooks"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.3,
+          "a_few_key": 0.5,
+          "many_via_api": 0.2
+        },
+        "implies": {
+          "none": [],
+          "a_few_key": [],
+          "many_via_api": []
+        },
+        "excludes": {
+          "none": [],
+          "a_few_key": [],
+          "many_via_api": []
+        },
+        "sections": [
+          "overview",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "payments_in_app",
+        "topic": "money",
+        "question": "Does money move through the app?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No payments involved"
+          },
+          {
+            "id": "record_only",
+            "label": "It records payments that happen elsewhere"
+          },
+          {
+            "id": "collect_online",
+            "label": "It collects card/bank payments via a provider"
+          },
+          {
+            "id": "payouts_too",
+            "label": "It collects payments and pays out to others (marketplace-style)"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.30000000000000004,
+          "record_only": 0.30000000000000004,
+          "collect_online": 0.30000000000000004,
+          "payouts_too": 0.10000000000000002
+        },
+        "implies": {
+          "none": [],
+          "record_only": [],
+          "collect_online": [],
+          "payouts_too": []
+        },
+        "excludes": {
+          "none": [],
+          "record_only": [],
+          "collect_online": [],
+          "payouts_too": []
+        },
+        "sections": [
+          "data_model",
+          "rules",
+          "journeys",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "payments"
+        ]
+      },
+      {
+        "id": "localization",
+        "topic": "languages & regions",
+        "question": "Languages and regions?",
+        "options": [
+          {
+            "id": "single_locale",
+            "label": "One language, one country"
+          },
+          {
+            "id": "multi_language",
+            "label": "Several languages"
+          },
+          {
+            "id": "multi_region",
+            "label": "Several countries (taxes, formats, currencies)"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "single_locale": 0.65,
+          "multi_language": 0.2,
+          "multi_region": 0.15
+        },
+        "implies": {
+          "single_locale": [],
+          "multi_language": [],
+          "multi_region": []
+        },
+        "excludes": {
+          "single_locale": [],
+          "multi_language": [],
+          "multi_region": []
+        },
+        "sections": [
+          "overview",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "attachments",
+        "topic": "files",
+        "question": "Can files/photos be attached to things?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "basic",
+            "label": "Yes — upload and download"
+          },
+          {
+            "id": "rich",
+            "label": "Yes — with previews, versions, and sharing"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.35,
+          "basic": 0.5,
+          "rich": 0.15
+        },
+        "implies": {
+          "none": [],
+          "basic": [],
+          "rich": []
+        },
+        "excludes": {
+          "none": [],
+          "basic": [],
+          "rich": []
+        },
+        "sections": [
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "approval_workflow",
+        "topic": "sign-off",
+        "question": "Do some actions need someone else's approval first?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "single_approver",
+            "label": "One approver"
+          },
+          {
+            "id": "multi_step",
+            "label": "Multi-step approval chains"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.55,
+          "single_approver": 0.3,
+          "multi_step": 0.15
+        },
+        "implies": {
+          "none": [],
+          "single_approver": [],
+          "multi_step": []
+        },
+        "excludes": {
+          "none": [],
+          "single_approver": [],
+          "multi_step": []
+        },
+        "sections": [
+          "state_machines",
+          "actors_permissions",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "recurring_scheduled",
+        "topic": "automation",
+        "question": "Must anything happen automatically on a schedule?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "reminders_only",
+            "label": "Only reminders/notifications"
+          },
+          {
+            "id": "recurring_records",
+            "label": "Records get created automatically (recurring invoices, appointments, reports)"
+          }
+        ],
+        "consequence": 1,
+        "prior": {
+          "none": 0.35,
+          "reminders_only": 0.35,
+          "recurring_records": 0.3
+        },
+        "implies": {
+          "none": [],
+          "reminders_only": [],
+          "recurring_records": []
+        },
+        "excludes": {
+          "none": [],
+          "reminders_only": [],
+          "recurring_records": []
+        },
+        "sections": [
+          "journeys",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "compliance_sensitivity",
+        "topic": "sensitive data",
+        "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+        "options": [
+          {
+            "id": "ordinary",
+            "label": "Ordinary business data"
+          },
+          {
+            "id": "personal_sensitive",
+            "label": "Personal data needing consent/retention care (GDPR-like)"
+          },
+          {
+            "id": "regulated",
+            "label": "Regulated data (health, cards, finance)"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "ordinary": 0.6000000000000001,
+          "personal_sensitive": 0.30000000000000004,
+          "regulated": 0.10000000000000002
+        },
+        "implies": {
+          "ordinary": [],
+          "personal_sensitive": [],
+          "regulated": []
+        },
+        "excludes": {
+          "ordinary": [],
+          "personal_sensitive": [],
+          "regulated": []
+        },
+        "sections": [
+          "rules",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "retention",
+        "topic": "keeping data",
+        "question": "How long is data kept?",
+        "options": [
+          {
+            "id": "forever",
+            "label": "Until someone deletes it"
+          },
+          {
+            "id": "policy_based",
+            "label": "Auto-removed after a set period"
+          },
+          {
+            "id": "user_controlled",
+            "label": "Each business sets its own policy"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "forever": 0.6,
+          "policy_based": 0.25,
+          "user_controlled": 0.15
+        },
+        "implies": {
+          "forever": [],
+          "policy_based": [],
+          "user_controlled": []
+        },
+        "excludes": {
+          "forever": [],
+          "policy_based": [],
+          "user_controlled": []
+        },
+        "sections": [
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "customization",
+        "topic": "per-business customization",
+        "question": "Can each business customize the app?",
+        "options": [
+          {
+            "id": "fixed",
+            "label": "No — everyone gets the same thing"
+          },
+          {
+            "id": "branding_templates",
+            "label": "Branding and templates (logo, colors, wording)"
+          },
+          {
+            "id": "custom_fields",
+            "label": "Custom fields and workflows"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "fixed": 0.4,
+          "branding_templates": 0.4,
+          "custom_fields": 0.2
+        },
+        "implies": {
+          "fixed": [],
+          "branding_templates": [],
+          "custom_fields": []
+        },
+        "excludes": {
+          "fixed": [],
+          "branding_templates": [],
+          "custom_fields": []
+        },
+        "sections": [
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "reporting",
+        "topic": "overviews",
+        "question": "What do people need to see across many records?",
+        "options": [
+          {
+            "id": "lists_only",
+            "label": "Sortable, filterable lists"
+          },
+          {
+            "id": "basic_dashboard",
+            "label": "A dashboard with totals and counts"
+          },
+          {
+            "id": "custom_reports",
+            "label": "Custom reports people build themselves"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "lists_only": 0.25,
+          "basic_dashboard": 0.55,
+          "custom_reports": 0.2
+        },
+        "implies": {
+          "lists_only": [],
+          "basic_dashboard": [],
+          "custom_reports": []
+        },
+        "excludes": {
+          "lists_only": [],
+          "basic_dashboard": [],
+          "custom_reports": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "invoicing_model",
+        "topic": "who invoices whom",
+        "question": "Who sends invoices to whom?",
+        "options": [
+          {
+            "id": "firm_bills_own_clients",
+            "label": "The business bills its own clients"
+          },
+          {
+            "id": "on_behalf_of_clients",
+            "label": "The business sends invoices on behalf of its clients to their customers"
+          },
+          {
+            "id": "both",
+            "label": "Both"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "firm_bills_own_clients": 0.6723276723276723,
+          "on_behalf_of_clients": 0.1888111888111888,
+          "both": 0.13886113886113885
+        },
+        "implies": {
+          "firm_bills_own_clients": [],
+          "on_behalf_of_clients": [
+            {
+              "node": "tenancy",
+              "option": "multi_org"
+            }
+          ],
+          "both": [
+            {
+              "node": "tenancy",
+              "option": "multi_org"
+            }
+          ]
+        },
+        "excludes": {
+          "firm_bills_own_clients": [],
+          "on_behalf_of_clients": [],
+          "both": []
+        },
+        "sections": [
+          "overview",
+          "data_model",
+          "actors_permissions",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "invoice_numbering",
+        "topic": "numbering",
+        "question": "How are invoices numbered?",
+        "options": [
+          {
+            "id": "sequential",
+            "label": "Strictly sequential per business (no gaps; legally safe)"
+          },
+          {
+            "id": "free_form",
+            "label": "Any number/format the user types"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "sequential": 0.817,
+          "free_form": 0.183
+        },
+        "implies": {
+          "sequential": [],
+          "free_form": []
+        },
+        "excludes": {
+          "sequential": [],
+          "free_form": []
+        },
+        "sections": [
+          "rules",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "invoice_edit_after_send",
+        "topic": "changing sent invoices",
+        "question": "Can an invoice change after it's sent?",
+        "options": [
+          {
+            "id": "locked",
+            "label": "No — corrections go through a credit note / new invoice"
+          },
+          {
+            "id": "editable_until_paid",
+            "label": "Yes, until it's paid"
+          },
+          {
+            "id": "always_editable",
+            "label": "Always editable"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "locked": 0.633,
+          "editable_until_paid": 0.204,
+          "always_editable": 0.163
+        },
+        "implies": {
+          "locked": [],
+          "editable_until_paid": [],
+          "always_editable": []
+        },
+        "excludes": {
+          "locked": [],
+          "editable_until_paid": [],
+          "always_editable": []
+        },
+        "sections": [
+          "state_machines",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "payment_recording",
+        "topic": "getting paid",
+        "question": "How do payments get recorded?",
+        "options": [
+          {
+            "id": "manual",
+            "label": "Someone marks invoices paid by hand"
+          },
+          {
+            "id": "online_auto",
+            "label": "Clients pay online and it's recorded automatically"
+          },
+          {
+            "id": "both",
+            "label": "Both"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "manual": 0.3673673673673673,
+          "online_auto": 0.29229229229229226,
+          "both": 0.34034034034034033
+        },
+        "implies": {
+          "manual": [
+            {
+              "node": "payments_in_app",
+              "option": "record_only"
+            }
+          ],
+          "online_auto": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ],
+          "both": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        "excludes": {
+          "manual": [],
+          "online_auto": [],
+          "both": []
+        },
+        "sections": [
+          "journeys",
+          "state_machines",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": [
+          "payments"
+        ]
+      },
+      {
+        "id": "partial_payments",
+        "topic": "getting paid",
+        "question": "Can an invoice be paid in parts?",
+        "options": [
+          {
+            "id": "not_allowed",
+            "label": "No — paid in full or not"
+          },
+          {
+            "id": "allowed",
+            "label": "Yes — partial payments and balances"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "not_allowed": 0.356,
+          "allowed": 0.644
+        },
+        "implies": {
+          "not_allowed": [],
+          "allowed": []
+        },
+        "excludes": {
+          "not_allowed": [],
+          "allowed": []
+        },
+        "sections": [
+          "state_machines",
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": [
+          "payments"
+        ]
+      },
+      {
+        "id": "taxes",
+        "topic": "tax",
+        "question": "How is tax handled on invoices?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No tax lines"
+          },
+          {
+            "id": "single_rate",
+            "label": "One tax rate per invoice"
+          },
+          {
+            "id": "per_line",
+            "label": "Different rates per line item"
+          }
+        ],
+        "consequence": 1,
+        "prior": {
+          "none": 0.2,
+          "single_rate": 0.259,
+          "per_line": 0.541
+        },
+        "implies": {
+          "none": [],
+          "single_rate": [],
+          "per_line": []
+        },
+        "excludes": {
+          "none": [],
+          "single_rate": [],
+          "per_line": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "currencies",
+        "topic": "money",
+        "question": "One currency or several?",
+        "options": [
+          {
+            "id": "single",
+            "label": "One currency"
+          },
+          {
+            "id": "multi",
+            "label": "Invoices in different currencies"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "single": 0.506,
+          "multi": 0.494
+        },
+        "implies": {
+          "single": [],
+          "multi": []
+        },
+        "excludes": {
+          "single": [],
+          "multi": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "recurring_invoices",
+        "topic": "automation",
+        "question": "Recurring invoices (e.g., monthly retainers)?",
+        "options": [
+          {
+            "id": "no",
+            "label": "No"
+          },
+          {
+            "id": "yes",
+            "label": "Yes — created and sent automatically on a schedule"
+          }
+        ],
+        "consequence": 1,
+        "prior": {
+          "no": 0.444,
+          "yes": 0.556
+        },
+        "implies": {
+          "no": [],
+          "yes": [
+            {
+              "node": "recurring_scheduled",
+              "option": "recurring_records"
+            }
+          ]
+        },
+        "excludes": {
+          "no": [],
+          "yes": []
+        },
+        "sections": [
+          "journeys",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "overdue_reminders",
+        "topic": "late invoices",
+        "question": "What happens when an invoice is overdue?",
+        "options": [
+          {
+            "id": "nothing",
+            "label": "Nothing automatic"
+          },
+          {
+            "id": "manual_reminder",
+            "label": "Someone sends a reminder by hand"
+          },
+          {
+            "id": "auto_reminders",
+            "label": "Automatic reminders on a schedule"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "nothing": 0.14600000000000002,
+          "manual_reminder": 0.28600000000000003,
+          "auto_reminders": 0.5680000000000001
+        },
+        "implies": {
+          "nothing": [],
+          "manual_reminder": [],
+          "auto_reminders": []
+        },
+        "excludes": {
+          "nothing": [],
+          "manual_reminder": [],
+          "auto_reminders": []
+        },
+        "sections": [
+          "journeys",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "late_fees",
+        "topic": "late invoices",
+        "question": "Late fees?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "manual",
+            "label": "Added by hand when needed"
+          },
+          {
+            "id": "automatic",
+            "label": "Applied automatically by policy"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.5,
+          "manual": 0.3,
+          "automatic": 0.2
+        },
+        "implies": {
+          "none": [],
+          "manual": [],
+          "automatic": []
+        },
+        "excludes": {
+          "none": [],
+          "manual": [],
+          "automatic": []
+        },
+        "sections": [
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "estimates",
+        "topic": "before invoicing",
+        "question": "Estimates/quotes before invoices?",
+        "options": [
+          {
+            "id": "no",
+            "label": "No"
+          },
+          {
+            "id": "yes_convert",
+            "label": "Yes — and an accepted quote becomes an invoice"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "no": 0.40859140859140863,
+          "yes_convert": 0.5914085914085915
+        },
+        "implies": {
+          "no": [],
+          "yes_convert": []
+        },
+        "excludes": {
+          "no": [],
+          "yes_convert": []
+        },
+        "sections": [
+          "data_model",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "credit_notes",
+        "topic": "corrections & refunds",
+        "question": "Corrections and refunds?",
+        "options": [
+          {
+            "id": "none",
+            "label": "Not needed"
+          },
+          {
+            "id": "credit_notes",
+            "label": "Credit notes against invoices"
+          },
+          {
+            "id": "refunds_via_provider",
+            "label": "Credit notes plus refunds through the payment provider"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.2657342657342658,
+          "credit_notes": 0.5954045954045954,
+          "refunds_via_provider": 0.13886113886113888
+        },
+        "implies": {
+          "none": [],
+          "credit_notes": [],
+          "refunds_via_provider": []
+        },
+        "excludes": {
+          "none": [],
+          "credit_notes": [],
+          "refunds_via_provider": []
+        },
+        "sections": [
+          "data_model",
+          "state_machines",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "time_tracking",
+        "topic": "scope",
+        "question": "Track time and bill hours?",
+        "options": [
+          {
+            "id": "no",
+            "label": "No"
+          },
+          {
+            "id": "billable_hours",
+            "label": "Yes — tracked hours become invoice lines"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "no": 0.454,
+          "billable_hours": 0.546
+        },
+        "implies": {
+          "no": [],
+          "billable_hours": []
+        },
+        "excludes": {
+          "no": [],
+          "billable_hours": []
+        },
+        "sections": [
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "invoice_delivery",
+        "topic": "sending",
+        "question": "How do invoices reach clients?",
+        "options": [
+          {
+            "id": "pdf_email",
+            "label": "PDF attached to an email"
+          },
+          {
+            "id": "hosted_link",
+            "label": "A link to an online invoice page (where they can also pay)"
+          },
+          {
+            "id": "both",
+            "label": "Email with PDF and a link"
+          },
+          {
+            "id": "print_mail",
+            "label": "Printed and mailed"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "pdf_email": 0.358,
+          "hosted_link": 0.167,
+          "both": 0.408,
+          "print_mail": 0.067
+        },
+        "implies": {
+          "pdf_email": [],
+          "hosted_link": [],
+          "both": [],
+          "print_mail": []
+        },
+        "excludes": {
+          "pdf_email": [],
+          "hosted_link": [],
+          "both": [],
+          "print_mail": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "accounting_sync",
+        "topic": "other tools",
+        "question": "Connect to accounting software?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "export",
+            "label": "Export files for the accountant"
+          },
+          {
+            "id": "sync",
+            "label": "Two-way sync with QuickBooks/Xero-like tools"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.394,
+          "export": 0.29,
+          "sync": 0.316
+        },
+        "implies": {
+          "none": [],
+          "export": [],
+          "sync": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "export": [],
+          "sync": []
+        },
+        "sections": [
+          "journeys",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "invoice_statuses",
+        "topic": "lifecycle",
+        "question": "How detailed is the invoice lifecycle?",
+        "options": [
+          {
+            "id": "simple",
+            "label": "Draft → Sent → Paid"
+          },
+          {
+            "id": "detailed",
+            "label": "Draft → Sent → Viewed → Partially paid → Paid / Overdue / Void"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "simple": 0.325,
+          "detailed": 0.675
+        },
+        "implies": {
+          "simple": [],
+          "detailed": []
+        },
+        "excludes": {
+          "simple": [],
+          "detailed": []
+        },
+        "sections": [
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "branding",
+        "topic": "looks",
+        "question": "Branding on invoices?",
+        "options": [
+          {
+            "id": "none",
+            "label": "Plain"
+          },
+          {
+            "id": "logo_colors",
+            "label": "Logo and colors"
+          },
+          {
+            "id": "full_templates",
+            "label": "Fully customizable templates"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.2,
+          "logo_colors": 0.666,
+          "full_templates": 0.134
+        },
+        "implies": {
+          "none": [],
+          "logo_colors": [],
+          "full_templates": []
+        },
+        "excludes": {
+          "none": [],
+          "logo_colors": [],
+          "full_templates": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "deposits",
+        "topic": "getting paid",
+        "question": "Deposits / retainers up front?",
+        "options": [
+          {
+            "id": "no",
+            "label": "No"
+          },
+          {
+            "id": "yes",
+            "label": "Yes — deposits that later apply to invoices"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "no": 0.45,
+          "yes": 0.55
+        },
+        "implies": {
+          "no": [],
+          "yes": []
+        },
+        "excludes": {
+          "no": [],
+          "yes": []
+        },
+        "sections": [
+          "data_model",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "invoice_po_reference",
+        "topic": "customer references",
+        "question": "Do invoices need to carry the customer's purchase order (PO) number?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No — invoices don't track customer PO numbers"
+          },
+          {
+            "id": "optional_reference",
+            "label": "Yes — an optional PO number field is printed on the invoice for the client's records"
+          },
+          {
+            "id": "required_and_deduplicated",
+            "label": "Yes — required per client, and the system blocks a second invoice against the same PO"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.14285714285714285,
+          "optional_reference": 0.4285714285714286,
+          "required_and_deduplicated": 0.4285714285714286
+        },
+        "implies": {
+          "none": [],
+          "optional_reference": [],
+          "required_and_deduplicated": []
+        },
+        "excludes": {
+          "none": [],
+          "optional_reference": [],
+          "required_and_deduplicated": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "invoice_discounts",
+        "topic": "discounts",
+        "question": "Can discounts be applied to invoices?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No discounts"
+          },
+          {
+            "id": "invoice_level",
+            "label": "A single discount on the whole invoice"
+          },
+          {
+            "id": "line_and_invoice",
+            "label": "Per-line discounts and an overall invoice discount"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.2,
+          "invoice_level": 0.2,
+          "line_and_invoice": 0.6
+        },
+        "implies": {
+          "none": [],
+          "invoice_level": [],
+          "line_and_invoice": []
+        },
+        "excludes": {
+          "none": [],
+          "invoice_level": [],
+          "line_and_invoice": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "payment_terms",
+        "topic": "getting paid",
+        "question": "What payment terms do invoices carry (when is payment due)?",
+        "options": [
+          {
+            "id": "due_on_receipt",
+            "label": "Due immediately on receipt"
+          },
+          {
+            "id": "net_terms",
+            "label": "Net terms (e.g., Net 15/30/60) counted from the invoice date"
+          },
+          {
+            "id": "custom_per_client",
+            "label": "Configurable per client or per invoice"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "due_on_receipt": 0.2,
+          "net_terms": 0.2,
+          "custom_per_client": 0.6
+        },
+        "implies": {
+          "due_on_receipt": [],
+          "net_terms": [],
+          "custom_per_client": []
+        },
+        "excludes": {
+          "due_on_receipt": [],
+          "net_terms": [],
+          "custom_per_client": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "auto_reminder_schedule",
+        "topic": "payments",
+        "question": "How do automatic reminders escalate?",
+        "options": [
+          {
+            "id": "gentle_two",
+            "label": "Two gentle nudges: a few days before and after the due date"
+          },
+          {
+            "id": "firm_weekly",
+            "label": "Weekly reminders after the due date until paid"
+          },
+          {
+            "id": "custom_per_client",
+            "label": "The firm sets a schedule per client"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "gentle_two": 0.5,
+          "firm_weekly": 0.3,
+          "custom_per_client": 0.2
+        },
+        "implies": {
+          "gentle_two": [],
+          "firm_weekly": [],
+          "custom_per_client": []
+        },
+        "excludes": {
+          "gentle_two": [],
+          "firm_weekly": [],
+          "custom_per_client": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [
+          {
+            "node": "overdue_reminders",
+            "options": [
+              "auto_reminders"
+            ]
+          }
+        ],
+        "tags": []
+      },
+      {
+        "id": "late_fee_basis",
+        "topic": "payments",
+        "question": "How is an automatic late fee calculated?",
+        "options": [
+          {
+            "id": "flat_fee",
+            "label": "A flat amount added once"
+          },
+          {
+            "id": "percent_monthly",
+            "label": "A percentage of the balance, added monthly"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "flat_fee": 0.5,
+          "percent_monthly": 0.5
+        },
+        "implies": {
+          "flat_fee": [],
+          "percent_monthly": []
+        },
+        "excludes": {
+          "flat_fee": [],
+          "percent_monthly": []
+        },
+        "sections": [
+          "rules_invariants",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [
+          {
+            "node": "late_fees",
+            "options": [
+              "automatic"
+            ]
+          }
+        ],
+        "tags": []
+      },
+      {
+        "id": "credit_note_numbering",
+        "topic": "records",
+        "question": "How are credit notes numbered?",
+        "options": [
+          {
+            "id": "same_sequence",
+            "label": "They share the invoice number sequence"
+          },
+          {
+            "id": "own_sequence",
+            "label": "They have their own CN- sequence"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "same_sequence": 0.3,
+          "own_sequence": 0.7
+        },
+        "implies": {
+          "same_sequence": [],
+          "own_sequence": []
+        },
+        "excludes": {
+          "same_sequence": [],
+          "own_sequence": []
+        },
+        "sections": [
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "b2b-invoicing",
+        "requires": [
+          {
+            "node": "credit_notes",
+            "options": [
+              "credit_notes"
+            ]
+          },
+          {
+            "node": "invoice_numbering",
+            "options": [
+              "sequential"
+            ]
+          }
+        ],
+        "tags": []
+      },
+      {
+        "id": "record_bulk_edit",
+        "topic": "bulk actions",
+        "question": "Can people change many records at once?",
+        "options": [
+          {
+            "id": "one_at_a_time",
+            "label": "No — one record at a time"
+          },
+          {
+            "id": "bulk_actions",
+            "label": "Yes — select many and assign/move/tag/delete together"
+          }
+        ],
+        "consequence": 1,
+        "prior": {
+          "one_at_a_time": 0.4,
+          "bulk_actions": 0.6
+        },
+        "implies": {
+          "one_at_a_time": [],
+          "bulk_actions": []
+        },
+        "excludes": {
+          "one_at_a_time": [],
+          "bulk_actions": []
+        },
+        "sections": [
+          "journeys",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": [
+          "record_workflow"
+        ]
+      },
+      {
+        "id": "x1",
+        "topic": "deletion-with-dependents",
+        "question": "What happens when someone tries to remove a Client that has invoices or recorded payments?",
+        "options": [
+          {
+            "id": "block",
+            "label": "Block deletion while any invoice/payment exists"
+          },
+          {
+            "id": "archive_keep",
+            "label": "Archive client but keep all invoices/payments intact"
+          },
+          {
+            "id": "cascade",
+            "label": "Delete client and its invoices/payments"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "block": 0.3333333333333333,
+          "archive_keep": 0.3333333333333333,
+          "cascade": 0.3333333333333333
+        },
+        "implies": {
+          "block": [],
+          "archive_keep": [],
+          "cascade": []
+        },
+        "excludes": {
+          "block": [],
+          "archive_keep": [],
+          "cascade": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x2",
+        "topic": "duplicate-submission",
+        "question": "How does the app handle the same Payment or Send action fired twice (double-click, retry)?",
+        "options": [
+          {
+            "id": "idempotent_guard",
+            "label": "Detect and ignore duplicates (idempotent)"
+          },
+          {
+            "id": "warn_confirm",
+            "label": "Warn and ask to confirm the second time"
+          },
+          {
+            "id": "allow_both",
+            "label": "Record both — user must undo manually"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "idempotent_guard": 0.3333333333333333,
+          "warn_confirm": 0.3333333333333333,
+          "allow_both": 0.3333333333333333
+        },
+        "implies": {
+          "idempotent_guard": [],
+          "warn_confirm": [],
+          "allow_both": []
+        },
+        "excludes": {
+          "idempotent_guard": [],
+          "warn_confirm": [],
+          "allow_both": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x3",
+        "topic": "zero-negative-rounding",
+        "question": "How are line-item amounts and currency precision handled?",
+        "options": [
+          {
+            "id": "cents_no_zero",
+            "label": "Round to cents; reject zero/negative line amounts"
+          },
+          {
+            "id": "cents_allow_negative",
+            "label": "Round to cents; allow negative lines (adjustments/credits)"
+          },
+          {
+            "id": "free_precision",
+            "label": "No enforced rounding or sign rules"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "cents_no_zero": 0.3333333333333333,
+          "cents_allow_negative": 0.3333333333333333,
+          "free_precision": 0.3333333333333333
+        },
+        "implies": {
+          "cents_no_zero": [],
+          "cents_allow_negative": [],
+          "free_precision": []
+        },
+        "excludes": {
+          "cents_no_zero": [],
+          "cents_allow_negative": [],
+          "free_precision": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x4",
+        "topic": "time-boundaries",
+        "question": "When a client's Billing day (e.g. the 31st) doesn't exist in a month, when is the invoice/due date set?",
+        "options": [
+          {
+            "id": "last_day",
+            "label": "Use the last day of that month"
+          },
+          {
+            "id": "clamp_next",
+            "label": "Roll forward to the next valid day"
+          },
+          {
+            "id": "fixed_first",
+            "label": "Everyone billed on a fixed day regardless"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "last_day": 0.3333333333333333,
+          "clamp_next": 0.3333333333333333,
+          "fixed_first": 0.3333333333333333
+        },
+        "implies": {
+          "last_day": [],
+          "clamp_next": [],
+          "fixed_first": []
+        },
+        "excludes": {
+          "last_day": [],
+          "clamp_next": [],
+          "fixed_first": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x5",
+        "topic": "partial-failure",
+        "question": "An invoice is marked Sent but the email delivery fails — what state results?",
+        "options": [
+          {
+            "id": "stay_draft",
+            "label": "Keep as draft/unsent until email confirmed sent"
+          },
+          {
+            "id": "sent_flag_failed",
+            "label": "Mark sent but flag delivery failure for retry"
+          },
+          {
+            "id": "sent_silent",
+            "label": "Mark sent regardless of email outcome"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "stay_draft": 0.3333333333333333,
+          "sent_flag_failed": 0.3333333333333333,
+          "sent_silent": 0.3333333333333333
+        },
+        "implies": {
+          "stay_draft": [],
+          "sent_flag_failed": [],
+          "sent_silent": []
+        },
+        "excludes": {
+          "stay_draft": [],
+          "sent_flag_failed": [],
+          "sent_silent": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x6",
+        "topic": "lifecycle-backwards",
+        "question": "Can invoice states be reversed (unsend a sent invoice, reopen a paid one)?",
+        "options": [
+          {
+            "id": "void_reissue_only",
+            "label": "No reversal — only void and reissue (per r4)"
+          },
+          {
+            "id": "unsend_before_view",
+            "label": "Allow unsend/edit until viewed, then void-only"
+          },
+          {
+            "id": "free_reopen",
+            "label": "Owner can reopen/unpay any invoice"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "void_reissue_only": 0.3333333333333333,
+          "unsend_before_view": 0.3333333333333333,
+          "free_reopen": 0.3333333333333333
+        },
+        "implies": {
+          "void_reissue_only": [],
+          "unsend_before_view": [],
+          "free_reopen": []
+        },
+        "excludes": {
+          "void_reissue_only": [],
+          "unsend_before_view": [],
+          "free_reopen": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x7",
+        "topic": "permission-escalation",
+        "question": "When the Firm Owner is unavailable, can a Bookkeeper be delegated void/rate-change rights (r5/r6)?",
+        "options": [
+          {
+            "id": "no_delegation",
+            "label": "No — only the Owner, ever"
+          },
+          {
+            "id": "temp_delegate",
+            "label": "Owner can grant temporary delegated rights"
+          },
+          {
+            "id": "request_approval",
+            "label": "Bookkeeper requests; action queued for Owner approval"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "no_delegation": 0.3333333333333333,
+          "temp_delegate": 0.3333333333333333,
+          "request_approval": 0.3333333333333333
+        },
+        "implies": {
+          "no_delegation": [],
+          "temp_delegate": [],
+          "request_approval": []
+        },
+        "excludes": {
+          "no_delegation": [],
+          "temp_delegate": [],
+          "request_approval": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x8",
+        "topic": "invoice-numbering-integrity",
+        "question": "When an invoice is voided, what happens to its sequential number (r1)?",
+        "options": [
+          {
+            "id": "retain_gap",
+            "label": "Number stays voided in place — a visible gap remains"
+          },
+          {
+            "id": "reuse_number",
+            "label": "The number is freed and reused by the next invoice"
+          },
+          {
+            "id": "void_no_number",
+            "label": "Only issued invoices consume numbers; voided drafts don't"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "retain_gap": 0.3333333333333333,
+          "reuse_number": 0.3333333333333333,
+          "void_no_number": 0.3333333333333333
+        },
+        "implies": {
+          "retain_gap": [],
+          "reuse_number": [],
+          "void_no_number": []
+        },
+        "excludes": {
+          "retain_gap": [],
+          "reuse_number": [],
+          "void_no_number": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      }
+    ],
+    "worlds": [
+      {
+        "id": "w0_0_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "fresh_start",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "none",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "reporting": "lists_only",
+          "partial_payments": "not_allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "none",
+          "estimates": "no",
+          "credit_notes": "none",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "none",
+          "invoice_statuses": "simple",
+          "branding": "logo_colors",
+          "deposits": "no",
+          "invoice_po_reference": "none",
+          "invoice_discounts": "none",
+          "payment_terms": "net_terms",
+          "auto_reminder_schedule": "gentle_two",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "same_sequence",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "block",
+          "x2": "warn_confirm",
+          "x3": "cents_no_zero",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "no_delegation",
+          "x8": "retain_gap",
+          "customization": "branding_templates"
+        },
+        "weight": 0.015602667289831366,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_0_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "none",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "none",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "lists_only",
+          "partial_payments": "not_allowed",
+          "overdue_reminders": "nothing",
+          "late_fees": "none",
+          "estimates": "no",
+          "credit_notes": "none",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "none",
+          "invoice_statuses": "simple",
+          "branding": "none",
+          "deposits": "no",
+          "invoice_po_reference": "none",
+          "invoice_discounts": "none",
+          "payment_terms": "due_on_receipt",
+          "auto_reminder_schedule": "gentle_two",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "same_sequence",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "archive_keep",
+          "x2": "warn_confirm",
+          "x3": "cents_no_zero",
+          "x4": "last_day",
+          "x5": "sent_silent",
+          "x6": "void_reissue_only",
+          "x7": "no_delegation",
+          "x8": "retain_gap"
+        },
+        "weight": 0.012135407892091062,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_0_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "basic",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "partial_payments": "allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "none",
+          "estimates": "no",
+          "credit_notes": "none",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "logo_colors",
+          "deposits": "no",
+          "invoice_po_reference": "none",
+          "invoice_discounts": "none",
+          "payment_terms": "net_terms",
+          "auto_reminder_schedule": "gentle_two",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "same_sequence",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "archive_keep",
+          "x2": "idempotent_guard",
+          "x3": "cents_no_zero",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "request_approval",
+          "x8": "retain_gap"
+        },
+        "weight": 0.2080355638644182,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_0_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "magic_link",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web_mobile_first",
+          "data_import": "fresh_start",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "none",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "lists_only",
+          "partial_payments": "not_allowed",
+          "overdue_reminders": "nothing",
+          "late_fees": "none",
+          "estimates": "no",
+          "credit_notes": "none",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "none",
+          "invoice_statuses": "simple",
+          "branding": "none",
+          "deposits": "no",
+          "invoice_po_reference": "none",
+          "invoice_discounts": "none",
+          "payment_terms": "due_on_receipt",
+          "auto_reminder_schedule": "gentle_two",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "same_sequence",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "block",
+          "x2": "warn_confirm",
+          "x3": "cents_no_zero",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "no_delegation",
+          "x8": "retain_gap"
+        },
+        "weight": 0.0069345187954806065,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "basic",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "partial_payments": "allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "none",
+          "estimates": "no",
+          "credit_notes": "credit_notes",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "logo_colors",
+          "deposits": "no",
+          "invoice_po_reference": "optional_reference",
+          "invoice_discounts": "invoice_level",
+          "payment_terms": "net_terms",
+          "auto_reminder_schedule": "gentle_two",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "own_sequence",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "archive_keep",
+          "x2": "idempotent_guard",
+          "x3": "cents_allow_negative",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "temp_delegate",
+          "x8": "retain_gap"
+        },
+        "weight": 0.2797719651969762,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "none",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "partial_payments": "allowed",
+          "overdue_reminders": "auto_reminders",
+          "late_fees": "manual",
+          "estimates": "no",
+          "credit_notes": "credit_notes",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "logo_colors",
+          "deposits": "no",
+          "invoice_po_reference": "none",
+          "invoice_discounts": "none",
+          "payment_terms": "net_terms",
+          "auto_reminder_schedule": "firm_weekly",
+          "late_fee_basis": "percent_monthly",
+          "credit_note_numbering": "same_sequence",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "archive_keep",
+          "x2": "warn_confirm",
+          "x3": "cents_no_zero",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "request_approval",
+          "x8": "retain_gap"
+        },
+        "weight": 0.21760041737542593,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "none",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "lists_only",
+          "partial_payments": "not_allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "none",
+          "estimates": "no",
+          "credit_notes": "none",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "none",
+          "invoice_statuses": "simple",
+          "branding": "logo_colors",
+          "deposits": "no",
+          "invoice_po_reference": "none",
+          "invoice_discounts": "none",
+          "payment_terms": "net_terms",
+          "auto_reminder_schedule": "gentle_two",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "same_sequence",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "block",
+          "x2": "warn_confirm",
+          "x3": "cents_no_zero",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "no_delegation",
+          "x8": "retain_gap"
+        },
+        "weight": 0.012434309564310053,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "migrate_from_tool",
+          "data_export": "csv_export",
+          "data_scale": "medium",
+          "attachments": "basic",
+          "approval_workflow": "single_approver",
+          "retention": "forever",
+          "customization": "custom_fields",
+          "reporting": "custom_reports",
+          "partial_payments": "allowed",
+          "overdue_reminders": "auto_reminders",
+          "late_fees": "manual",
+          "estimates": "yes_convert",
+          "credit_notes": "credit_notes",
+          "time_tracking": "billable_hours",
+          "invoice_delivery": "both",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "full_templates",
+          "deposits": "yes",
+          "invoice_po_reference": "optional_reference",
+          "invoice_discounts": "line_and_invoice",
+          "payment_terms": "custom_per_client",
+          "auto_reminder_schedule": "custom_per_client",
+          "late_fee_basis": "percent_monthly",
+          "credit_note_numbering": "own_sequence",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "archive_keep",
+          "x2": "idempotent_guard",
+          "x3": "cents_allow_negative",
+          "x4": "clamp_next",
+          "x5": "sent_flag_failed",
+          "x6": "unsend_before_view",
+          "x7": "temp_delegate",
+          "x8": "retain_gap"
+        },
+        "weight": 0.007771443477693783,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "data_scale": "small",
+          "attachments": "basic",
+          "approval_workflow": "single_approver",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "custom_reports",
+          "partial_payments": "allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "manual",
+          "estimates": "no",
+          "credit_notes": "credit_notes",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "logo_colors",
+          "deposits": "no",
+          "invoice_po_reference": "optional_reference",
+          "invoice_discounts": "invoice_level",
+          "payment_terms": "net_terms",
+          "auto_reminder_schedule": "firm_weekly",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "own_sequence",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "archive_keep",
+          "x2": "idempotent_guard",
+          "x3": "cents_allow_negative",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "temp_delegate",
+          "x8": "retain_gap"
+        },
+        "weight": 0.014341845690653072,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "migrate_from_tool",
+          "data_export": "csv_export",
+          "data_scale": "medium",
+          "attachments": "basic",
+          "approval_workflow": "single_approver",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "custom_reports",
+          "partial_payments": "allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "manual",
+          "estimates": "no",
+          "credit_notes": "credit_notes",
+          "time_tracking": "no",
+          "invoice_delivery": "both",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "full_templates",
+          "deposits": "no",
+          "invoice_po_reference": "optional_reference",
+          "invoice_discounts": "line_and_invoice",
+          "payment_terms": "custom_per_client",
+          "auto_reminder_schedule": "custom_per_client",
+          "late_fee_basis": "percent_monthly",
+          "credit_note_numbering": "own_sequence",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "archive_keep",
+          "x2": "idempotent_guard",
+          "x3": "cents_allow_negative",
+          "x4": "clamp_next",
+          "x5": "sent_flag_failed",
+          "x6": "unsend_before_view",
+          "x7": "request_approval",
+          "x8": "retain_gap"
+        },
+        "weight": 0.012293010591988347,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "full_export_api",
+          "data_scale": "small",
+          "attachments": "basic",
+          "approval_workflow": "none",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "partial_payments": "allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "none",
+          "estimates": "no",
+          "credit_notes": "credit_notes",
+          "time_tracking": "no",
+          "invoice_delivery": "pdf_email",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "logo_colors",
+          "deposits": "no",
+          "invoice_po_reference": "none",
+          "invoice_discounts": "invoice_level",
+          "payment_terms": "net_terms",
+          "auto_reminder_schedule": "gentle_two",
+          "late_fee_basis": "flat_fee",
+          "credit_note_numbering": "same_sequence",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "archive_keep",
+          "x2": "idempotent_guard",
+          "x3": "cents_no_zero",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "void_reissue_only",
+          "x7": "temp_delegate",
+          "x8": "retain_gap"
+        },
+        "weight": 0.20488350986647244,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "none",
+          "client_portal_scope": "none",
+          "tenancy": "single_org",
+          "deletion": "never_delete",
+          "integrations": "none",
+          "payments_in_app": "record_only",
+          "localization": "single_locale",
+          "recurring_scheduled": "none",
+          "compliance_sensitivity": "ordinary",
+          "invoicing_model": "firm_bills_own_clients",
+          "invoice_numbering": "sequential",
+          "invoice_edit_after_send": "editable_until_paid",
+          "payment_recording": "manual",
+          "taxes": "none",
+          "currencies": "single",
+          "recurring_invoices": "no",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "enterprise_sso",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_import": "migrate_from_tool",
+          "data_export": "full_export_api",
+          "data_scale": "medium",
+          "attachments": "rich",
+          "approval_workflow": "multi_step",
+          "retention": "user_controlled",
+          "customization": "custom_fields",
+          "reporting": "custom_reports",
+          "partial_payments": "allowed",
+          "overdue_reminders": "manual_reminder",
+          "late_fees": "manual",
+          "estimates": "yes_convert",
+          "credit_notes": "credit_notes",
+          "time_tracking": "billable_hours",
+          "invoice_delivery": "both",
+          "accounting_sync": "export",
+          "invoice_statuses": "detailed",
+          "branding": "full_templates",
+          "deposits": "yes",
+          "invoice_po_reference": "required_and_deduplicated",
+          "invoice_discounts": "line_and_invoice",
+          "payment_terms": "custom_per_client",
+          "auto_reminder_schedule": "custom_per_client",
+          "late_fee_basis": "percent_monthly",
+          "credit_note_numbering": "own_sequence",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "block",
+          "x2": "idempotent_guard",
+          "x3": "cents_allow_negative",
+          "x4": "last_day",
+          "x5": "sent_flag_failed",
+          "x6": "unsend_before_view",
+          "x7": "temp_delegate",
+          "x8": "retain_gap"
+        },
+        "weight": 0.0081953403946589,
+        "origin": "sampled"
+      }
+    ],
+    "alpha": 0.08
+  },
+  "cards": [
+    {
+      "id": "8c4ce052-a9a0-44c8-8611-58a9eba26049",
+      "node_id": "reporting",
+      "context": "It's the last day of the month and you sit down to check where every client's billing stands",
+      "options": [
+        {
+          "option_id": "basic_dashboard",
+          "label": "A dashboard with totals and counts",
+          "scenario": "You open one screen and instantly see totals: how much you billed this month, how much is paid, and how many invoices are still outstanding."
+        },
+        {
+          "option_id": "lists_only",
+          "label": "Sortable, filterable lists",
+          "scenario": "You scan a full list of every invoice, then sort by amount or filter to show only unpaid ones until you find exactly what you need."
+        },
+        {
+          "option_id": "custom_reports",
+          "label": "Custom reports people build themselves",
+          "scenario": "You pick which clients, dates, and figures matter to you and shape your own summary, saving it to run again next month."
+        }
+      ],
+      "also_sets": [
+        "Whether you can download your lists as a spreadsheet",
+        "How quickly you spot who still owes you money",
+        "How much setup each monthly review takes"
+      ],
+      "created_at": "2026-08-26T10:51:22.237Z",
+      "model": "claude-opus-4-8",
+      "latency_ms": 7303,
+      "phrasing_arm": "moment"
+    }
+  ],
+  "answers": [
+    {
+      "card_id": "8c4ce052-a9a0-44c8-8611-58a9eba26049",
+      "node_id": "reporting",
+      "kind": "option",
+      "at": "2026-08-26T10:51:22.268Z",
+      "option_id": "basic_dashboard"
+    }
+  ],
+  "precomputed": {},
+  "consequence_override": {},
+  "history": [
+    {
+      "card_id": "8c4ce052-a9a0-44c8-8611-58a9eba26049",
+      "worlds": [
+        {
+          "id": "w0_0_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "fresh_start",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "none",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "reporting": "lists_only",
+            "partial_payments": "not_allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "none",
+            "estimates": "no",
+            "credit_notes": "none",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "none",
+            "invoice_statuses": "simple",
+            "branding": "logo_colors",
+            "deposits": "no",
+            "invoice_po_reference": "none",
+            "invoice_discounts": "none",
+            "payment_terms": "net_terms",
+            "auto_reminder_schedule": "gentle_two",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "same_sequence",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "warn_confirm",
+            "x3": "cents_no_zero",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "no_delegation",
+            "x8": "retain_gap",
+            "customization": "branding_templates"
+          },
+          "weight": 0.11538461538461538,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "none",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "none",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "lists_only",
+            "partial_payments": "not_allowed",
+            "overdue_reminders": "nothing",
+            "late_fees": "none",
+            "estimates": "no",
+            "credit_notes": "none",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "none",
+            "invoice_statuses": "simple",
+            "branding": "none",
+            "deposits": "no",
+            "invoice_po_reference": "none",
+            "invoice_discounts": "none",
+            "payment_terms": "due_on_receipt",
+            "auto_reminder_schedule": "gentle_two",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "same_sequence",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "archive_keep",
+            "x2": "warn_confirm",
+            "x3": "cents_no_zero",
+            "x4": "last_day",
+            "x5": "sent_silent",
+            "x6": "void_reissue_only",
+            "x7": "no_delegation",
+            "x8": "retain_gap"
+          },
+          "weight": 0.08974358974358973,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "basic",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "partial_payments": "allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "none",
+            "estimates": "no",
+            "credit_notes": "none",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "logo_colors",
+            "deposits": "no",
+            "invoice_po_reference": "none",
+            "invoice_discounts": "none",
+            "payment_terms": "net_terms",
+            "auto_reminder_schedule": "gentle_two",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "same_sequence",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "archive_keep",
+            "x2": "idempotent_guard",
+            "x3": "cents_no_zero",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "request_approval",
+            "x8": "retain_gap"
+          },
+          "weight": 0.07692307692307693,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "magic_link",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web_mobile_first",
+            "data_import": "fresh_start",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "none",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "lists_only",
+            "partial_payments": "not_allowed",
+            "overdue_reminders": "nothing",
+            "late_fees": "none",
+            "estimates": "no",
+            "credit_notes": "none",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "none",
+            "invoice_statuses": "simple",
+            "branding": "none",
+            "deposits": "no",
+            "invoice_po_reference": "none",
+            "invoice_discounts": "none",
+            "payment_terms": "due_on_receipt",
+            "auto_reminder_schedule": "gentle_two",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "same_sequence",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "warn_confirm",
+            "x3": "cents_no_zero",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "no_delegation",
+            "x8": "retain_gap"
+          },
+          "weight": 0.05128205128205128,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "basic",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "partial_payments": "allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "none",
+            "estimates": "no",
+            "credit_notes": "credit_notes",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "logo_colors",
+            "deposits": "no",
+            "invoice_po_reference": "optional_reference",
+            "invoice_discounts": "invoice_level",
+            "payment_terms": "net_terms",
+            "auto_reminder_schedule": "gentle_two",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "own_sequence",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "archive_keep",
+            "x2": "idempotent_guard",
+            "x3": "cents_allow_negative",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "temp_delegate",
+            "x8": "retain_gap"
+          },
+          "weight": 0.10344827586206896,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "none",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "partial_payments": "allowed",
+            "overdue_reminders": "auto_reminders",
+            "late_fees": "manual",
+            "estimates": "no",
+            "credit_notes": "credit_notes",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "logo_colors",
+            "deposits": "no",
+            "invoice_po_reference": "none",
+            "invoice_discounts": "none",
+            "payment_terms": "net_terms",
+            "auto_reminder_schedule": "firm_weekly",
+            "late_fee_basis": "percent_monthly",
+            "credit_note_numbering": "same_sequence",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "archive_keep",
+            "x2": "warn_confirm",
+            "x3": "cents_no_zero",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "request_approval",
+            "x8": "retain_gap"
+          },
+          "weight": 0.08045977011494253,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "none",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "lists_only",
+            "partial_payments": "not_allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "none",
+            "estimates": "no",
+            "credit_notes": "none",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "none",
+            "invoice_statuses": "simple",
+            "branding": "logo_colors",
+            "deposits": "no",
+            "invoice_po_reference": "none",
+            "invoice_discounts": "none",
+            "payment_terms": "net_terms",
+            "auto_reminder_schedule": "gentle_two",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "same_sequence",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "warn_confirm",
+            "x3": "cents_no_zero",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "no_delegation",
+            "x8": "retain_gap"
+          },
+          "weight": 0.09195402298850575,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "migrate_from_tool",
+            "data_export": "csv_export",
+            "data_scale": "medium",
+            "attachments": "basic",
+            "approval_workflow": "single_approver",
+            "retention": "forever",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "partial_payments": "allowed",
+            "overdue_reminders": "auto_reminders",
+            "late_fees": "manual",
+            "estimates": "yes_convert",
+            "credit_notes": "credit_notes",
+            "time_tracking": "billable_hours",
+            "invoice_delivery": "both",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "full_templates",
+            "deposits": "yes",
+            "invoice_po_reference": "optional_reference",
+            "invoice_discounts": "line_and_invoice",
+            "payment_terms": "custom_per_client",
+            "auto_reminder_schedule": "custom_per_client",
+            "late_fee_basis": "percent_monthly",
+            "credit_note_numbering": "own_sequence",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "archive_keep",
+            "x2": "idempotent_guard",
+            "x3": "cents_allow_negative",
+            "x4": "clamp_next",
+            "x5": "sent_flag_failed",
+            "x6": "unsend_before_view",
+            "x7": "temp_delegate",
+            "x8": "retain_gap"
+          },
+          "weight": 0.05747126436781609,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "data_scale": "small",
+            "attachments": "basic",
+            "approval_workflow": "single_approver",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "custom_reports",
+            "partial_payments": "allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "manual",
+            "estimates": "no",
+            "credit_notes": "credit_notes",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "logo_colors",
+            "deposits": "no",
+            "invoice_po_reference": "optional_reference",
+            "invoice_discounts": "invoice_level",
+            "payment_terms": "net_terms",
+            "auto_reminder_schedule": "firm_weekly",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "own_sequence",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "archive_keep",
+            "x2": "idempotent_guard",
+            "x3": "cents_allow_negative",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "temp_delegate",
+            "x8": "retain_gap"
+          },
+          "weight": 0.10606060606060605,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "migrate_from_tool",
+            "data_export": "csv_export",
+            "data_scale": "medium",
+            "attachments": "basic",
+            "approval_workflow": "single_approver",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "custom_reports",
+            "partial_payments": "allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "manual",
+            "estimates": "no",
+            "credit_notes": "credit_notes",
+            "time_tracking": "no",
+            "invoice_delivery": "both",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "full_templates",
+            "deposits": "no",
+            "invoice_po_reference": "optional_reference",
+            "invoice_discounts": "line_and_invoice",
+            "payment_terms": "custom_per_client",
+            "auto_reminder_schedule": "custom_per_client",
+            "late_fee_basis": "percent_monthly",
+            "credit_note_numbering": "own_sequence",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "archive_keep",
+            "x2": "idempotent_guard",
+            "x3": "cents_allow_negative",
+            "x4": "clamp_next",
+            "x5": "sent_flag_failed",
+            "x6": "unsend_before_view",
+            "x7": "request_approval",
+            "x8": "retain_gap"
+          },
+          "weight": 0.0909090909090909,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "full_export_api",
+            "data_scale": "small",
+            "attachments": "basic",
+            "approval_workflow": "none",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "partial_payments": "allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "none",
+            "estimates": "no",
+            "credit_notes": "credit_notes",
+            "time_tracking": "no",
+            "invoice_delivery": "pdf_email",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "logo_colors",
+            "deposits": "no",
+            "invoice_po_reference": "none",
+            "invoice_discounts": "invoice_level",
+            "payment_terms": "net_terms",
+            "auto_reminder_schedule": "gentle_two",
+            "late_fee_basis": "flat_fee",
+            "credit_note_numbering": "same_sequence",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "archive_keep",
+            "x2": "idempotent_guard",
+            "x3": "cents_no_zero",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "void_reissue_only",
+            "x7": "temp_delegate",
+            "x8": "retain_gap"
+          },
+          "weight": 0.07575757575757575,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "none",
+            "client_portal_scope": "none",
+            "tenancy": "single_org",
+            "deletion": "never_delete",
+            "integrations": "none",
+            "payments_in_app": "record_only",
+            "localization": "single_locale",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "invoicing_model": "firm_bills_own_clients",
+            "invoice_numbering": "sequential",
+            "invoice_edit_after_send": "editable_until_paid",
+            "payment_recording": "manual",
+            "taxes": "none",
+            "currencies": "single",
+            "recurring_invoices": "no",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "enterprise_sso",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_import": "migrate_from_tool",
+            "data_export": "full_export_api",
+            "data_scale": "medium",
+            "attachments": "rich",
+            "approval_workflow": "multi_step",
+            "retention": "user_controlled",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "partial_payments": "allowed",
+            "overdue_reminders": "manual_reminder",
+            "late_fees": "manual",
+            "estimates": "yes_convert",
+            "credit_notes": "credit_notes",
+            "time_tracking": "billable_hours",
+            "invoice_delivery": "both",
+            "accounting_sync": "export",
+            "invoice_statuses": "detailed",
+            "branding": "full_templates",
+            "deposits": "yes",
+            "invoice_po_reference": "required_and_deduplicated",
+            "invoice_discounts": "line_and_invoice",
+            "payment_terms": "custom_per_client",
+            "auto_reminder_schedule": "custom_per_client",
+            "late_fee_basis": "percent_monthly",
+            "credit_note_numbering": "own_sequence",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "block",
+            "x2": "idempotent_guard",
+            "x3": "cents_allow_negative",
+            "x4": "last_day",
+            "x5": "sent_flag_failed",
+            "x6": "unsend_before_view",
+            "x7": "temp_delegate",
+            "x8": "retain_gap"
+          },
+          "weight": 0.06060606060606061,
+          "origin": "sampled"
+        }
+      ],
+      "consequence_override": {},
+      "sheet_version": 3
+    }
+  ],
+  "resample_count": 1,
+  "versions": {
+    "catalog": "b2b-invoicing@2026.08.24-1+booking@2026.08.23-1+core@2026.08.22-1+crud-saas@2026.08.25-1+e-commerce@2026.08.23-1+marketplace@2026.08.23-1",
+    "prompts": "2026.08.25-2",
+    "models": {
+      "strong": "claude-opus-4-8",
+      "fast": "claude-opus-4-8"
+    }
+  },
+  "created_at": "2026-08-26T10:50:28.993Z",
+  "updated_at": "2026-08-26T10:51:22.281Z",
+  "last_stop_reason": "converged"
+}

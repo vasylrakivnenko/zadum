@@ -1,0 +1,65 @@
+[
+  {
+    "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+    "name": "spec.md",
+    "kind": "spec_md",
+    "created_at": "2026-08-26T10:25:51.475Z",
+    "meta": {
+      "sheet_version": 6
+    }
+  },
+  {
+    "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+    "name": "design-sheet.md",
+    "kind": "sheet_md",
+    "created_at": "2026-08-26T10:25:51.478Z",
+    "meta": {
+      "sheet_version": 6
+    }
+  },
+  {
+    "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+    "name": "design-sheet.json",
+    "kind": "sheet_json",
+    "created_at": "2026-08-26T10:25:51.480Z",
+    "meta": {
+      "sheet_version": 6
+    }
+  },
+  {
+    "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+    "name": "AGENTS.md",
+    "kind": "agents_md",
+    "created_at": "2026-08-26T10:25:51.481Z",
+    "meta": {
+      "sheet_version": 6
+    }
+  },
+  {
+    "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+    "name": "sheet-tests.ts",
+    "kind": "other",
+    "created_at": "2026-08-26T10:25:51.482Z",
+    "meta": {
+      "sheet_version": 6
+    }
+  },
+  {
+    "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+    "name": "compile-report.json",
+    "kind": "report_json",
+    "created_at": "2026-08-26T10:25:51.483Z",
+    "meta": {
+      "sheet_version": 6
+    }
+  },
+  {
+    "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+    "name": "story.md",
+    "kind": "story_md",
+    "created_at": "2026-08-26T10:25:51.484Z",
+    "meta": {
+      "sheet_version": 6
+    }
+  }
+]

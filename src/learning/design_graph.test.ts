@@ -186,6 +186,33 @@ describe("classifyPair — the only statistic→relation function", () => {
     expect(s.ci95.high).toBeGreaterThanOrEqual(s.p_to);
   });
 
+  it("refuses an edge whose ANTECEDENT holds in almost no rows, however large eligible_n", () => {
+    // The real defect, from the first 150-row corpus. `identity_provider=magic_link → invite_flow=invite_by_admin`
+    // scored lift 4.70 on eligible_n = 46 and passed both the support floor and the distinguishability test —
+    // while resting on n11 = 1, n10 = 0. ONE ROW. `p(B|A) = smoothed(n11, n11+n10)` has a denominator of 1;
+    // eligible_n counts rows where both nodes were merely observed, which is a far weaker quantity.
+    const oneRow = stat({ n11: 1, n10: 0, n01: 6, n00: 39 });
+    expect(oneRow.eligible_n).toBe(46); // clears softMinN = 30 on the WRONG denominator
+    expect(oneRow.ci95.high).toBeGreaterThan(0.99); // the honest signal: an interval spanning ~79 points
+    const c = classifyPair(oneRow);
+    expect(c.relation).toBe("unknown");
+    expect(c.note).toContain("antecedent holds in only 1 row");
+  });
+
+  it("still accepts an edge whose antecedent count clears the floor", () => {
+    // Same eligible_n, but the antecedent is actually observed enough times to estimate a conditional from.
+    const wellSupported = stat({ n11: 34, n10: 6, n01: 3, n00: 40 });
+    expect(classifyPair(wellSupported).relation).toBe("soft_positive");
+  });
+
+  it("reports low support on the antecedent even when eligible_n is comfortable", () => {
+    // 15 antecedent rows: past the reporting floor of 10, short of the soft floor of 30.
+    const middling = stat({ n11: 13, n10: 2, n01: 20, n00: 60 });
+    const c = classifyPair(middling);
+    expect(c.relation).toBe("unknown");
+    expect(c.note).toContain("wrong denominator");
+  });
+
   it("honours configured thresholds", () => {
     const t: GraphThresholds = { ...DEFAULT_THRESHOLDS, reportMinN: 2, softMinN: 4 };
     expect(classifyPair(stat({ n11: 8, n10: 0, n01: 0, n00: 8 }), t).relation).toBe("soft_positive");

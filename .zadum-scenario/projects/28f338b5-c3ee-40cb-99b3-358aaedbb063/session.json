@@ -1,0 +1,3811 @@
+{
+  "project_id": "28f338b5-c3ee-40cb-99b3-358aaedbb063",
+  "phase": "compiling",
+  "config": {
+    "scoring": "weighted_entropy",
+    "theta": 24,
+    "tau": 0.9,
+    "epsilon": 0.05,
+    "maxCards": 12,
+    "alpha": 0.08,
+    "minEss": 4,
+    "lookahead": 1,
+    "lookaheadTop": 8,
+    "discount": 1,
+    "softImplyTau": 0.95,
+    "minImplyDelta": 0.1,
+    "secondaryArchetypeWeight": 0.5,
+    "maxCardOptions": 4,
+    "relativeStopFloor": 0
+  },
+  "belief": {
+    "nodes": [
+      {
+        "id": "user_accounts",
+        "topic": "who logs in",
+        "question": "Who needs an account to use the app?",
+        "options": [
+          {
+            "id": "none",
+            "label": "Nobody logs in — one person uses it on their own device"
+          },
+          {
+            "id": "single_user",
+            "label": "Exactly one person logs in (the owner)"
+          },
+          {
+            "id": "multi_user",
+            "label": "Several people log in, possibly with different powers"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "none": 0.1,
+          "single_user": 0.25,
+          "multi_user": 0.65
+        },
+        "implies": {
+          "none": [
+            {
+              "node": "roles",
+              "option": "single"
+            },
+            {
+              "node": "invite_flow",
+              "option": "none"
+            },
+            {
+              "node": "identity_provider",
+              "option": "none"
+            },
+            {
+              "node": "concurrency",
+              "option": "last_write_wins"
+            }
+          ],
+          "single_user": [
+            {
+              "node": "roles",
+              "option": "single"
+            },
+            {
+              "node": "invite_flow",
+              "option": "none"
+            },
+            {
+              "node": "concurrency",
+              "option": "last_write_wins"
+            }
+          ],
+          "multi_user": []
+        },
+        "excludes": {
+          "none": [],
+          "single_user": [],
+          "multi_user": []
+        },
+        "sections": [
+          "actors_permissions",
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "roles",
+        "topic": "who can do what",
+        "question": "Do different people have different powers?",
+        "options": [
+          {
+            "id": "single",
+            "label": "Everyone who logs in can do everything"
+          },
+          {
+            "id": "owner_staff",
+            "label": "An owner/admin plus staff with fewer powers"
+          },
+          {
+            "id": "custom",
+            "label": "Admins define their own roles and permissions"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "single": 0.35,
+          "owner_staff": 0.5,
+          "custom": 0.15
+        },
+        "implies": {
+          "single": [],
+          "owner_staff": [],
+          "custom": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "single": [],
+          "owner_staff": [],
+          "custom": []
+        },
+        "sections": [
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "tenancy",
+        "topic": "one business or many",
+        "question": "Is this for one business, or will many separate businesses use it with their data kept apart?",
+        "options": [
+          {
+            "id": "single_org",
+            "label": "One business (ours)"
+          },
+          {
+            "id": "multi_org",
+            "label": "Many separate businesses, each seeing only its own data"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "single_org": 0.4,
+          "multi_org": 0.6
+        },
+        "implies": {
+          "single_org": [],
+          "multi_org": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "single_org": [],
+          "multi_org": []
+        },
+        "sections": [
+          "data_model",
+          "rules",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "tenancy"
+        ]
+      },
+      {
+        "id": "invite_flow",
+        "topic": "adding people",
+        "question": "How do additional people get access?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No additional people"
+          },
+          {
+            "id": "invite_by_admin",
+            "label": "An admin invites them"
+          },
+          {
+            "id": "self_signup",
+            "label": "Anyone can sign up themselves"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.2,
+          "invite_by_admin": 0.5,
+          "self_signup": 0.3
+        },
+        "implies": {
+          "none": [],
+          "invite_by_admin": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ],
+          "self_signup": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "invite_by_admin": [],
+          "self_signup": []
+        },
+        "sections": [
+          "journeys",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "identity_provider",
+        "topic": "signing in",
+        "question": "How do people sign in?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No sign-in"
+          },
+          {
+            "id": "email_password",
+            "label": "Email + password"
+          },
+          {
+            "id": "magic_link",
+            "label": "Email link, no password"
+          },
+          {
+            "id": "google_microsoft",
+            "label": "Google/Microsoft sign-in"
+          },
+          {
+            "id": "enterprise_sso",
+            "label": "Company single sign-on (SAML/OIDC)"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.05,
+          "email_password": 0.4,
+          "magic_link": 0.2,
+          "google_microsoft": 0.3,
+          "enterprise_sso": 0.05
+        },
+        "implies": {
+          "none": [],
+          "email_password": [],
+          "magic_link": [],
+          "google_microsoft": [],
+          "enterprise_sso": []
+        },
+        "excludes": {
+          "none": [],
+          "email_password": [],
+          "magic_link": [],
+          "google_microsoft": [],
+          "enterprise_sso": []
+        },
+        "sections": [
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "concurrency",
+        "topic": "simultaneous edits",
+        "question": "What happens when two people edit the same thing at once?",
+        "options": [
+          {
+            "id": "last_write_wins",
+            "label": "Rare; the last save wins"
+          },
+          {
+            "id": "guarded",
+            "label": "Common; the app must prevent or merge conflicting edits"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "last_write_wins": 0.75,
+          "guarded": 0.25
+        },
+        "implies": {
+          "last_write_wins": [],
+          "guarded": []
+        },
+        "excludes": {
+          "last_write_wins": [],
+          "guarded": []
+        },
+        "sections": [
+          "rules",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "audit_trail",
+        "topic": "history",
+        "question": "Do you need a record of who changed what and when?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "basic",
+            "label": "Just created/updated by whom and when"
+          },
+          {
+            "id": "full",
+            "label": "A full, viewable history of every change"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.3,
+          "basic": 0.5,
+          "full": 0.2
+        },
+        "implies": {
+          "none": [],
+          "basic": [],
+          "full": []
+        },
+        "excludes": {
+          "none": [],
+          "basic": [],
+          "full": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "notifications",
+        "topic": "reaching people",
+        "question": "How does the app reach people when something happens?",
+        "options": [
+          {
+            "id": "none",
+            "label": "It doesn't — people check the app"
+          },
+          {
+            "id": "email",
+            "label": "Email"
+          },
+          {
+            "id": "email_sms",
+            "label": "Email and SMS"
+          },
+          {
+            "id": "in_app",
+            "label": "Only inside the app (bell/inbox)"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.15,
+          "email": 0.55,
+          "email_sms": 0.1,
+          "in_app": 0.2
+        },
+        "implies": {
+          "none": [],
+          "email": [],
+          "email_sms": [],
+          "in_app": []
+        },
+        "excludes": {
+          "none": [],
+          "email": [],
+          "email_sms": [],
+          "in_app": []
+        },
+        "sections": [
+          "journeys",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "offline",
+        "topic": "connectivity",
+        "question": "Must it work without internet?",
+        "options": [
+          {
+            "id": "online_only",
+            "label": "Online only"
+          },
+          {
+            "id": "offline_tolerant",
+            "label": "Keeps working offline and syncs later"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "online_only": 0.85,
+          "offline_tolerant": 0.15
+        },
+        "implies": {
+          "online_only": [],
+          "offline_tolerant": []
+        },
+        "excludes": {
+          "online_only": [],
+          "offline_tolerant": []
+        },
+        "sections": [
+          "data_model",
+          "rules",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "platform",
+        "topic": "where it runs",
+        "question": "Where is it used?",
+        "options": [
+          {
+            "id": "web",
+            "label": "In a browser, on desktop and phone"
+          },
+          {
+            "id": "web_mobile_first",
+            "label": "In a browser, mostly on phones"
+          },
+          {
+            "id": "native_mobile",
+            "label": "As an installed phone app"
+          },
+          {
+            "id": "desktop_app",
+            "label": "As an installed desktop app"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "web": 0.6,
+          "web_mobile_first": 0.2,
+          "native_mobile": 0.12,
+          "desktop_app": 0.08
+        },
+        "implies": {
+          "web": [],
+          "web_mobile_first": [],
+          "native_mobile": [],
+          "desktop_app": []
+        },
+        "excludes": {
+          "web": [],
+          "web_mobile_first": [],
+          "native_mobile": [],
+          "desktop_app": []
+        },
+        "sections": [
+          "overview",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_import",
+        "topic": "starting data",
+        "question": "Do you start with existing data?",
+        "options": [
+          {
+            "id": "fresh_start",
+            "label": "Start empty"
+          },
+          {
+            "id": "import_spreadsheet",
+            "label": "Import from a spreadsheet/CSV once"
+          },
+          {
+            "id": "migrate_from_tool",
+            "label": "Migrate from another tool"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "fresh_start": 0.4,
+          "import_spreadsheet": 0.45,
+          "migrate_from_tool": 0.15
+        },
+        "implies": {
+          "fresh_start": [],
+          "import_spreadsheet": [],
+          "migrate_from_tool": []
+        },
+        "excludes": {
+          "fresh_start": [],
+          "import_spreadsheet": [],
+          "migrate_from_tool": []
+        },
+        "sections": [
+          "journeys",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_export",
+        "topic": "getting data out",
+        "question": "Do people need to get their data out?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "csv_export",
+            "label": "Download lists as CSV/Excel"
+          },
+          {
+            "id": "full_export_api",
+            "label": "Full export and/or an API"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.2,
+          "csv_export": 0.6,
+          "full_export_api": 0.2
+        },
+        "implies": {
+          "none": [],
+          "csv_export": [],
+          "full_export_api": []
+        },
+        "excludes": {
+          "none": [],
+          "csv_export": [],
+          "full_export_api": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "deletion",
+        "topic": "deleting",
+        "question": "When something is deleted, what really happens?",
+        "options": [
+          {
+            "id": "hard_delete",
+            "label": "It's gone"
+          },
+          {
+            "id": "soft_delete",
+            "label": "It's archived and can be restored"
+          },
+          {
+            "id": "never_delete",
+            "label": "Records are never deleted, only voided/cancelled"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "hard_delete": 0.2,
+          "soft_delete": 0.55,
+          "never_delete": 0.25
+        },
+        "implies": {
+          "hard_delete": [],
+          "soft_delete": [],
+          "never_delete": []
+        },
+        "excludes": {
+          "hard_delete": [],
+          "soft_delete": [],
+          "never_delete": []
+        },
+        "sections": [
+          "rules",
+          "state_machines",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_scale",
+        "topic": "volume",
+        "question": "How much data will there be?",
+        "options": [
+          {
+            "id": "small",
+            "label": "Hundreds of records"
+          },
+          {
+            "id": "medium",
+            "label": "Tens of thousands"
+          },
+          {
+            "id": "large",
+            "label": "Millions"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "small": 0.4,
+          "medium": 0.45,
+          "large": 0.15
+        },
+        "implies": {
+          "small": [],
+          "medium": [],
+          "large": []
+        },
+        "excludes": {
+          "small": [],
+          "medium": [],
+          "large": []
+        },
+        "sections": [
+          "overview",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "integrations",
+        "topic": "other tools",
+        "question": "Does it need to connect to other tools?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "a_few_key",
+            "label": "A few key ones (e.g., accounting, payments, calendar)"
+          },
+          {
+            "id": "many_via_api",
+            "label": "Many — it needs a public API / webhooks"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.3,
+          "a_few_key": 0.5,
+          "many_via_api": 0.2
+        },
+        "implies": {
+          "none": [],
+          "a_few_key": [],
+          "many_via_api": []
+        },
+        "excludes": {
+          "none": [],
+          "a_few_key": [],
+          "many_via_api": []
+        },
+        "sections": [
+          "overview",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "localization",
+        "topic": "languages & regions",
+        "question": "Languages and regions?",
+        "options": [
+          {
+            "id": "single_locale",
+            "label": "One language, one country"
+          },
+          {
+            "id": "multi_language",
+            "label": "Several languages"
+          },
+          {
+            "id": "multi_region",
+            "label": "Several countries (taxes, formats, currencies)"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "single_locale": 0.65,
+          "multi_language": 0.2,
+          "multi_region": 0.15
+        },
+        "implies": {
+          "single_locale": [],
+          "multi_language": [],
+          "multi_region": []
+        },
+        "excludes": {
+          "single_locale": [],
+          "multi_language": [],
+          "multi_region": []
+        },
+        "sections": [
+          "overview",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "attachments",
+        "topic": "files",
+        "question": "Can files/photos be attached to things?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "basic",
+            "label": "Yes — upload and download"
+          },
+          {
+            "id": "rich",
+            "label": "Yes — with previews, versions, and sharing"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.35,
+          "basic": 0.5,
+          "rich": 0.15
+        },
+        "implies": {
+          "none": [],
+          "basic": [],
+          "rich": []
+        },
+        "excludes": {
+          "none": [],
+          "basic": [],
+          "rich": []
+        },
+        "sections": [
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "approval_workflow",
+        "topic": "sign-off",
+        "question": "Do some actions need someone else's approval first?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "single_approver",
+            "label": "One approver"
+          },
+          {
+            "id": "multi_step",
+            "label": "Multi-step approval chains"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.55,
+          "single_approver": 0.3,
+          "multi_step": 0.15
+        },
+        "implies": {
+          "none": [],
+          "single_approver": [],
+          "multi_step": []
+        },
+        "excludes": {
+          "none": [],
+          "single_approver": [],
+          "multi_step": []
+        },
+        "sections": [
+          "state_machines",
+          "actors_permissions",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "recurring_scheduled",
+        "topic": "automation",
+        "question": "Must anything happen automatically on a schedule?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "reminders_only",
+            "label": "Only reminders/notifications"
+          },
+          {
+            "id": "recurring_records",
+            "label": "Records get created automatically (recurring invoices, appointments, reports)"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.35,
+          "reminders_only": 0.35,
+          "recurring_records": 0.3
+        },
+        "implies": {
+          "none": [],
+          "reminders_only": [],
+          "recurring_records": []
+        },
+        "excludes": {
+          "none": [],
+          "reminders_only": [],
+          "recurring_records": []
+        },
+        "sections": [
+          "journeys",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "compliance_sensitivity",
+        "topic": "sensitive data",
+        "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+        "options": [
+          {
+            "id": "ordinary",
+            "label": "Ordinary business data"
+          },
+          {
+            "id": "personal_sensitive",
+            "label": "Personal data needing consent/retention care (GDPR-like)"
+          },
+          {
+            "id": "regulated",
+            "label": "Regulated data (health, cards, finance)"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "ordinary": 0.6000000000000001,
+          "personal_sensitive": 0.30000000000000004,
+          "regulated": 0.10000000000000002
+        },
+        "implies": {
+          "ordinary": [],
+          "personal_sensitive": [],
+          "regulated": []
+        },
+        "excludes": {
+          "ordinary": [],
+          "personal_sensitive": [],
+          "regulated": []
+        },
+        "sections": [
+          "rules",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "retention",
+        "topic": "keeping data",
+        "question": "How long is data kept?",
+        "options": [
+          {
+            "id": "forever",
+            "label": "Until someone deletes it"
+          },
+          {
+            "id": "policy_based",
+            "label": "Auto-removed after a set period"
+          },
+          {
+            "id": "user_controlled",
+            "label": "Each business sets its own policy"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "forever": 0.6,
+          "policy_based": 0.25,
+          "user_controlled": 0.15
+        },
+        "implies": {
+          "forever": [],
+          "policy_based": [],
+          "user_controlled": []
+        },
+        "excludes": {
+          "forever": [],
+          "policy_based": [],
+          "user_controlled": []
+        },
+        "sections": [
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "customization",
+        "topic": "per-business customization",
+        "question": "Can each business customize the app?",
+        "options": [
+          {
+            "id": "fixed",
+            "label": "No — everyone gets the same thing"
+          },
+          {
+            "id": "branding_templates",
+            "label": "Branding and templates (logo, colors, wording)"
+          },
+          {
+            "id": "custom_fields",
+            "label": "Custom fields and workflows"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "fixed": 0.4,
+          "branding_templates": 0.4,
+          "custom_fields": 0.2
+        },
+        "implies": {
+          "fixed": [],
+          "branding_templates": [],
+          "custom_fields": []
+        },
+        "excludes": {
+          "fixed": [],
+          "branding_templates": [],
+          "custom_fields": []
+        },
+        "sections": [
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "reporting",
+        "topic": "overviews",
+        "question": "What do people need to see across many records?",
+        "options": [
+          {
+            "id": "lists_only",
+            "label": "Sortable, filterable lists"
+          },
+          {
+            "id": "basic_dashboard",
+            "label": "A dashboard with totals and counts"
+          },
+          {
+            "id": "custom_reports",
+            "label": "Custom reports people build themselves"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "lists_only": 0.25,
+          "basic_dashboard": 0.55,
+          "custom_reports": 0.2
+        },
+        "implies": {
+          "lists_only": [],
+          "basic_dashboard": [],
+          "custom_reports": []
+        },
+        "excludes": {
+          "lists_only": [],
+          "basic_dashboard": [],
+          "custom_reports": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "workspace_structure",
+        "topic": "how things are grouped",
+        "question": "Are records grouped into separate projects/workspaces, or is it one shared pool?",
+        "options": [
+          {
+            "id": "single_pool",
+            "label": "One shared pool — everything lives in one place with filters"
+          },
+          {
+            "id": "projects_with_members",
+            "label": "Separate projects/workspaces, each with its own members"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "single_pool": 0.55,
+          "projects_with_members": 0.45
+        },
+        "implies": {
+          "single_pool": [],
+          "projects_with_members": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "single_pool": [],
+          "projects_with_members": []
+        },
+        "sections": [
+          "data_model",
+          "actors_permissions",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "record_ownership",
+        "topic": "who sees what",
+        "question": "Who can see a record?",
+        "options": [
+          {
+            "id": "everyone_in_workspace",
+            "label": "Everyone in the team sees everything"
+          },
+          {
+            "id": "owner_plus_shared",
+            "label": "Records are private to their owner unless shared or assigned"
+          },
+          {
+            "id": "team_scoped",
+            "label": "Visible within the owner's team/department; admins see all"
+          }
+        ],
+        "consequence": 2.5,
+        "prior": {
+          "everyone_in_workspace": 0.55,
+          "owner_plus_shared": 0.3,
+          "team_scoped": 0.15
+        },
+        "implies": {
+          "everyone_in_workspace": [],
+          "owner_plus_shared": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ],
+          "team_scoped": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "everyone_in_workspace": [],
+          "owner_plus_shared": [],
+          "team_scoped": []
+        },
+        "sections": [
+          "actors_permissions",
+          "rules_invariants",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "record_edit_rights",
+        "topic": "who can do what",
+        "question": "Who can change a record?",
+        "options": [
+          {
+            "id": "anyone_who_sees",
+            "label": "Anyone who can see it can edit it"
+          },
+          {
+            "id": "owner_assignee_admin",
+            "label": "Only its owner/assignee and admins; others just view"
+          },
+          {
+            "id": "per_record_roles",
+            "label": "Set per record: view / comment / edit"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "anyone_who_sees": 0.5,
+          "owner_assignee_admin": 0.35,
+          "per_record_roles": 0.15
+        },
+        "implies": {
+          "anyone_who_sees": [],
+          "owner_assignee_admin": [],
+          "per_record_roles": []
+        },
+        "excludes": {
+          "anyone_who_sees": [],
+          "owner_assignee_admin": [],
+          "per_record_roles": []
+        },
+        "sections": [
+          "actors_permissions",
+          "rules_invariants"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "record_custom_fields",
+        "topic": "fields",
+        "question": "Are the fields on a record fixed, or can admins add their own?",
+        "options": [
+          {
+            "id": "fixed_fields",
+            "label": "Fixed — the same fields for everyone"
+          },
+          {
+            "id": "admin_custom_fields",
+            "label": "Admins add custom fields (text, number, date, dropdown) to each record type"
+          },
+          {
+            "id": "custom_record_types",
+            "label": "Admins define whole new record types with their own fields"
+          }
+        ],
+        "consequence": 2.5,
+        "prior": {
+          "fixed_fields": 0.45,
+          "admin_custom_fields": 0.4,
+          "custom_record_types": 0.15
+        },
+        "implies": {
+          "fixed_fields": [],
+          "admin_custom_fields": [
+            {
+              "node": "customization",
+              "option": "custom_fields"
+            }
+          ],
+          "custom_record_types": [
+            {
+              "node": "customization",
+              "option": "custom_fields"
+            }
+          ]
+        },
+        "excludes": {
+          "fixed_fields": [],
+          "admin_custom_fields": [],
+          "custom_record_types": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "record_relationships",
+        "topic": "links between records",
+        "question": "Are records linked to each other?",
+        "options": [
+          {
+            "id": "standalone",
+            "label": "No — each record stands alone"
+          },
+          {
+            "id": "linked_types",
+            "label": "Yes — records of different types reference each other (contact → company → deal)"
+          },
+          {
+            "id": "hierarchy",
+            "label": "Yes — including parent/child trees (projects → tasks → sub-tasks)"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "standalone": 0.25,
+          "linked_types": 0.5,
+          "hierarchy": 0.25
+        },
+        "implies": {
+          "standalone": [],
+          "linked_types": [],
+          "hierarchy": []
+        },
+        "excludes": {
+          "standalone": [],
+          "linked_types": [],
+          "hierarchy": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "record_automation",
+        "topic": "automation",
+        "question": "Should the app do things on its own when records change?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No — people do everything by hand"
+          },
+          {
+            "id": "simple_rules",
+            "label": "Simple rules: when X happens, notify/assign/change stage"
+          },
+          {
+            "id": "multi_step_workflows",
+            "label": "Multi-step workflows with conditions and delays"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.45,
+          "simple_rules": 0.4,
+          "multi_step_workflows": 0.15
+        },
+        "implies": {
+          "none": [],
+          "simple_rules": [],
+          "multi_step_workflows": []
+        },
+        "excludes": {
+          "none": [],
+          "simple_rules": [],
+          "multi_step_workflows": []
+        },
+        "sections": [
+          "rules_invariants",
+          "state_machines",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "record_duplicates",
+        "topic": "data quality",
+        "question": "Can two records be the same thing (same email, same serial number)?",
+        "options": [
+          {
+            "id": "allowed",
+            "label": "Allowed — nothing stops duplicates"
+          },
+          {
+            "id": "warn",
+            "label": "The app warns about likely duplicates and offers to merge"
+          },
+          {
+            "id": "unique_key_enforced",
+            "label": "A key field must be unique; duplicates are rejected"
+          }
+        ],
+        "consequence": 1.5,
+        "prior": {
+          "allowed": 0.35,
+          "warn": 0.4,
+          "unique_key_enforced": 0.25
+        },
+        "implies": {
+          "allowed": [],
+          "warn": [],
+          "unique_key_enforced": []
+        },
+        "excludes": {
+          "allowed": [],
+          "warn": [],
+          "unique_key_enforced": []
+        },
+        "sections": [
+          "rules_invariants",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "record_search",
+        "topic": "finding things",
+        "question": "How do people find a record?",
+        "options": [
+          {
+            "id": "filters_in_lists",
+            "label": "Filter and sort within each list"
+          },
+          {
+            "id": "global_search",
+            "label": "One search box across all record types"
+          },
+          {
+            "id": "full_text_everything",
+            "label": "Search that also looks inside comments and attachments"
+          }
+        ],
+        "consequence": 1.5,
+        "prior": {
+          "filters_in_lists": 0.3,
+          "global_search": 0.5,
+          "full_text_everything": 0.2
+        },
+        "implies": {
+          "filters_in_lists": [],
+          "global_search": [],
+          "full_text_everything": []
+        },
+        "excludes": {
+          "filters_in_lists": [],
+          "global_search": [],
+          "full_text_everything": []
+        },
+        "sections": [
+          "journeys",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "record_bulk_edit",
+        "topic": "bulk actions",
+        "question": "Can people change many records at once?",
+        "options": [
+          {
+            "id": "one_at_a_time",
+            "label": "No — one record at a time"
+          },
+          {
+            "id": "bulk_actions",
+            "label": "Yes — select many and assign/move/tag/delete together"
+          }
+        ],
+        "consequence": 1,
+        "prior": {
+          "one_at_a_time": 0.4,
+          "bulk_actions": 0.6
+        },
+        "implies": {
+          "one_at_a_time": [],
+          "bulk_actions": []
+        },
+        "excludes": {
+          "one_at_a_time": [],
+          "bulk_actions": []
+        },
+        "sections": [
+          "journeys",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "crud-saas",
+        "requires": [],
+        "tags": [
+          "record_workflow"
+        ]
+      },
+      {
+        "id": "x1",
+        "topic": "deletion-with-dependents",
+        "question": "What happens when a Bookkeeper deletes/renames an Account that already has Transactions and Budgets attached?",
+        "options": [
+          {
+            "id": "block",
+            "label": "Block deletion while any transaction/budget references it"
+          },
+          {
+            "id": "reassign",
+            "label": "Force reassigning transactions to another account first"
+          },
+          {
+            "id": "soft_void",
+            "label": "Soft-archive the account but keep historical postings intact"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "block": 0.3333333333333333,
+          "reassign": 0.3333333333333333,
+          "soft_void": 0.3333333333333333
+        },
+        "implies": {
+          "block": [],
+          "reassign": [],
+          "soft_void": []
+        },
+        "excludes": {
+          "block": [],
+          "reassign": [],
+          "soft_void": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x2",
+        "topic": "duplicate-submission / idempotency",
+        "question": "If the same Import File (or a re-upload of the same month) is submitted twice, what happens?",
+        "options": [
+          {
+            "id": "detect_reject",
+            "label": "Detect by name/hash/period and reject the duplicate"
+          },
+          {
+            "id": "supersede",
+            "label": "Replace the prior import for that period"
+          },
+          {
+            "id": "append",
+            "label": "Append rows, allowing duplicates"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "detect_reject": 0.3333333333333333,
+          "supersede": 0.3333333333333333,
+          "append": 0.3333333333333333
+        },
+        "implies": {
+          "detect_reject": [],
+          "supersede": [],
+          "append": []
+        },
+        "excludes": {
+          "detect_reject": [],
+          "supersede": [],
+          "append": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x3",
+        "topic": "zero-negative-rounding",
+        "question": "How are negative amounts, refunds/credits, and rounding handled so reports stay balanced?",
+        "options": [
+          {
+            "id": "signed_cents",
+            "label": "Store signed integer cents; allow negatives; no rounding"
+          },
+          {
+            "id": "round_display",
+            "label": "Round only for display, keep full precision internally"
+          },
+          {
+            "id": "reject_negative",
+            "label": "Reject negative/zero amounts entirely"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "signed_cents": 0.3333333333333333,
+          "round_display": 0.3333333333333333,
+          "reject_negative": 0.3333333333333333
+        },
+        "implies": {
+          "signed_cents": [],
+          "round_display": [],
+          "reject_negative": []
+        },
+        "excludes": {
+          "signed_cents": [],
+          "round_display": [],
+          "reject_negative": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x4",
+        "topic": "time-boundaries",
+        "question": "How is the Period a Transaction belongs to determined (e.g. a Mar 31 late-night entry, or a backdated invoice)?",
+        "options": [
+          {
+            "id": "txn_date",
+            "label": "By the transaction's own date field, fixed org timezone"
+          },
+          {
+            "id": "import_period",
+            "label": "By the period declared on the import file"
+          },
+          {
+            "id": "manual_assign",
+            "label": "Bookkeeper assigns the period explicitly"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "txn_date": 0.3333333333333333,
+          "import_period": 0.3333333333333333,
+          "manual_assign": 0.3333333333333333
+        },
+        "implies": {
+          "txn_date": [],
+          "import_period": [],
+          "manual_assign": []
+        },
+        "excludes": {
+          "txn_date": [],
+          "import_period": [],
+          "manual_assign": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x5",
+        "topic": "partial-failure",
+        "question": "If an Import File passes some rows but fails reconciliation or has bad rows, what state is saved?",
+        "options": [
+          {
+            "id": "all_or_nothing",
+            "label": "Reject the whole file until it fully reconciles"
+          },
+          {
+            "id": "staging",
+            "label": "Load into staging; nothing hits reports until Finance Manager accepts"
+          },
+          {
+            "id": "partial_commit",
+            "label": "Commit good rows, flag the bad ones"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "all_or_nothing": 0.3333333333333333,
+          "staging": 0.3333333333333333,
+          "partial_commit": 0.3333333333333333
+        },
+        "implies": {
+          "all_or_nothing": [],
+          "staging": [],
+          "partial_commit": []
+        },
+        "excludes": {
+          "all_or_nothing": [],
+          "staging": [],
+          "partial_commit": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x6",
+        "topic": "lifecycle-backwards",
+        "question": "Can a closed Period be reopened or an approved Monthly Report be un-approved?",
+        "options": [
+          {
+            "id": "forbidden",
+            "label": "No — closed/approved is final"
+          },
+          {
+            "id": "manager_reopen_audited",
+            "label": "Finance Manager may reopen, logged in the audit trail"
+          },
+          {
+            "id": "versioned",
+            "label": "Reopening creates a new versioned revision of the period/report"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "forbidden": 0.3333333333333333,
+          "manager_reopen_audited": 0.3333333333333333,
+          "versioned": 0.3333333333333333
+        },
+        "implies": {
+          "forbidden": [],
+          "manager_reopen_audited": [],
+          "versioned": []
+        },
+        "excludes": {
+          "forbidden": [],
+          "manager_reopen_audited": [],
+          "versioned": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x7",
+        "topic": "permission-escalation",
+        "question": "How is cross-department or delegated access handled (e.g. a Department Head covering another, or Owner drilling into raw transactions)?",
+        "options": [
+          {
+            "id": "strict",
+            "label": "Strict — each head sees only their own department, no delegation"
+          },
+          {
+            "id": "manager_grant",
+            "label": "Finance Manager can grant temporary cross-department view"
+          },
+          {
+            "id": "owner_full",
+            "label": "Owner sees all details; heads strictly scoped"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "strict": 0.3333333333333333,
+          "manager_grant": 0.3333333333333333,
+          "owner_full": 0.3333333333333333
+        },
+        "implies": {
+          "strict": [],
+          "manager_grant": [],
+          "owner_full": []
+        },
+        "excludes": {
+          "strict": [],
+          "manager_grant": [],
+          "owner_full": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x8",
+        "topic": "data-reconciliation",
+        "question": "When a new import updates figures that were also manually entered (a2) for the same accounts/period, which wins?",
+        "options": [
+          {
+            "id": "import_authoritative",
+            "label": "Import is authoritative and overwrites manual entries"
+          },
+          {
+            "id": "manual_protected",
+            "label": "Manual entries are preserved; import only adds new rows"
+          },
+          {
+            "id": "flag_conflict",
+            "label": "Conflicts are flagged for Finance Manager review"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "import_authoritative": 0.3333333333333333,
+          "manual_protected": 0.3333333333333333,
+          "flag_conflict": 0.3333333333333333
+        },
+        "implies": {
+          "import_authoritative": [],
+          "manual_protected": [],
+          "flag_conflict": []
+        },
+        "excludes": {
+          "import_authoritative": [],
+          "manual_protected": [],
+          "flag_conflict": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      }
+    ],
+    "worlds": [
+      {
+        "id": "w0_0_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "record_ownership": "team_scoped",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "never_delete",
+          "data_scale": "small",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "recurring_scheduled": "reminders_only",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "simple_rules",
+          "record_duplicates": "warn",
+          "record_search": "filters_in_lists",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "soft_void",
+          "x2": "supersede",
+          "x3": "signed_cents",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x6": "manager_reopen_audited",
+          "x7": "owner_full",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.13622754491017963,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "record_ownership": "team_scoped",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "recurring_scheduled": "reminders_only",
+          "compliance_sensitivity": "regulated",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "none",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "filters_in_lists",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "soft_void",
+          "x2": "detect_reject",
+          "x3": "signed_cents",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x6": "manager_reopen_audited",
+          "x7": "owner_full",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.18862275449101798,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "record_ownership": "team_scoped",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "integrations": "a_few_key",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "recurring_scheduled": "reminders_only",
+          "compliance_sensitivity": "regulated",
+          "retention": "policy_based",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_relationships": "linked_types",
+          "record_automation": "simple_rules",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "global_search",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "block",
+          "x2": "detect_reject",
+          "x3": "signed_cents",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x6": "manager_reopen_audited",
+          "x7": "owner_full",
+          "x8": "flag_conflict",
+          "record_custom_fields": "fixed_fields"
+        },
+        "weight": 0.1751497005988024,
+        "origin": "sampled"
+      },
+      {
+        "id": "w1_0_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "none",
+          "record_duplicates": "warn",
+          "record_search": "filters_in_lists",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "soft_void",
+          "x2": "detect_reject",
+          "x3": "round_display",
+          "x4": "txn_date",
+          "x5": "all_or_nothing",
+          "x7": "owner_full",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.05357142857142858,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_0_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "none",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "lists_only",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "none",
+          "record_duplicates": "warn",
+          "record_search": "filters_in_lists",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "block",
+          "x2": "supersede",
+          "x3": "round_display",
+          "x4": "import_period",
+          "x5": "all_or_nothing",
+          "x7": "strict",
+          "x8": "manual_protected"
+        },
+        "weight": 0.04761904761904763,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_0_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "last_write_wins",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "none",
+          "record_duplicates": "warn",
+          "record_search": "global_search",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "soft_void",
+          "x2": "detect_reject",
+          "x3": "signed_cents",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x7": "owner_full",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.03571428571428572,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_0_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "magic_link",
+          "concurrency": "last_write_wins",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "simple_rules",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "filters_in_lists",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "block",
+          "x2": "detect_reject",
+          "x3": "round_display",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x7": "strict",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.029761904761904764,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_1_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "regulated",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "none",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "filters_in_lists",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "soft_void",
+          "x2": "detect_reject",
+          "x3": "signed_cents",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x7": "owner_full",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.05128205128205129,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_1_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "none",
+          "record_duplicates": "warn",
+          "record_search": "global_search",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "reassign",
+          "x2": "supersede",
+          "x3": "round_display",
+          "x4": "import_period",
+          "x5": "partial_commit",
+          "x7": "strict",
+          "x8": "import_authoritative"
+        },
+        "weight": 0.04487179487179487,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_1_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "integrations": "none",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "standalone",
+          "record_automation": "none",
+          "record_duplicates": "warn",
+          "record_search": "filters_in_lists",
+          "record_bulk_edit": "one_at_a_time",
+          "x1": "block",
+          "x2": "detect_reject",
+          "x3": "round_display",
+          "x4": "txn_date",
+          "x5": "all_or_nothing",
+          "x7": "owner_full",
+          "x8": "manual_protected"
+        },
+        "weight": 0.038461538461538464,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_1_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "never_delete",
+          "data_scale": "medium",
+          "integrations": "a_few_key",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "regulated",
+          "retention": "user_controlled",
+          "customization": "branding_templates",
+          "reporting": "custom_reports",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_relationships": "linked_types",
+          "record_automation": "simple_rules",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "global_search",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "soft_void",
+          "x2": "supersede",
+          "x3": "signed_cents",
+          "x4": "manual_assign",
+          "x5": "staging",
+          "x7": "manager_grant",
+          "x8": "flag_conflict",
+          "record_custom_fields": "fixed_fields"
+        },
+        "weight": 0.032051282051282055,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_2_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "integrations": "a_few_key",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "regulated",
+          "retention": "policy_based",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "simple_rules",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "global_search",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "soft_void",
+          "x2": "supersede",
+          "x3": "signed_cents",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x7": "owner_full",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.06060606060606062,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_2_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "full_export_api",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "integrations": "a_few_key",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "custom_reports",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_relationships": "linked_types",
+          "record_automation": "simple_rules",
+          "record_duplicates": "warn",
+          "record_search": "global_search",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "soft_void",
+          "x2": "supersede",
+          "x3": "round_display",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x7": "owner_full",
+          "x8": "flag_conflict",
+          "record_custom_fields": "fixed_fields"
+        },
+        "weight": 0.045454545454545456,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_2_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "csv_export",
+          "deletion": "never_delete",
+          "data_scale": "medium",
+          "integrations": "a_few_key",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "basic_dashboard",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "fixed_fields",
+          "record_relationships": "linked_types",
+          "record_automation": "multi_step_workflows",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "full_text_everything",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "reassign",
+          "x2": "detect_reject",
+          "x3": "signed_cents",
+          "x4": "manual_assign",
+          "x5": "partial_commit",
+          "x7": "manager_grant",
+          "x8": "import_authoritative"
+        },
+        "weight": 0.03787878787878788,
+        "origin": "resampled"
+      },
+      {
+        "id": "w1_2_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "tenancy": "single_org",
+          "data_import": "import_spreadsheet",
+          "approval_workflow": "single_approver",
+          "recurring_scheduled": "reminders_only",
+          "record_ownership": "team_scoped",
+          "x6": "manager_reopen_audited",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "enterprise_sso",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "notifications": "email",
+          "offline": "online_only",
+          "platform": "web",
+          "data_export": "full_export_api",
+          "deletion": "never_delete",
+          "data_scale": "large",
+          "integrations": "many_via_api",
+          "localization": "multi_region",
+          "attachments": "rich",
+          "compliance_sensitivity": "regulated",
+          "retention": "policy_based",
+          "customization": "custom_fields",
+          "reporting": "custom_reports",
+          "workspace_structure": "single_pool",
+          "record_edit_rights": "owner_assignee_admin",
+          "record_custom_fields": "admin_custom_fields",
+          "record_relationships": "hierarchy",
+          "record_automation": "multi_step_workflows",
+          "record_duplicates": "unique_key_enforced",
+          "record_search": "full_text_everything",
+          "record_bulk_edit": "bulk_actions",
+          "x1": "soft_void",
+          "x2": "supersede",
+          "x3": "signed_cents",
+          "x4": "txn_date",
+          "x5": "staging",
+          "x7": "manager_grant",
+          "x8": "flag_conflict"
+        },
+        "weight": 0.022727272727272728,
+        "origin": "resampled"
+      }
+    ],
+    "alpha": 0.08
+  },
+  "cards": [
+    {
+      "id": "beb2540f-d952-46b6-a2fb-25e3d4987f61",
+      "node_id": "x6",
+      "context": "Sometimes a month you already finalized turns out to need a correction",
+      "options": [
+        {
+          "option_id": "manager_reopen_audited",
+          "label": "Finance Manager may reopen, logged in the audit trail",
+          "scenario": "Your finance manager can reopen a finalized month and fix the numbers directly, and every reopening is stamped with who did it and when."
+        },
+        {
+          "option_id": "forbidden",
+          "label": "No — closed/approved is final",
+          "scenario": "Once a month is finalized, it stays locked for good; any correction has to be recorded in a later, still-open month instead."
+        },
+        {
+          "option_id": "versioned",
+          "label": "Reopening creates a new versioned revision of the period/report",
+          "scenario": "Reopening a finalized month leaves the original untouched and starts a fresh revision, so you keep both the old and corrected figures side by side."
+        }
+      ],
+      "also_sets": [
+        "Your books run in one language for one country"
+      ],
+      "created_at": "2026-08-26T09:15:22.688Z",
+      "model": "claude-opus-4-8",
+      "latency_ms": 6934,
+      "phrasing_arm": "base"
+    },
+    {
+      "id": "cce776e6-4a3e-4de8-9aee-b831dd6604ec",
+      "node_id": "recurring_scheduled",
+      "context": "It's the first Monday of the month and last month's figures still need to be pulled together and reviewed",
+      "options": [
+        {
+          "option_id": "reminders_only",
+          "label": "Only reminders/notifications",
+          "scenario": "On set days, you and your team get a friendly nudge that a month needs closing or a report needs approving, but nothing is filled in for you."
+        },
+        {
+          "option_id": "recurring_records",
+          "label": "Records get created automatically (recurring invoices, appointments, reports)",
+          "scenario": "Each month a fresh monthly summary appears on its own, ready and waiting for your team to check and approve, without anyone starting it by hand."
+        },
+        {
+          "option_id": "none",
+          "label": "No",
+          "scenario": "Nothing happens on its own; your team pulls together, closes, and approves each month's numbers whenever they sit down to do it."
+        }
+      ],
+      "also_sets": [],
+      "created_at": "2026-08-26T09:15:30.191Z",
+      "model": "claude-opus-4-8",
+      "latency_ms": 7464,
+      "phrasing_arm": "moment"
+    }
+  ],
+  "answers": [
+    {
+      "card_id": "beb2540f-d952-46b6-a2fb-25e3d4987f61",
+      "node_id": "x6",
+      "kind": "option",
+      "at": "2026-08-26T09:15:22.717Z",
+      "option_id": "manager_reopen_audited"
+    },
+    {
+      "card_id": "cce776e6-4a3e-4de8-9aee-b831dd6604ec",
+      "node_id": "recurring_scheduled",
+      "kind": "option",
+      "at": "2026-08-26T09:15:30.216Z",
+      "option_id": "reminders_only"
+    }
+  ],
+  "precomputed": {
+    "record_custom_fields": {
+      "id": "41d1bf35-a269-410a-8619-3b3b7d39490a",
+      "node_id": "record_custom_fields",
+      "context": "It's month-end and your bookkeeper asks whether she can track one extra detail on each expense, like a project code.",
+      "options": [
+        {
+          "option_id": "admin_custom_fields",
+          "label": "Admins add custom fields (text, number, date, dropdown) to each record type",
+          "scenario": "Your staff add their own extra boxes to any record, like a project code or approval date, choosing text, numbers, dates, or a pick-list, whenever a new need comes up."
+        },
+        {
+          "option_id": "custom_record_types",
+          "label": "Admins define whole new record types with their own fields",
+          "scenario": "Your staff build entirely new kinds of records from scratch, each with its own set of fields, so you can track things the original setup never imagined."
+        },
+        {
+          "option_id": "fixed_fields",
+          "label": "Fixed — the same fields for everyone",
+          "scenario": "Everyone works with the same set fields on every record, so your figures stay tidy and consistent, but adding a new detail means asking us to change it."
+        }
+      ],
+      "also_sets": [
+        "Whether each part of the business can shape its own records",
+        "That everything runs in one language for one country"
+      ],
+      "created_at": "2026-08-26T09:15:29.107Z",
+      "model": "claude-opus-4-8",
+      "latency_ms": 6392,
+      "phrasing_arm": "moment",
+      "precomputed": true
+    },
+    "x5": {
+      "id": "2ba1149f-adcc-4530-be43-2eb0c26d5e9a",
+      "node_id": "x5",
+      "context": "It's the first of the month and your bookkeeper just uploaded the Excel file, but a few rows don't match the totals",
+      "options": [
+        {
+          "option_id": "partial_commit",
+          "label": "Commit good rows, flag the bad ones",
+          "scenario": "The clean rows post right away and show up in your numbers, while the mismatched rows sit flagged for someone to fix later."
+        },
+        {
+          "option_id": "staging",
+          "label": "Load into staging; nothing hits reports until Finance Manager accepts",
+          "scenario": "Nothing shows in your reports yet; the whole upload waits in a holding area until your Finance Manager reviews and accepts it."
+        },
+        {
+          "option_id": "all_or_nothing",
+          "label": "Reject the whole file until it fully reconciles",
+          "scenario": "The entire file is turned away until every row matches the totals, so your reports only ever move once everything balances."
+        }
+      ],
+      "also_sets": [
+        "Whether half-finished numbers can appear in your reports",
+        "How much your Finance Manager reviews before figures go live",
+        "Where a rejected file sends your bookkeeper back to the spreadsheet"
+      ],
+      "created_at": "2026-08-26T09:15:37.327Z",
+      "model": "claude-opus-4-8",
+      "latency_ms": 7112,
+      "phrasing_arm": "moment",
+      "precomputed": true
+    }
+  },
+  "consequence_override": {},
+  "history": [
+    {
+      "card_id": "beb2540f-d952-46b6-a2fb-25e3d4987f61",
+      "worlds": [
+        {
+          "id": "w0_0_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "none",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "soft_void",
+            "x2": "detect_reject",
+            "x3": "round_display",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.1111111111111111,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "none",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "lists_only",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "strict",
+            "x8": "manual_protected"
+          },
+          "weight": 0.08641975308641975,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "never_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.07407407407407407,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "magic_link",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "none",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "none",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "standalone",
+            "record_automation": "none",
+            "record_duplicates": "allowed",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "round_display",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "owner_full",
+            "x8": "import_authoritative"
+          },
+          "weight": 0.06172839506172839,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "regulated",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "soft_void",
+            "x2": "detect_reject",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.10256410256410256,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "reassign",
+            "x2": "supersede",
+            "x3": "round_display",
+            "x4": "import_period",
+            "x5": "partial_commit",
+            "x6": "manager_reopen_audited",
+            "x7": "strict",
+            "x8": "import_authoritative"
+          },
+          "weight": 0.08974358974358973,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "round_display",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.07692307692307693,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "full_export_api",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "regulated",
+            "retention": "policy_based",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "admin_custom_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "manual_assign",
+            "x5": "staging",
+            "x6": "versioned",
+            "x7": "manager_grant",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.0641025641025641,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "regulated",
+            "retention": "policy_based",
+            "customization": "branding_templates",
+            "reporting": "custom_reports",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict",
+            "record_custom_fields": "fixed_fields"
+          },
+          "weight": 0.1111111111111111,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "enterprise_sso",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email_sms",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "full_export_api",
+            "deletion": "never_delete",
+            "data_scale": "large",
+            "integrations": "many_via_api",
+            "localization": "multi_region",
+            "attachments": "rich",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "regulated",
+            "retention": "user_controlled",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "custom_record_types",
+            "record_relationships": "hierarchy",
+            "record_automation": "multi_step_workflows",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "full_text_everything",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "reassign",
+            "x2": "supersede",
+            "x3": "round_display",
+            "x4": "manual_assign",
+            "x5": "staging",
+            "x6": "versioned",
+            "x7": "manager_grant",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.07936507936507936,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "regulated",
+            "retention": "policy_based",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict",
+            "record_custom_fields": "fixed_fields"
+          },
+          "weight": 0.09523809523809523,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "full_export_api",
+            "deletion": "never_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "multi_language",
+            "attachments": "basic",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "user_controlled",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "workspace_structure": "projects_with_members",
+            "record_edit_rights": "per_record_roles",
+            "record_custom_fields": "admin_custom_fields",
+            "record_relationships": "hierarchy",
+            "record_automation": "simple_rules",
+            "record_duplicates": "warn",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "manual_assign",
+            "x5": "staging",
+            "x6": "versioned",
+            "x7": "manager_grant",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.047619047619047616,
+          "origin": "sampled"
+        }
+      ],
+      "consequence_override": {},
+      "sheet_version": 3
+    },
+    {
+      "card_id": "cce776e6-4a3e-4de8-9aee-b831dd6604ec",
+      "worlds": [
+        {
+          "id": "w0_0_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "none",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "soft_void",
+            "x2": "detect_reject",
+            "x3": "round_display",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.011131271533709814,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "none",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "lists_only",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "strict",
+            "x8": "manual_protected"
+          },
+          "weight": 0.008657655637329854,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "never_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.1484169537827975,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "magic_link",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "none",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "none",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "standalone",
+            "record_automation": "none",
+            "record_duplicates": "allowed",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "round_display",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "owner_full",
+            "x8": "import_authoritative"
+          },
+          "weight": 0.006184039740949897,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "regulated",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "soft_void",
+            "x2": "detect_reject",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.20550039754541194,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "reassign",
+            "x2": "supersede",
+            "x3": "round_display",
+            "x4": "import_period",
+            "x5": "partial_commit",
+            "x6": "manager_reopen_audited",
+            "x7": "strict",
+            "x8": "import_authoritative"
+          },
+          "weight": 0.17981284785223545,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "integrations": "none",
+            "localization": "single_locale",
+            "attachments": "none",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "fixed_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "none",
+            "record_duplicates": "warn",
+            "record_search": "filters_in_lists",
+            "record_bulk_edit": "one_at_a_time",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "round_display",
+            "x4": "txn_date",
+            "x5": "all_or_nothing",
+            "x6": "forbidden",
+            "x7": "owner_full",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.007706264907952949,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "full_export_api",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "regulated",
+            "retention": "policy_based",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "admin_custom_fields",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "manual_assign",
+            "x5": "staging",
+            "x6": "versioned",
+            "x7": "manager_grant",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.006421887423294123,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "regulated",
+            "retention": "policy_based",
+            "customization": "branding_templates",
+            "reporting": "custom_reports",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict",
+            "record_custom_fields": "fixed_fields"
+          },
+          "weight": 0.22262543067419627,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "enterprise_sso",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email_sms",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "full_export_api",
+            "deletion": "never_delete",
+            "data_scale": "large",
+            "integrations": "many_via_api",
+            "localization": "multi_region",
+            "attachments": "rich",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "regulated",
+            "retention": "user_controlled",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_custom_fields": "custom_record_types",
+            "record_relationships": "hierarchy",
+            "record_automation": "multi_step_workflows",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "full_text_everything",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "reassign",
+            "x2": "supersede",
+            "x3": "round_display",
+            "x4": "manual_assign",
+            "x5": "staging",
+            "x6": "versioned",
+            "x7": "manager_grant",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.007950908238364153,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "recurring_scheduled": "reminders_only",
+            "compliance_sensitivity": "regulated",
+            "retention": "policy_based",
+            "customization": "fixed",
+            "reporting": "basic_dashboard",
+            "workspace_structure": "single_pool",
+            "record_edit_rights": "owner_assignee_admin",
+            "record_relationships": "linked_types",
+            "record_automation": "simple_rules",
+            "record_duplicates": "unique_key_enforced",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "block",
+            "x2": "detect_reject",
+            "x3": "signed_cents",
+            "x4": "txn_date",
+            "x5": "staging",
+            "x6": "manager_reopen_audited",
+            "x7": "owner_full",
+            "x8": "flag_conflict",
+            "record_custom_fields": "fixed_fields"
+          },
+          "weight": 0.19082179772073965,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "tenancy": "single_org",
+            "data_import": "import_spreadsheet",
+            "approval_workflow": "single_approver",
+            "record_ownership": "team_scoped",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "notifications": "email",
+            "offline": "online_only",
+            "platform": "web",
+            "data_export": "full_export_api",
+            "deletion": "never_delete",
+            "data_scale": "medium",
+            "integrations": "a_few_key",
+            "localization": "multi_language",
+            "attachments": "basic",
+            "recurring_scheduled": "recurring_records",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "user_controlled",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "workspace_structure": "projects_with_members",
+            "record_edit_rights": "per_record_roles",
+            "record_custom_fields": "admin_custom_fields",
+            "record_relationships": "hierarchy",
+            "record_automation": "simple_rules",
+            "record_duplicates": "warn",
+            "record_search": "global_search",
+            "record_bulk_edit": "bulk_actions",
+            "x1": "soft_void",
+            "x2": "supersede",
+            "x3": "signed_cents",
+            "x4": "manual_assign",
+            "x5": "staging",
+            "x6": "versioned",
+            "x7": "manager_grant",
+            "x8": "flag_conflict"
+          },
+          "weight": 0.004770544943018492,
+          "origin": "sampled"
+        }
+      ],
+      "consequence_override": {},
+      "sheet_version": 5
+    }
+  ],
+  "resample_count": 2,
+  "versions": {
+    "catalog": "b2b-invoicing@2026.08.24-1+booking@2026.08.23-1+core@2026.08.22-1+crud-saas@2026.08.25-1+e-commerce@2026.08.23-1+marketplace@2026.08.23-1",
+    "prompts": "2026.08.25-2",
+    "models": {
+      "strong": "claude-opus-4-8",
+      "fast": "claude-opus-4-8"
+    }
+  },
+  "created_at": "2026-08-26T09:14:46.286Z",
+  "updated_at": "2026-08-26T09:15:59.915Z",
+  "last_stop_reason": "converged"
+}

@@ -1,0 +1,1573 @@
+{
+  "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+  "version": 6,
+  "one_liner": "booking system for my hair salon so clients can book online instead of calling",
+  "name": "",
+  "archetypes": [
+    "booking"
+  ],
+  "actors": [
+    {
+      "id": "p1",
+      "name": "Client",
+      "description": "A customer who books hair services online.",
+      "source": "draft"
+    },
+    {
+      "id": "p2",
+      "name": "Stylist",
+      "description": "A hairdresser who provides services and has their own schedule.",
+      "source": "draft"
+    },
+    {
+      "id": "p3",
+      "name": "Salon Manager",
+      "description": "Runs the salon, manages stylists, services, and hours.",
+      "source": "draft"
+    },
+    {
+      "id": "p4",
+      "name": "Receptionist",
+      "description": "Staff who handles walk-ins and adjusts bookings on behalf of clients.",
+      "source": "draft"
+    }
+  ],
+  "nouns": [
+    {
+      "id": "n1",
+      "name": "Appointment",
+      "description": "A booked time slot for a client with a stylist for a service.",
+      "fields_hint": [
+        "client name",
+        "stylist",
+        "service",
+        "date & time",
+        "status"
+      ],
+      "example": "Sarah Lee with Maria, Cut & Blow-dry, Mar 12 at 2:00pm, confirmed",
+      "source": "draft"
+    },
+    {
+      "id": "n2",
+      "name": "Service",
+      "description": "A treatment the salon offers with a duration and price.",
+      "fields_hint": [
+        "name",
+        "duration",
+        "price",
+        "category"
+      ],
+      "example": "Cut & Blow-dry, 45 min, $55",
+      "source": "draft"
+    },
+    {
+      "id": "n3",
+      "name": "Stylist Profile",
+      "description": "A hairdresser's details and which services they offer.",
+      "fields_hint": [
+        "name",
+        "services offered",
+        "working days",
+        "bio"
+      ],
+      "example": "Maria, offers cuts & colour, works Tue–Sat",
+      "source": "draft"
+    },
+    {
+      "id": "n4",
+      "name": "Working Hours",
+      "description": "When the salon and each stylist are available.",
+      "fields_hint": [
+        "stylist",
+        "day of week",
+        "start time",
+        "end time"
+      ],
+      "example": "Maria, Tuesday, 9:00am–6:00pm",
+      "source": "draft"
+    },
+    {
+      "id": "n5",
+      "name": "Client Record",
+      "description": "Contact details and history for a returning client.",
+      "fields_hint": [
+        "name",
+        "phone",
+        "email",
+        "past appointments"
+      ],
+      "example": "Sarah Lee, 555-0192, sarah@email.com, 4 visits",
+      "source": "draft"
+    },
+    {
+      "id": "n6",
+      "name": "Time Off",
+      "description": "A block where a stylist is unavailable.",
+      "fields_hint": [
+        "stylist",
+        "start date",
+        "end date",
+        "reason"
+      ],
+      "example": "Maria off Mar 20–24, holiday",
+      "source": "draft"
+    },
+    {
+      "id": "n7",
+      "name": "Cancellation",
+      "description": "A record of an appointment being cancelled.",
+      "fields_hint": [
+        "appointment",
+        "cancelled by",
+        "reason",
+        "time cancelled"
+      ],
+      "example": "Sarah's Mar 12 appointment cancelled by client, Mar 10",
+      "source": "draft"
+    },
+    {
+      "id": "n8",
+      "name": "Reminder",
+      "description": "A message sent to a client before their appointment.",
+      "fields_hint": [
+        "appointment",
+        "send time",
+        "channel",
+        "status"
+      ],
+      "example": "Text to Sarah, sent Mar 11 6:00pm, delivered",
+      "source": "draft"
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "actor": "p1",
+      "verb": "books",
+      "object": "n1",
+      "example": "Sarah books Cut & Blow-dry with Maria for Mar 12 at 2:00pm",
+      "source": "draft"
+    },
+    {
+      "id": "a2",
+      "actor": "p1",
+      "verb": "cancels",
+      "object": "n1",
+      "example": "Sarah cancels her Mar 12 appointment",
+      "source": "draft"
+    },
+    {
+      "id": "a3",
+      "actor": "p1",
+      "verb": "reschedules",
+      "object": "n1",
+      "example": "Sarah moves her appointment to Mar 14 at 3:00pm",
+      "source": "draft"
+    },
+    {
+      "id": "a4",
+      "actor": "p1",
+      "verb": "updates",
+      "object": "n5",
+      "example": "Sarah updates her phone number",
+      "source": "draft"
+    },
+    {
+      "id": "a5",
+      "actor": "p4",
+      "verb": "books",
+      "object": "n1",
+      "example": "Receptionist books a walk-in for Tom with Maria",
+      "source": "draft"
+    },
+    {
+      "id": "a6",
+      "actor": "p4",
+      "verb": "cancels",
+      "object": "n1",
+      "example": "Receptionist cancels a no-show appointment",
+      "source": "draft"
+    },
+    {
+      "id": "a7",
+      "actor": "p2",
+      "verb": "sets",
+      "object": "n6",
+      "example": "Maria blocks Mar 20–24 for holiday",
+      "source": "draft"
+    },
+    {
+      "id": "a8",
+      "actor": "p2",
+      "verb": "views",
+      "object": "n1",
+      "example": "Maria checks her bookings for the day",
+      "source": "draft"
+    },
+    {
+      "id": "a9",
+      "actor": "p3",
+      "verb": "adds",
+      "object": "n2",
+      "example": "Manager adds Balayage, 2 hours, $150",
+      "source": "draft"
+    },
+    {
+      "id": "a10",
+      "actor": "p3",
+      "verb": "edits",
+      "object": "n3",
+      "example": "Manager sets which services Maria offers",
+      "source": "draft"
+    },
+    {
+      "id": "a11",
+      "actor": "p3",
+      "verb": "sets",
+      "object": "n4",
+      "example": "Manager sets salon hours Tue–Sat 9–6",
+      "source": "draft"
+    },
+    {
+      "id": "a12",
+      "actor": "p3",
+      "verb": "sends",
+      "object": "n8",
+      "example": "System sends Sarah a text the night before",
+      "source": "draft"
+    }
+  ],
+  "rules": [
+    {
+      "id": "r1",
+      "text": "An appointment can only be booked in a time slot when the chosen stylist is working and not already booked.",
+      "kind": "integrity",
+      "example": "Cannot book Maria at 2pm if she already has a client then",
+      "source": "draft"
+    },
+    {
+      "id": "r2",
+      "text": "An appointment cannot be booked during a stylist's time off.",
+      "kind": "integrity",
+      "example": "No bookings for Maria Mar 20–24",
+      "source": "draft"
+    },
+    {
+      "id": "r3",
+      "text": "A stylist can only be booked for services they offer.",
+      "kind": "scope",
+      "example": "Maria can't be booked for a service only Jenny does",
+      "source": "draft"
+    },
+    {
+      "id": "r4",
+      "text": "Appointments cannot be booked in the past or outside salon opening hours.",
+      "kind": "state",
+      "example": "No booking for yesterday or at 11pm",
+      "source": "draft"
+    },
+    {
+      "id": "r5",
+      "text": "Clients may only view and change their own appointments, not others'.",
+      "kind": "access",
+      "example": "Sarah cannot see Tom's bookings",
+      "source": "draft"
+    },
+    {
+      "id": "r6",
+      "text": "Cancellations must happen before the appointment start time.",
+      "kind": "state",
+      "example": "Cannot cancel an appointment that already passed",
+      "source": "draft"
+    },
+    {
+      "id": "r7",
+      "text": "Only staff may edit services, stylist profiles, and working hours.",
+      "kind": "access",
+      "example": "A client cannot change a service price",
+      "source": "draft"
+    },
+    {
+      "id": "r8",
+      "text": "Each appointment must have exactly one client, one stylist, and one service.",
+      "kind": "integrity",
+      "example": "No appointment left without a stylist assigned",
+      "source": "draft"
+    },
+    {
+      "id": "r9",
+      "text": "Removing a Service or Stylist Profile must not silently break existing Appointments — related upcoming Appointments should be reassigned or cancelled rather than left pointing at a missing stylist or service.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r10",
+      "text": "Cancellations and reschedules made too close to the appointment start (within a salon-configured cut-off) may be blocked or flagged, not just any time before start.",
+      "kind": "state",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r11",
+      "text": "A Cancellation must record who cancelled it and a reason before it is completed.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r12",
+      "text": "A newly booked Appointment stays in a tentative/pending status until confirmed, and is not treated as final until then.",
+      "kind": "state",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r13",
+      "text": "Staff must be able to mark an Appointment as attended or a no-show, and no-show handling is tracked against the Client Record.",
+      "kind": "state",
+      "source": "rule_bank"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "g1",
+      "text": "Does not take payments or deposits online at time of booking.",
+      "source": "draft"
+    },
+    {
+      "id": "g2",
+      "text": "Does not sell retail products or gift cards.",
+      "source": "draft"
+    },
+    {
+      "id": "g3",
+      "text": "Does not manage stylist payroll or commissions.",
+      "source": "draft"
+    },
+    {
+      "id": "g4",
+      "text": "Does not include a loyalty or points program.",
+      "source": "draft"
+    },
+    {
+      "id": "g5",
+      "text": "Does not handle group or multi-person party bookings in one slot.",
+      "source": "draft"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "user_accounts",
+      "topic": "who logs in",
+      "question": "Who needs an account to use the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nobody logs in — one person uses it on their own device"
+        },
+        {
+          "id": "single_user",
+          "label": "Exactly one person logs in (the owner)"
+        },
+        {
+          "id": "multi_user",
+          "label": "Several people log in, possibly with different powers"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "multi_user",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Four distinct actor roles log in with different powers."
+    },
+    {
+      "id": "roles",
+      "topic": "who can do what",
+      "question": "Do different people have different powers?",
+      "options": [
+        {
+          "id": "single",
+          "label": "Everyone who logs in can do everything"
+        },
+        {
+          "id": "owner_staff",
+          "label": "An owner/admin plus staff with fewer powers"
+        },
+        {
+          "id": "custom",
+          "label": "Admins define their own roles and permissions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "owner_staff",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Manager/receptionist/stylist staff roles plus clients (r5,r7)."
+    },
+    {
+      "id": "external_access",
+      "topic": "outside parties",
+      "question": "Do outside parties (customers, clients, vendors) use the app directly?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — outsiders only receive emails/PDFs/messages"
+        },
+        {
+          "id": "secure_link",
+          "label": "They open a secure link (no account needed)"
+        },
+        {
+          "id": "portal",
+          "label": "They have their own accounts and log in"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "portal",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Clients book, view and change their own appointments and update records (a1-a4)."
+    },
+    {
+      "id": "invite_flow",
+      "topic": "adding people",
+      "question": "How do additional people get access?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No additional people"
+        },
+        {
+          "id": "invite_by_admin",
+          "label": "An admin invites them"
+        },
+        {
+          "id": "self_signup",
+          "label": "Anyone can sign up themselves"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "invite_by_admin",
+      "confidence": 0.963,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "identity_provider",
+      "topic": "signing in",
+      "question": "How do people sign in?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No sign-in"
+        },
+        {
+          "id": "email_password",
+          "label": "Email + password"
+        },
+        {
+          "id": "magic_link",
+          "label": "Email link, no password"
+        },
+        {
+          "id": "google_microsoft",
+          "label": "Google/Microsoft sign-in"
+        },
+        {
+          "id": "enterprise_sso",
+          "label": "Company single sign-on (SAML/OIDC)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "email_password",
+      "confidence": 0.81,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "concurrency",
+      "topic": "simultaneous edits",
+      "question": "What happens when two people edit the same thing at once?",
+      "options": [
+        {
+          "id": "last_write_wins",
+          "label": "Rare; the last save wins"
+        },
+        {
+          "id": "guarded",
+          "label": "Common; the app must prevent or merge conflicting edits"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "guarded",
+      "confidence": 0.924,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "audit_trail",
+      "topic": "history",
+      "question": "Do you need a record of who changed what and when?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Just created/updated by whom and when"
+        },
+        {
+          "id": "full",
+          "label": "A full, viewable history of every change"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "basic",
+      "confidence": 0.64,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "platform",
+      "topic": "where it runs",
+      "question": "Where is it used?",
+      "options": [
+        {
+          "id": "web",
+          "label": "In a browser, on desktop and phone"
+        },
+        {
+          "id": "web_mobile_first",
+          "label": "In a browser, mostly on phones"
+        },
+        {
+          "id": "native_mobile",
+          "label": "As an installed phone app"
+        },
+        {
+          "id": "desktop_app",
+          "label": "As an installed desktop app"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "web_mobile_first",
+      "confidence": 0.619,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "data_import",
+      "topic": "starting data",
+      "question": "Do you start with existing data?",
+      "options": [
+        {
+          "id": "fresh_start",
+          "label": "Start empty"
+        },
+        {
+          "id": "import_spreadsheet",
+          "label": "Import from a spreadsheet/CSV once"
+        },
+        {
+          "id": "migrate_from_tool",
+          "label": "Migrate from another tool"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "import_spreadsheet",
+      "confidence": 0.773,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "data_export",
+      "topic": "getting data out",
+      "question": "Do people need to get their data out?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "csv_export",
+          "label": "Download lists as CSV/Excel"
+        },
+        {
+          "id": "full_export_api",
+          "label": "Full export and/or an API"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "implied:reporting",
+      "chosen": "csv_export",
+      "confidence": 0.959,
+      "implied_by": "reporting",
+      "rationale": "very likely given reporting=basic_dashboard"
+    },
+    {
+      "id": "deletion",
+      "topic": "deleting",
+      "question": "When something is deleted, what really happens?",
+      "options": [
+        {
+          "id": "hard_delete",
+          "label": "It's gone"
+        },
+        {
+          "id": "soft_delete",
+          "label": "It's archived and can be restored"
+        },
+        {
+          "id": "never_delete",
+          "label": "Records are never deleted, only voided/cancelled"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "soft_delete",
+      "confidence": 0.96,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "data_scale",
+      "topic": "volume",
+      "question": "How much data will there be?",
+      "options": [
+        {
+          "id": "small",
+          "label": "Hundreds of records"
+        },
+        {
+          "id": "medium",
+          "label": "Tens of thousands"
+        },
+        {
+          "id": "large",
+          "label": "Millions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "medium",
+      "confidence": 0.549,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "integrations",
+      "topic": "other tools",
+      "question": "Does it need to connect to other tools?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "a_few_key",
+          "label": "A few key ones (e.g., accounting, payments, calendar)"
+        },
+        {
+          "id": "many_via_api",
+          "label": "Many — it needs a public API / webhooks"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "none",
+      "confidence": 0.95,
+      "rationale": "stated in the description: No external tool connections mentioned; no calendar sync stated."
+    },
+    {
+      "id": "localization",
+      "topic": "languages & regions",
+      "question": "Languages and regions?",
+      "options": [
+        {
+          "id": "single_locale",
+          "label": "One language, one country"
+        },
+        {
+          "id": "multi_language",
+          "label": "Several languages"
+        },
+        {
+          "id": "multi_region",
+          "label": "Several countries (taxes, formats, currencies)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "single_locale",
+      "confidence": 0.974,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "attachments",
+      "topic": "files",
+      "question": "Can files/photos be attached to things?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Yes — upload and download"
+        },
+        {
+          "id": "rich",
+          "label": "Yes — with previews, versions, and sharing"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "none",
+      "confidence": 0.534,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "public_facing",
+      "topic": "public pages",
+      "question": "Is any part visible to the public without logging in?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "public_pages",
+          "label": "Yes — marketing/landing pages only"
+        },
+        {
+          "id": "public_content",
+          "label": "Yes — content people create is public"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "plan",
+      "chosen": "none",
+      "confidence": 0.95,
+      "rationale": "stated in the description: No public marketing/content described; access is by account."
+    },
+    {
+      "id": "compliance_sensitivity",
+      "topic": "sensitive data",
+      "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+      "options": [
+        {
+          "id": "ordinary",
+          "label": "Ordinary business data"
+        },
+        {
+          "id": "personal_sensitive",
+          "label": "Personal data needing consent/retention care (GDPR-like)"
+        },
+        {
+          "id": "regulated",
+          "label": "Regulated data (health, cards, finance)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "personal_sensitive",
+      "confidence": 0.635,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "retention",
+      "topic": "keeping data",
+      "question": "How long is data kept?",
+      "options": [
+        {
+          "id": "forever",
+          "label": "Until someone deletes it"
+        },
+        {
+          "id": "policy_based",
+          "label": "Auto-removed after a set period"
+        },
+        {
+          "id": "user_controlled",
+          "label": "Each business sets its own policy"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "forever",
+      "confidence": 0.644,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "customization",
+      "topic": "per-business customization",
+      "question": "Can each business customize the app?",
+      "options": [
+        {
+          "id": "fixed",
+          "label": "No — everyone gets the same thing"
+        },
+        {
+          "id": "branding_templates",
+          "label": "Branding and templates (logo, colors, wording)"
+        },
+        {
+          "id": "custom_fields",
+          "label": "Custom fields and workflows"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "branding_templates",
+      "confidence": 0.789,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "reporting",
+      "topic": "overviews",
+      "question": "What do people need to see across many records?",
+      "options": [
+        {
+          "id": "lists_only",
+          "label": "Sortable, filterable lists"
+        },
+        {
+          "id": "basic_dashboard",
+          "label": "A dashboard with totals and counts"
+        },
+        {
+          "id": "custom_reports",
+          "label": "Custom reports people build themselves"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 3,
+      "source": "card:bc9a5d55-be87-4a23-a5d4-201a3d0b0263",
+      "chosen": "basic_dashboard",
+      "confidence": 1,
+      "rationale": "card answer: You open one screen and see today's numbers at a glance: total bookings, no-shows, and busiest stylists, all as simple totals you cannot dig into further."
+    },
+    {
+      "id": "booking_who_books",
+      "topic": "who books",
+      "question": "Who creates bookings?",
+      "options": [
+        {
+          "id": "staff_only",
+          "label": "Only staff, on behalf of customers (phone, front desk)"
+        },
+        {
+          "id": "customers_no_account",
+          "label": "Customers book themselves online without an account (they get a confirmation link)"
+        },
+        {
+          "id": "customers_with_account",
+          "label": "Customers book from their own account and see their history"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "customers_with_account",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Clients have Client Records with history (n5) and book/view their own (r5)."
+    },
+    {
+      "id": "booking_resource_model",
+      "topic": "what gets booked",
+      "question": "What is actually being reserved?",
+      "options": [
+        {
+          "id": "staff_time",
+          "label": "A person's time (stylist, doctor, consultant)"
+        },
+        {
+          "id": "asset_or_space",
+          "label": "A room, table, court, or piece of equipment"
+        },
+        {
+          "id": "staff_and_asset",
+          "label": "Both at once — a person and a room/asset must be free"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "staff_time",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Appointments reserve a stylist's time."
+    },
+    {
+      "id": "booking_service_catalog",
+      "topic": "services",
+      "question": "How are bookable services defined?",
+      "options": [
+        {
+          "id": "single_fixed",
+          "label": "One kind of booking with a fixed length"
+        },
+        {
+          "id": "menu_fixed_durations",
+          "label": "A menu of services, each with its own length and price"
+        },
+        {
+          "id": "menu_with_addons",
+          "label": "A menu plus add-ons/extras that change length and price"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "menu_fixed_durations",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Services have name, duration, price (n2); no add-ons mentioned."
+    },
+    {
+      "id": "booking_availability_rules",
+      "topic": "availability",
+      "question": "Where do open time slots come from?",
+      "options": [
+        {
+          "id": "business_hours",
+          "label": "Fixed business hours for everyone"
+        },
+        {
+          "id": "per_resource_schedule",
+          "label": "Each staff member/resource has its own weekly hours plus days off"
+        },
+        {
+          "id": "external_calendar",
+          "label": "Whatever is free in each person's external calendar"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "per_resource_schedule",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Each stylist has working hours and time off (n4,n6)."
+    },
+    {
+      "id": "booking_buffers",
+      "topic": "availability",
+      "question": "Is there gap time between appointments?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — back to back"
+        },
+        {
+          "id": "fixed_buffer",
+          "label": "A fixed gap after every booking"
+        },
+        {
+          "id": "per_service_buffer",
+          "label": "Different setup/cleanup time per service"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "fixed_buffer",
+      "confidence": 0.563,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_slot_capacity",
+      "topic": "capacity",
+      "question": "How many people can a single slot hold?",
+      "options": [
+        {
+          "id": "one_per_slot",
+          "label": "One booking per slot (1:1 appointments)"
+        },
+        {
+          "id": "group_capacity",
+          "label": "Several people per slot up to a capacity (classes, tours)"
+        },
+        {
+          "id": "both_types",
+          "label": "Some services are 1:1, some are group sessions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "one_per_slot",
+      "confidence": 0.95,
+      "rationale": "stated in the description: g5 excludes group bookings; 1:1 appointments."
+    },
+    {
+      "id": "booking_recurring",
+      "topic": "automation",
+      "question": "Can a booking repeat (every Tuesday, monthly)?",
+      "options": [
+        {
+          "id": "no",
+          "label": "No — each booking is made separately"
+        },
+        {
+          "id": "series",
+          "label": "Yes — a series is created and can be edited as one or per occurrence"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "no",
+      "confidence": 0.645,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_waitlist",
+      "topic": "full slots",
+      "question": "What happens when the wanted time is full?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nothing — they pick another time"
+        },
+        {
+          "id": "manual_waitlist",
+          "label": "They join a waitlist and staff call them if something opens"
+        },
+        {
+          "id": "auto_offer",
+          "label": "They join a waitlist and get an automatic offer when a slot frees up"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "manual_waitlist",
+      "confidence": 0.613,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_cancellation_policy",
+      "topic": "cancellations",
+      "question": "Who can cancel a booking, and until when?",
+      "options": [
+        {
+          "id": "anytime_free",
+          "label": "Customers cancel any time, no consequence"
+        },
+        {
+          "id": "cutoff_window",
+          "label": "Customers cancel freely until a cut-off (e.g., 24h); after that it counts as late"
+        },
+        {
+          "id": "staff_only_cancel",
+          "label": "Only staff can cancel; customers must contact the business"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "staff_only_cancel",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Clients cancel own appointments before start (r6); but late-cancel policy unclear — actually cutoff. See rationale."
+    },
+    {
+      "id": "booking_reschedule",
+      "topic": "changes",
+      "question": "Can customers move a booking themselves?",
+      "options": [
+        {
+          "id": "self_within_window",
+          "label": "Yes — up to the same cut-off as cancellations"
+        },
+        {
+          "id": "self_anytime",
+          "label": "Yes — any time before it starts"
+        },
+        {
+          "id": "contact_staff",
+          "label": "No — they contact the business"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "contact_staff",
+      "confidence": 0.944,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_no_show",
+      "topic": "no-shows",
+      "question": "What happens when someone doesn't turn up?",
+      "options": [
+        {
+          "id": "mark_only",
+          "label": "Staff mark it as a no-show; nothing else"
+        },
+        {
+          "id": "charge_fee",
+          "label": "A no-show fee is charged to the card on file"
+        },
+        {
+          "id": "track_and_restrict",
+          "label": "No-shows are counted and repeat offenders must prepay or are blocked"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "track_and_restrict",
+      "confidence": 0.729,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_prepayment",
+      "topic": "money",
+      "question": "Is money taken when booking?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — free, or paid in person/elsewhere"
+        },
+        {
+          "id": "recorded_only",
+          "label": "Paid in person; the app just records the price and payment status"
+        },
+        {
+          "id": "deposit_online",
+          "label": "A deposit is paid online to confirm; the rest later"
+        },
+        {
+          "id": "full_prepay_online",
+          "label": "The full price is paid online at booking"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "none",
+      "confidence": 0.95,
+      "rationale": "stated in the description: g1: no payment at booking."
+    },
+    {
+      "id": "booking_confirmation",
+      "topic": "confirming",
+      "question": "Is a booking confirmed instantly, or does someone approve it first?",
+      "options": [
+        {
+          "id": "instant",
+          "label": "Instantly confirmed if the slot is free"
+        },
+        {
+          "id": "request_approve",
+          "label": "It's a request until staff accept or decline it"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "implied:reporting",
+      "chosen": "instant",
+      "confidence": 0.963,
+      "implied_by": "reporting",
+      "rationale": "very likely given reporting=basic_dashboard"
+    },
+    {
+      "id": "booking_reminders",
+      "topic": "reminders",
+      "question": "How are customers reminded before their booking?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No reminders"
+        },
+        {
+          "id": "email_before",
+          "label": "An email some hours/days before"
+        },
+        {
+          "id": "email_sms_confirm",
+          "label": "Email and SMS, and customers can confirm or cancel from the reminder"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "plan",
+      "chosen": "email_sms_confirm",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Reminders sent via text before appointments (n8,a12)."
+    },
+    {
+      "id": "booking_calendar_sync",
+      "topic": "other tools",
+      "question": "Does it talk to Google/Outlook/Apple calendars?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — the app is the calendar"
+        },
+        {
+          "id": "push_only",
+          "label": "Bookings are pushed to staff calendars (one way)"
+        },
+        {
+          "id": "two_way",
+          "label": "Two way — busy time in their external calendar also blocks availability here"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "none",
+      "confidence": 0.956,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_time_zones",
+      "topic": "time zones",
+      "question": "Are customers and staff in the same time zone?",
+      "options": [
+        {
+          "id": "single_zone",
+          "label": "Yes — one local time zone everywhere"
+        },
+        {
+          "id": "customer_zone_shown",
+          "label": "No — times must be shown in each person's own zone"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "single_zone",
+      "confidence": 0.978,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_intake_form",
+      "topic": "information at booking",
+      "question": "What must the customer fill in when booking?",
+      "options": [
+        {
+          "id": "contact_only",
+          "label": "Just name and contact details"
+        },
+        {
+          "id": "fixed_questions",
+          "label": "A few fixed questions (notes, preferences, allergies)"
+        },
+        {
+          "id": "per_service_form",
+          "label": "Different questions per service, set up by the business"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "contact_only",
+      "confidence": 0.531,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_locations",
+      "topic": "where",
+      "question": "Where do bookings take place?",
+      "options": [
+        {
+          "id": "single_location",
+          "label": "One location"
+        },
+        {
+          "id": "multi_location",
+          "label": "Several locations, each with its own staff and hours"
+        },
+        {
+          "id": "remote_or_onsite",
+          "label": "Online/video or at the customer's address"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "single_location",
+      "confidence": 0.95,
+      "rationale": "stated in the description: One salon."
+    },
+    {
+      "id": "booking_walk_ins",
+      "topic": "staff bookings",
+      "question": "Do staff also add bookings and block time by hand?",
+      "options": [
+        {
+          "id": "online_only",
+          "label": "No — everything comes through the online flow"
+        },
+        {
+          "id": "staff_manual",
+          "label": "Yes — walk-ins, phone bookings, holds, and blocked time"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "plan",
+      "chosen": "staff_manual",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Receptionist books walk-ins; stylists block time off (a5,a7)."
+    },
+    {
+      "id": "booking_pricing_variation",
+      "topic": "pricing",
+      "question": "Does the price of a service vary?",
+      "options": [
+        {
+          "id": "fixed_per_service",
+          "label": "One price per service"
+        },
+        {
+          "id": "varies_by_staff_or_time",
+          "label": "Varies by who does it or when (senior stylist, peak hours)"
+        },
+        {
+          "id": "quoted_per_booking",
+          "label": "Quoted per booking by staff"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "fixed_per_service",
+      "confidence": 0.644,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "booking_customer_records",
+      "topic": "customers",
+      "question": "How much is kept about each customer?",
+      "options": [
+        {
+          "id": "per_booking_contact",
+          "label": "Just the contact details typed for each booking"
+        },
+        {
+          "id": "customer_profile",
+          "label": "A customer record with all past and future visits"
+        },
+        {
+          "id": "profile_with_notes",
+          "label": "A customer record plus private staff notes and preferences"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "plan",
+      "chosen": "customer_profile",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Client Record holds contact details and past appointments (n5)."
+    },
+    {
+      "id": "booking_staff_schedule_control",
+      "topic": "who can do what",
+      "question": "Who edits staff working hours and time off?",
+      "options": [
+        {
+          "id": "admin_only",
+          "label": "Only the owner/admin"
+        },
+        {
+          "id": "staff_own",
+          "label": "Each staff member edits their own hours; admin sees all"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "plan",
+      "chosen": "staff_own",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Stylists set their own time off; manager sets working hours (a7,a11)."
+    },
+    {
+      "id": "x1",
+      "topic": "deletion-with-dependents",
+      "question": "When a stylist profile is removed, what happens to their existing future appointments?",
+      "options": [
+        {
+          "id": "block_if_booked",
+          "label": "Prevent removal while future bookings exist"
+        },
+        {
+          "id": "reassign",
+          "label": "Force reassignment to another stylist"
+        },
+        {
+          "id": "cancel_notify",
+          "label": "Cancel affected appointments and notify clients"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "reassign",
+      "confidence": 0.931,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x2",
+      "topic": "concurrent-edits",
+      "question": "What happens when two clients try to book the same stylist slot at the same time?",
+      "options": [
+        {
+          "id": "first_commit_wins",
+          "label": "First to confirm gets it; other sees slot taken"
+        },
+        {
+          "id": "lock_during_checkout",
+          "label": "Slot is held/locked while one is booking"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "lock_during_checkout",
+      "confidence": 0.806,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x3",
+      "topic": "duplicate-submission",
+      "question": "How are duplicate booking submissions (double-click, retry) handled?",
+      "options": [
+        {
+          "id": "idempotent",
+          "label": "Detect and collapse into one appointment"
+        },
+        {
+          "id": "allow_dupes",
+          "label": "Create each; staff clean up"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "idempotent",
+      "confidence": 0.957,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x4",
+      "topic": "time-boundaries",
+      "question": "How is availability computed around salon hours, stylist working days, and time off at day/month boundaries?",
+      "options": [
+        {
+          "id": "strict_intersection",
+          "label": "Slot must fit fully within salon hours AND stylist hours AND outside time off"
+        },
+        {
+          "id": "salon_hours_only",
+          "label": "Only salon hours enforced; stylist checks manually"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "strict_intersection",
+      "confidence": 0.957,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x5",
+      "topic": "lifecycle-backwards",
+      "question": "Can a cancelled appointment be reinstated/undone?",
+      "options": [
+        {
+          "id": "forbidden",
+          "label": "No — must rebook (slot may be gone)"
+        },
+        {
+          "id": "restore_if_free",
+          "label": "Restore only if the slot is still open"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "restore_if_free",
+      "confidence": 0.957,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x6",
+      "topic": "permission-escalation",
+      "question": "Can receptionists override booking rules (book during time off, past cutoff, double-book) that clients cannot?",
+      "options": [
+        {
+          "id": "same_rules",
+          "label": "Staff bound by same integrity rules"
+        },
+        {
+          "id": "staff_override",
+          "label": "Staff may override with a warning"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "staff_override",
+      "confidence": 0.963,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x7",
+      "topic": "partial-failure",
+      "question": "If a booking is confirmed but the reminder/notification fails to send, what happens?",
+      "options": [
+        {
+          "id": "booking_stands",
+          "label": "Booking stands; reminder retried/flagged"
+        },
+        {
+          "id": "surface_error",
+          "label": "Flag to staff to contact client manually"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "booking_stands",
+      "confidence": 0.708,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x8",
+      "topic": "service-duration-slotting",
+      "question": "How does a service's duration map to the booking grid and stylist availability?",
+      "options": [
+        {
+          "id": "exact_duration",
+          "label": "Block exact service length; next slot starts after"
+        },
+        {
+          "id": "fixed_grid",
+          "label": "Round up to fixed slot increments (e.g., 15/30 min)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "exact_duration",
+      "confidence": 0.806,
+      "rationale": "not asked; defaulted from belief"
+    }
+  ]
+}

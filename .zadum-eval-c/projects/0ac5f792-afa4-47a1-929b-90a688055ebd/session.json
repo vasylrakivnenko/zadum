@@ -1,0 +1,3714 @@
+{
+  "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+  "phase": "compiling",
+  "config": {
+    "scoring": "weighted_entropy",
+    "theta": 24,
+    "tau": 0.9,
+    "epsilon": 0.05,
+    "maxCards": 12,
+    "alpha": 0.08,
+    "minEss": 4,
+    "lookahead": 1,
+    "lookaheadTop": 8,
+    "discount": 1,
+    "softImplyTau": 0.95,
+    "minImplyDelta": 0.1,
+    "secondaryArchetypeWeight": 0.5,
+    "maxCardOptions": 4,
+    "relativeStopFloor": 0
+  },
+  "belief": {
+    "nodes": [
+      {
+        "id": "user_accounts",
+        "topic": "who logs in",
+        "question": "Who needs an account to use the app?",
+        "options": [
+          {
+            "id": "none",
+            "label": "Nobody logs in — one person uses it on their own device"
+          },
+          {
+            "id": "single_user",
+            "label": "Exactly one person logs in (the owner)"
+          },
+          {
+            "id": "multi_user",
+            "label": "Several people log in, possibly with different powers"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "none": 0.1,
+          "single_user": 0.25,
+          "multi_user": 0.65
+        },
+        "implies": {
+          "none": [
+            {
+              "node": "roles",
+              "option": "single"
+            },
+            {
+              "node": "invite_flow",
+              "option": "none"
+            },
+            {
+              "node": "identity_provider",
+              "option": "none"
+            },
+            {
+              "node": "concurrency",
+              "option": "last_write_wins"
+            }
+          ],
+          "single_user": [
+            {
+              "node": "roles",
+              "option": "single"
+            },
+            {
+              "node": "invite_flow",
+              "option": "none"
+            },
+            {
+              "node": "concurrency",
+              "option": "last_write_wins"
+            }
+          ],
+          "multi_user": []
+        },
+        "excludes": {
+          "none": [],
+          "single_user": [],
+          "multi_user": []
+        },
+        "sections": [
+          "actors_permissions",
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "roles",
+        "topic": "who can do what",
+        "question": "Do different people have different powers?",
+        "options": [
+          {
+            "id": "single",
+            "label": "Everyone who logs in can do everything"
+          },
+          {
+            "id": "owner_staff",
+            "label": "An owner/admin plus staff with fewer powers"
+          },
+          {
+            "id": "custom",
+            "label": "Admins define their own roles and permissions"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "single": 0.35,
+          "owner_staff": 0.5,
+          "custom": 0.15
+        },
+        "implies": {
+          "single": [],
+          "owner_staff": [],
+          "custom": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "single": [],
+          "owner_staff": [],
+          "custom": []
+        },
+        "sections": [
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "external_access",
+        "topic": "outside parties",
+        "question": "Do outside parties (customers, clients, vendors) use the app directly?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No — outsiders only receive emails/PDFs/messages"
+          },
+          {
+            "id": "secure_link",
+            "label": "They open a secure link (no account needed)"
+          },
+          {
+            "id": "portal",
+            "label": "They have their own accounts and log in"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.30000000000000004,
+          "secure_link": 0.35000000000000003,
+          "portal": 0.35000000000000003
+        },
+        "implies": {
+          "none": [
+            {
+              "node": "client_portal_scope",
+              "option": "none"
+            }
+          ],
+          "secure_link": [],
+          "portal": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "secure_link": [],
+          "portal": []
+        },
+        "sections": [
+          "actors_permissions",
+          "journeys",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth",
+          "tenancy"
+        ]
+      },
+      {
+        "id": "invite_flow",
+        "topic": "adding people",
+        "question": "How do additional people get access?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No additional people"
+          },
+          {
+            "id": "invite_by_admin",
+            "label": "An admin invites them"
+          },
+          {
+            "id": "self_signup",
+            "label": "Anyone can sign up themselves"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.2,
+          "invite_by_admin": 0.5,
+          "self_signup": 0.3
+        },
+        "implies": {
+          "none": [],
+          "invite_by_admin": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ],
+          "self_signup": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "invite_by_admin": [],
+          "self_signup": []
+        },
+        "sections": [
+          "journeys",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "identity_provider",
+        "topic": "signing in",
+        "question": "How do people sign in?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No sign-in"
+          },
+          {
+            "id": "email_password",
+            "label": "Email + password"
+          },
+          {
+            "id": "magic_link",
+            "label": "Email link, no password"
+          },
+          {
+            "id": "google_microsoft",
+            "label": "Google/Microsoft sign-in"
+          },
+          {
+            "id": "enterprise_sso",
+            "label": "Company single sign-on (SAML/OIDC)"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.05,
+          "email_password": 0.4,
+          "magic_link": 0.2,
+          "google_microsoft": 0.3,
+          "enterprise_sso": 0.05
+        },
+        "implies": {
+          "none": [],
+          "email_password": [],
+          "magic_link": [],
+          "google_microsoft": [],
+          "enterprise_sso": []
+        },
+        "excludes": {
+          "none": [],
+          "email_password": [],
+          "magic_link": [],
+          "google_microsoft": [],
+          "enterprise_sso": []
+        },
+        "sections": [
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "concurrency",
+        "topic": "simultaneous edits",
+        "question": "What happens when two people edit the same thing at once?",
+        "options": [
+          {
+            "id": "last_write_wins",
+            "label": "Rare; the last save wins"
+          },
+          {
+            "id": "guarded",
+            "label": "Common; the app must prevent or merge conflicting edits"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "last_write_wins": 0.75,
+          "guarded": 0.25
+        },
+        "implies": {
+          "last_write_wins": [],
+          "guarded": []
+        },
+        "excludes": {
+          "last_write_wins": [],
+          "guarded": []
+        },
+        "sections": [
+          "rules",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "audit_trail",
+        "topic": "history",
+        "question": "Do you need a record of who changed what and when?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "basic",
+            "label": "Just created/updated by whom and when"
+          },
+          {
+            "id": "full",
+            "label": "A full, viewable history of every change"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.3,
+          "basic": 0.5,
+          "full": 0.2
+        },
+        "implies": {
+          "none": [],
+          "basic": [],
+          "full": []
+        },
+        "excludes": {
+          "none": [],
+          "basic": [],
+          "full": []
+        },
+        "sections": [
+          "data_model",
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "platform",
+        "topic": "where it runs",
+        "question": "Where is it used?",
+        "options": [
+          {
+            "id": "web",
+            "label": "In a browser, on desktop and phone"
+          },
+          {
+            "id": "web_mobile_first",
+            "label": "In a browser, mostly on phones"
+          },
+          {
+            "id": "native_mobile",
+            "label": "As an installed phone app"
+          },
+          {
+            "id": "desktop_app",
+            "label": "As an installed desktop app"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "web": 0.6,
+          "web_mobile_first": 0.2,
+          "native_mobile": 0.12,
+          "desktop_app": 0.08
+        },
+        "implies": {
+          "web": [],
+          "web_mobile_first": [],
+          "native_mobile": [],
+          "desktop_app": []
+        },
+        "excludes": {
+          "web": [],
+          "web_mobile_first": [],
+          "native_mobile": [],
+          "desktop_app": []
+        },
+        "sections": [
+          "overview",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_import",
+        "topic": "starting data",
+        "question": "Do you start with existing data?",
+        "options": [
+          {
+            "id": "fresh_start",
+            "label": "Start empty"
+          },
+          {
+            "id": "import_spreadsheet",
+            "label": "Import from a spreadsheet/CSV once"
+          },
+          {
+            "id": "migrate_from_tool",
+            "label": "Migrate from another tool"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "fresh_start": 0.4,
+          "import_spreadsheet": 0.45,
+          "migrate_from_tool": 0.15
+        },
+        "implies": {
+          "fresh_start": [],
+          "import_spreadsheet": [],
+          "migrate_from_tool": []
+        },
+        "excludes": {
+          "fresh_start": [],
+          "import_spreadsheet": [],
+          "migrate_from_tool": []
+        },
+        "sections": [
+          "journeys",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_export",
+        "topic": "getting data out",
+        "question": "Do people need to get their data out?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "csv_export",
+            "label": "Download lists as CSV/Excel"
+          },
+          {
+            "id": "full_export_api",
+            "label": "Full export and/or an API"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.2,
+          "csv_export": 0.6,
+          "full_export_api": 0.2
+        },
+        "implies": {
+          "none": [],
+          "csv_export": [],
+          "full_export_api": []
+        },
+        "excludes": {
+          "none": [],
+          "csv_export": [],
+          "full_export_api": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "deletion",
+        "topic": "deleting",
+        "question": "When something is deleted, what really happens?",
+        "options": [
+          {
+            "id": "hard_delete",
+            "label": "It's gone"
+          },
+          {
+            "id": "soft_delete",
+            "label": "It's archived and can be restored"
+          },
+          {
+            "id": "never_delete",
+            "label": "Records are never deleted, only voided/cancelled"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "hard_delete": 0.2,
+          "soft_delete": 0.55,
+          "never_delete": 0.25
+        },
+        "implies": {
+          "hard_delete": [],
+          "soft_delete": [],
+          "never_delete": []
+        },
+        "excludes": {
+          "hard_delete": [],
+          "soft_delete": [],
+          "never_delete": []
+        },
+        "sections": [
+          "rules",
+          "state_machines",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "data_scale",
+        "topic": "volume",
+        "question": "How much data will there be?",
+        "options": [
+          {
+            "id": "small",
+            "label": "Hundreds of records"
+          },
+          {
+            "id": "medium",
+            "label": "Tens of thousands"
+          },
+          {
+            "id": "large",
+            "label": "Millions"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "small": 0.4,
+          "medium": 0.45,
+          "large": 0.15
+        },
+        "implies": {
+          "small": [],
+          "medium": [],
+          "large": []
+        },
+        "excludes": {
+          "small": [],
+          "medium": [],
+          "large": []
+        },
+        "sections": [
+          "overview",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "integrations",
+        "topic": "other tools",
+        "question": "Does it need to connect to other tools?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "a_few_key",
+            "label": "A few key ones (e.g., accounting, payments, calendar)"
+          },
+          {
+            "id": "many_via_api",
+            "label": "Many — it needs a public API / webhooks"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.3,
+          "a_few_key": 0.5,
+          "many_via_api": 0.2
+        },
+        "implies": {
+          "none": [],
+          "a_few_key": [],
+          "many_via_api": []
+        },
+        "excludes": {
+          "none": [],
+          "a_few_key": [],
+          "many_via_api": []
+        },
+        "sections": [
+          "overview",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "localization",
+        "topic": "languages & regions",
+        "question": "Languages and regions?",
+        "options": [
+          {
+            "id": "single_locale",
+            "label": "One language, one country"
+          },
+          {
+            "id": "multi_language",
+            "label": "Several languages"
+          },
+          {
+            "id": "multi_region",
+            "label": "Several countries (taxes, formats, currencies)"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "single_locale": 0.65,
+          "multi_language": 0.2,
+          "multi_region": 0.15
+        },
+        "implies": {
+          "single_locale": [],
+          "multi_language": [],
+          "multi_region": []
+        },
+        "excludes": {
+          "single_locale": [],
+          "multi_language": [],
+          "multi_region": []
+        },
+        "sections": [
+          "overview",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "attachments",
+        "topic": "files",
+        "question": "Can files/photos be attached to things?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "basic",
+            "label": "Yes — upload and download"
+          },
+          {
+            "id": "rich",
+            "label": "Yes — with previews, versions, and sharing"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.35,
+          "basic": 0.5,
+          "rich": 0.15
+        },
+        "implies": {
+          "none": [],
+          "basic": [],
+          "rich": []
+        },
+        "excludes": {
+          "none": [],
+          "basic": [],
+          "rich": []
+        },
+        "sections": [
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "public_facing",
+        "topic": "public pages",
+        "question": "Is any part visible to the public without logging in?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No"
+          },
+          {
+            "id": "public_pages",
+            "label": "Yes — marketing/landing pages only"
+          },
+          {
+            "id": "public_content",
+            "label": "Yes — content people create is public"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.5,
+          "public_pages": 0.35,
+          "public_content": 0.15
+        },
+        "implies": {
+          "none": [],
+          "public_pages": [],
+          "public_content": []
+        },
+        "excludes": {
+          "none": [],
+          "public_pages": [],
+          "public_content": []
+        },
+        "sections": [
+          "actors_permissions",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "compliance_sensitivity",
+        "topic": "sensitive data",
+        "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+        "options": [
+          {
+            "id": "ordinary",
+            "label": "Ordinary business data"
+          },
+          {
+            "id": "personal_sensitive",
+            "label": "Personal data needing consent/retention care (GDPR-like)"
+          },
+          {
+            "id": "regulated",
+            "label": "Regulated data (health, cards, finance)"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "ordinary": 0.6000000000000001,
+          "personal_sensitive": 0.30000000000000004,
+          "regulated": 0.10000000000000002
+        },
+        "implies": {
+          "ordinary": [],
+          "personal_sensitive": [],
+          "regulated": []
+        },
+        "excludes": {
+          "ordinary": [],
+          "personal_sensitive": [],
+          "regulated": []
+        },
+        "sections": [
+          "rules",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "retention",
+        "topic": "keeping data",
+        "question": "How long is data kept?",
+        "options": [
+          {
+            "id": "forever",
+            "label": "Until someone deletes it"
+          },
+          {
+            "id": "policy_based",
+            "label": "Auto-removed after a set period"
+          },
+          {
+            "id": "user_controlled",
+            "label": "Each business sets its own policy"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "forever": 0.6,
+          "policy_based": 0.25,
+          "user_controlled": 0.15
+        },
+        "implies": {
+          "forever": [],
+          "policy_based": [],
+          "user_controlled": []
+        },
+        "excludes": {
+          "forever": [],
+          "policy_based": [],
+          "user_controlled": []
+        },
+        "sections": [
+          "rules"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "customization",
+        "topic": "per-business customization",
+        "question": "Can each business customize the app?",
+        "options": [
+          {
+            "id": "fixed",
+            "label": "No — everyone gets the same thing"
+          },
+          {
+            "id": "branding_templates",
+            "label": "Branding and templates (logo, colors, wording)"
+          },
+          {
+            "id": "custom_fields",
+            "label": "Custom fields and workflows"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "fixed": 0.4,
+          "branding_templates": 0.4,
+          "custom_fields": 0.2
+        },
+        "implies": {
+          "fixed": [],
+          "branding_templates": [],
+          "custom_fields": []
+        },
+        "excludes": {
+          "fixed": [],
+          "branding_templates": [],
+          "custom_fields": []
+        },
+        "sections": [
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "reporting",
+        "topic": "overviews",
+        "question": "What do people need to see across many records?",
+        "options": [
+          {
+            "id": "lists_only",
+            "label": "Sortable, filterable lists"
+          },
+          {
+            "id": "basic_dashboard",
+            "label": "A dashboard with totals and counts"
+          },
+          {
+            "id": "custom_reports",
+            "label": "Custom reports people build themselves"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "lists_only": 0.25,
+          "basic_dashboard": 0.55,
+          "custom_reports": 0.2
+        },
+        "implies": {
+          "lists_only": [],
+          "basic_dashboard": [],
+          "custom_reports": []
+        },
+        "excludes": {
+          "lists_only": [],
+          "basic_dashboard": [],
+          "custom_reports": []
+        },
+        "sections": [
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "core",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_who_books",
+        "topic": "who books",
+        "question": "Who creates bookings?",
+        "options": [
+          {
+            "id": "staff_only",
+            "label": "Only staff, on behalf of customers (phone, front desk)"
+          },
+          {
+            "id": "customers_no_account",
+            "label": "Customers book themselves online without an account (they get a confirmation link)"
+          },
+          {
+            "id": "customers_with_account",
+            "label": "Customers book from their own account and see their history"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "staff_only": 0.267,
+          "customers_no_account": 0.525,
+          "customers_with_account": 0.208
+        },
+        "implies": {
+          "staff_only": [],
+          "customers_no_account": [
+            {
+              "node": "external_access",
+              "option": "secure_link"
+            }
+          ],
+          "customers_with_account": [
+            {
+              "node": "external_access",
+              "option": "portal"
+            },
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "staff_only": [],
+          "customers_no_account": [],
+          "customers_with_account": []
+        },
+        "sections": [
+          "overview",
+          "actors_permissions",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "booking_resource_model",
+        "topic": "what gets booked",
+        "question": "What is actually being reserved?",
+        "options": [
+          {
+            "id": "staff_time",
+            "label": "A person's time (stylist, doctor, consultant)"
+          },
+          {
+            "id": "asset_or_space",
+            "label": "A room, table, court, or piece of equipment"
+          },
+          {
+            "id": "staff_and_asset",
+            "label": "Both at once — a person and a room/asset must be free"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "staff_time": 0.422,
+          "asset_or_space": 0.39,
+          "staff_and_asset": 0.188
+        },
+        "implies": {
+          "staff_time": [],
+          "asset_or_space": [],
+          "staff_and_asset": []
+        },
+        "excludes": {
+          "staff_time": [],
+          "asset_or_space": [],
+          "staff_and_asset": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_service_catalog",
+        "topic": "services",
+        "question": "How are bookable services defined?",
+        "options": [
+          {
+            "id": "single_fixed",
+            "label": "One kind of booking with a fixed length"
+          },
+          {
+            "id": "menu_fixed_durations",
+            "label": "A menu of services, each with its own length and price"
+          },
+          {
+            "id": "menu_with_addons",
+            "label": "A menu plus add-ons/extras that change length and price"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "single_fixed": 0.2667332667332668,
+          "menu_fixed_durations": 0.5744255744255744,
+          "menu_with_addons": 0.15884115884115887
+        },
+        "implies": {
+          "single_fixed": [],
+          "menu_fixed_durations": [],
+          "menu_with_addons": []
+        },
+        "excludes": {
+          "single_fixed": [],
+          "menu_fixed_durations": [],
+          "menu_with_addons": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_availability_rules",
+        "topic": "availability",
+        "question": "Where do open time slots come from?",
+        "options": [
+          {
+            "id": "business_hours",
+            "label": "Fixed business hours for everyone"
+          },
+          {
+            "id": "per_resource_schedule",
+            "label": "Each staff member/resource has its own weekly hours plus days off"
+          },
+          {
+            "id": "external_calendar",
+            "label": "Whatever is free in each person's external calendar"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "business_hours": 0.3833833833833834,
+          "per_resource_schedule": 0.5085085085085085,
+          "external_calendar": 0.1081081081081081
+        },
+        "implies": {
+          "business_hours": [],
+          "per_resource_schedule": [],
+          "external_calendar": [
+            {
+              "node": "booking_calendar_sync",
+              "option": "two_way"
+            }
+          ]
+        },
+        "excludes": {
+          "business_hours": [],
+          "per_resource_schedule": [],
+          "external_calendar": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_buffers",
+        "topic": "availability",
+        "question": "Is there gap time between appointments?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No — back to back"
+          },
+          {
+            "id": "fixed_buffer",
+            "label": "A fixed gap after every booking"
+          },
+          {
+            "id": "per_service_buffer",
+            "label": "Different setup/cleanup time per service"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "none": 0.583,
+          "fixed_buffer": 0.263,
+          "per_service_buffer": 0.154
+        },
+        "implies": {
+          "none": [],
+          "fixed_buffer": [],
+          "per_service_buffer": []
+        },
+        "excludes": {
+          "none": [],
+          "fixed_buffer": [],
+          "per_service_buffer": []
+        },
+        "sections": [
+          "rules_invariants"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_slot_capacity",
+        "topic": "capacity",
+        "question": "How many people can a single slot hold?",
+        "options": [
+          {
+            "id": "one_per_slot",
+            "label": "One booking per slot (1:1 appointments)"
+          },
+          {
+            "id": "group_capacity",
+            "label": "Several people per slot up to a capacity (classes, tours)"
+          },
+          {
+            "id": "both_types",
+            "label": "Some services are 1:1, some are group sessions"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "one_per_slot": 0.447,
+          "group_capacity": 0.423,
+          "both_types": 0.13
+        },
+        "implies": {
+          "one_per_slot": [],
+          "group_capacity": [],
+          "both_types": []
+        },
+        "excludes": {
+          "one_per_slot": [],
+          "group_capacity": [],
+          "both_types": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_recurring",
+        "topic": "automation",
+        "question": "Can a booking repeat (every Tuesday, monthly)?",
+        "options": [
+          {
+            "id": "no",
+            "label": "No — each booking is made separately"
+          },
+          {
+            "id": "series",
+            "label": "Yes — a series is created and can be edited as one or per occurrence"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "no": 0.621,
+          "series": 0.379
+        },
+        "implies": {
+          "no": [],
+          "series": [
+            {
+              "node": "recurring_scheduled",
+              "option": "recurring_records"
+            }
+          ]
+        },
+        "excludes": {
+          "no": [],
+          "series": []
+        },
+        "sections": [
+          "data_model",
+          "state_machines",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_waitlist",
+        "topic": "full slots",
+        "question": "What happens when the wanted time is full?",
+        "options": [
+          {
+            "id": "none",
+            "label": "Nothing — they pick another time"
+          },
+          {
+            "id": "manual_waitlist",
+            "label": "They join a waitlist and staff call them if something opens"
+          },
+          {
+            "id": "auto_offer",
+            "label": "They join a waitlist and get an automatic offer when a slot frees up"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.55,
+          "manual_waitlist": 0.25,
+          "auto_offer": 0.2
+        },
+        "implies": {
+          "none": [],
+          "manual_waitlist": [],
+          "auto_offer": []
+        },
+        "excludes": {
+          "none": [],
+          "manual_waitlist": [],
+          "auto_offer": []
+        },
+        "sections": [
+          "state_machines",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_cancellation_policy",
+        "topic": "cancellations",
+        "question": "Who can cancel a booking, and until when?",
+        "options": [
+          {
+            "id": "anytime_free",
+            "label": "Customers cancel any time, no consequence"
+          },
+          {
+            "id": "cutoff_window",
+            "label": "Customers cancel freely until a cut-off (e.g., 24h); after that it counts as late"
+          },
+          {
+            "id": "staff_only_cancel",
+            "label": "Only staff can cancel; customers must contact the business"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "anytime_free": 0.25,
+          "cutoff_window": 0.55,
+          "staff_only_cancel": 0.2
+        },
+        "implies": {
+          "anytime_free": [],
+          "cutoff_window": [],
+          "staff_only_cancel": []
+        },
+        "excludes": {
+          "anytime_free": [],
+          "cutoff_window": [],
+          "staff_only_cancel": []
+        },
+        "sections": [
+          "rules_invariants",
+          "state_machines",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_reschedule",
+        "topic": "changes",
+        "question": "Can customers move a booking themselves?",
+        "options": [
+          {
+            "id": "self_within_window",
+            "label": "Yes — up to the same cut-off as cancellations"
+          },
+          {
+            "id": "self_anytime",
+            "label": "Yes — any time before it starts"
+          },
+          {
+            "id": "contact_staff",
+            "label": "No — they contact the business"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "self_within_window": 0.5,
+          "self_anytime": 0.25,
+          "contact_staff": 0.25
+        },
+        "implies": {
+          "self_within_window": [],
+          "self_anytime": [],
+          "contact_staff": []
+        },
+        "excludes": {
+          "self_within_window": [],
+          "self_anytime": [],
+          "contact_staff": []
+        },
+        "sections": [
+          "journeys",
+          "state_machines",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_no_show",
+        "topic": "no-shows",
+        "question": "What happens when someone doesn't turn up?",
+        "options": [
+          {
+            "id": "mark_only",
+            "label": "Staff mark it as a no-show; nothing else"
+          },
+          {
+            "id": "charge_fee",
+            "label": "A no-show fee is charged to the card on file"
+          },
+          {
+            "id": "track_and_restrict",
+            "label": "No-shows are counted and repeat offenders must prepay or are blocked"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "mark_only": 0.5,
+          "charge_fee": 0.25,
+          "track_and_restrict": 0.25
+        },
+        "implies": {
+          "mark_only": [],
+          "charge_fee": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ],
+          "track_and_restrict": []
+        },
+        "excludes": {
+          "mark_only": [],
+          "charge_fee": [],
+          "track_and_restrict": []
+        },
+        "sections": [
+          "rules_invariants",
+          "state_machines",
+          "data_model"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": [
+          "payments"
+        ]
+      },
+      {
+        "id": "booking_prepayment",
+        "topic": "money",
+        "question": "Is money taken when booking?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No — free, or paid in person/elsewhere"
+          },
+          {
+            "id": "recorded_only",
+            "label": "Paid in person; the app just records the price and payment status"
+          },
+          {
+            "id": "deposit_online",
+            "label": "A deposit is paid online to confirm; the rest later"
+          },
+          {
+            "id": "full_prepay_online",
+            "label": "The full price is paid online at booking"
+          }
+        ],
+        "consequence": 5,
+        "prior": {
+          "none": 0.25,
+          "recorded_only": 0.25,
+          "deposit_online": 0.25,
+          "full_prepay_online": 0.25
+        },
+        "implies": {
+          "none": [],
+          "recorded_only": [
+            {
+              "node": "payments_in_app",
+              "option": "record_only"
+            }
+          ],
+          "deposit_online": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ],
+          "full_prepay_online": [
+            {
+              "node": "payments_in_app",
+              "option": "collect_online"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "recorded_only": [],
+          "deposit_online": [],
+          "full_prepay_online": []
+        },
+        "sections": [
+          "data_model",
+          "state_machines",
+          "rules_invariants",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": [
+          "payments"
+        ]
+      },
+      {
+        "id": "booking_confirmation",
+        "topic": "confirming",
+        "question": "Is a booking confirmed instantly, or does someone approve it first?",
+        "options": [
+          {
+            "id": "instant",
+            "label": "Instantly confirmed if the slot is free"
+          },
+          {
+            "id": "request_approve",
+            "label": "It's a request until staff accept or decline it"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "instant": 0.671,
+          "request_approve": 0.329
+        },
+        "implies": {
+          "instant": [],
+          "request_approve": [
+            {
+              "node": "approval_workflow",
+              "option": "single_approver"
+            }
+          ]
+        },
+        "excludes": {
+          "instant": [],
+          "request_approve": []
+        },
+        "sections": [
+          "state_machines",
+          "journeys",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_reminders",
+        "topic": "reminders",
+        "question": "How are customers reminded before their booking?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No reminders"
+          },
+          {
+            "id": "email_before",
+            "label": "An email some hours/days before"
+          },
+          {
+            "id": "email_sms_confirm",
+            "label": "Email and SMS, and customers can confirm or cancel from the reminder"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "none": 0.15,
+          "email_before": 0.45,
+          "email_sms_confirm": 0.4
+        },
+        "implies": {
+          "none": [],
+          "email_before": [],
+          "email_sms_confirm": [
+            {
+              "node": "notifications",
+              "option": "email_sms"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "email_before": [],
+          "email_sms_confirm": []
+        },
+        "sections": [
+          "journeys",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_calendar_sync",
+        "topic": "other tools",
+        "question": "Does it talk to Google/Outlook/Apple calendars?",
+        "options": [
+          {
+            "id": "none",
+            "label": "No — the app is the calendar"
+          },
+          {
+            "id": "push_only",
+            "label": "Bookings are pushed to staff calendars (one way)"
+          },
+          {
+            "id": "two_way",
+            "label": "Two way — busy time in their external calendar also blocks availability here"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "none": 0.408,
+          "push_only": 0.275,
+          "two_way": 0.317
+        },
+        "implies": {
+          "none": [],
+          "push_only": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ],
+          "two_way": [
+            {
+              "node": "integrations",
+              "option": "a_few_key"
+            }
+          ]
+        },
+        "excludes": {
+          "none": [],
+          "push_only": [],
+          "two_way": []
+        },
+        "sections": [
+          "journeys",
+          "rules_invariants",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_time_zones",
+        "topic": "time zones",
+        "question": "Are customers and staff in the same time zone?",
+        "options": [
+          {
+            "id": "single_zone",
+            "label": "Yes — one local time zone everywhere"
+          },
+          {
+            "id": "customer_zone_shown",
+            "label": "No — times must be shown in each person's own zone"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "single_zone": 0.7,
+          "customer_zone_shown": 0.3
+        },
+        "implies": {
+          "single_zone": [],
+          "customer_zone_shown": []
+        },
+        "excludes": {
+          "single_zone": [],
+          "customer_zone_shown": []
+        },
+        "sections": [
+          "rules_invariants",
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_intake_form",
+        "topic": "information at booking",
+        "question": "What must the customer fill in when booking?",
+        "options": [
+          {
+            "id": "contact_only",
+            "label": "Just name and contact details"
+          },
+          {
+            "id": "fixed_questions",
+            "label": "A few fixed questions (notes, preferences, allergies)"
+          },
+          {
+            "id": "per_service_form",
+            "label": "Different questions per service, set up by the business"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "contact_only": 0.4,
+          "fixed_questions": 0.4,
+          "per_service_form": 0.2
+        },
+        "implies": {
+          "contact_only": [],
+          "fixed_questions": [],
+          "per_service_form": []
+        },
+        "excludes": {
+          "contact_only": [],
+          "fixed_questions": [],
+          "per_service_form": []
+        },
+        "sections": [
+          "data_model",
+          "journeys"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_locations",
+        "topic": "where",
+        "question": "Where do bookings take place?",
+        "options": [
+          {
+            "id": "single_location",
+            "label": "One location"
+          },
+          {
+            "id": "multi_location",
+            "label": "Several locations, each with its own staff and hours"
+          },
+          {
+            "id": "remote_or_onsite",
+            "label": "Online/video or at the customer's address"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "single_location": 0.6,
+          "multi_location": 0.25,
+          "remote_or_onsite": 0.15
+        },
+        "implies": {
+          "single_location": [],
+          "multi_location": [],
+          "remote_or_onsite": []
+        },
+        "excludes": {
+          "single_location": [],
+          "multi_location": [],
+          "remote_or_onsite": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants",
+          "overview"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_walk_ins",
+        "topic": "staff bookings",
+        "question": "Do staff also add bookings and block time by hand?",
+        "options": [
+          {
+            "id": "online_only",
+            "label": "No — everything comes through the online flow"
+          },
+          {
+            "id": "staff_manual",
+            "label": "Yes — walk-ins, phone bookings, holds, and blocked time"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "online_only": 0.25,
+          "staff_manual": 0.75
+        },
+        "implies": {
+          "online_only": [],
+          "staff_manual": []
+        },
+        "excludes": {
+          "online_only": [],
+          "staff_manual": []
+        },
+        "sections": [
+          "actors_permissions",
+          "journeys",
+          "state_machines"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_pricing_variation",
+        "topic": "pricing",
+        "question": "Does the price of a service vary?",
+        "options": [
+          {
+            "id": "fixed_per_service",
+            "label": "One price per service"
+          },
+          {
+            "id": "varies_by_staff_or_time",
+            "label": "Varies by who does it or when (senior stylist, peak hours)"
+          },
+          {
+            "id": "quoted_per_booking",
+            "label": "Quoted per booking by staff"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "fixed_per_service": 0.6000000000000001,
+          "varies_by_staff_or_time": 0.30000000000000004,
+          "quoted_per_booking": 0.10000000000000002
+        },
+        "implies": {
+          "fixed_per_service": [],
+          "varies_by_staff_or_time": [],
+          "quoted_per_booking": []
+        },
+        "excludes": {
+          "fixed_per_service": [],
+          "varies_by_staff_or_time": [],
+          "quoted_per_booking": []
+        },
+        "sections": [
+          "data_model",
+          "rules_invariants"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_customer_records",
+        "topic": "customers",
+        "question": "How much is kept about each customer?",
+        "options": [
+          {
+            "id": "per_booking_contact",
+            "label": "Just the contact details typed for each booking"
+          },
+          {
+            "id": "customer_profile",
+            "label": "A customer record with all past and future visits"
+          },
+          {
+            "id": "profile_with_notes",
+            "label": "A customer record plus private staff notes and preferences"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "per_booking_contact": 0.25,
+          "customer_profile": 0.45,
+          "profile_with_notes": 0.3
+        },
+        "implies": {
+          "per_booking_contact": [],
+          "customer_profile": [],
+          "profile_with_notes": []
+        },
+        "excludes": {
+          "per_booking_contact": [],
+          "customer_profile": [],
+          "profile_with_notes": []
+        },
+        "sections": [
+          "data_model",
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "booking_staff_schedule_control",
+        "topic": "who can do what",
+        "question": "Who edits staff working hours and time off?",
+        "options": [
+          {
+            "id": "admin_only",
+            "label": "Only the owner/admin"
+          },
+          {
+            "id": "staff_own",
+            "label": "Each staff member edits their own hours; admin sees all"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "admin_only": 0.55,
+          "staff_own": 0.45
+        },
+        "implies": {
+          "admin_only": [],
+          "staff_own": [
+            {
+              "node": "user_accounts",
+              "option": "multi_user"
+            }
+          ]
+        },
+        "excludes": {
+          "admin_only": [],
+          "staff_own": []
+        },
+        "sections": [
+          "actors_permissions"
+        ],
+        "bespoke": false,
+        "archetype": "booking",
+        "requires": [],
+        "tags": [
+          "auth"
+        ]
+      },
+      {
+        "id": "x1",
+        "topic": "deletion-with-dependents",
+        "question": "When a stylist profile is removed, what happens to their existing future appointments?",
+        "options": [
+          {
+            "id": "block_if_booked",
+            "label": "Prevent removal while future bookings exist"
+          },
+          {
+            "id": "reassign",
+            "label": "Force reassignment to another stylist"
+          },
+          {
+            "id": "cancel_notify",
+            "label": "Cancel affected appointments and notify clients"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "block_if_booked": 0.3333333333333333,
+          "reassign": 0.3333333333333333,
+          "cancel_notify": 0.3333333333333333
+        },
+        "implies": {
+          "block_if_booked": [],
+          "reassign": [],
+          "cancel_notify": []
+        },
+        "excludes": {
+          "block_if_booked": [],
+          "reassign": [],
+          "cancel_notify": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x2",
+        "topic": "concurrent-edits",
+        "question": "What happens when two clients try to book the same stylist slot at the same time?",
+        "options": [
+          {
+            "id": "first_commit_wins",
+            "label": "First to confirm gets it; other sees slot taken"
+          },
+          {
+            "id": "lock_during_checkout",
+            "label": "Slot is held/locked while one is booking"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "first_commit_wins": 0.5,
+          "lock_during_checkout": 0.5
+        },
+        "implies": {
+          "first_commit_wins": [],
+          "lock_during_checkout": []
+        },
+        "excludes": {
+          "first_commit_wins": [],
+          "lock_during_checkout": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x3",
+        "topic": "duplicate-submission",
+        "question": "How are duplicate booking submissions (double-click, retry) handled?",
+        "options": [
+          {
+            "id": "idempotent",
+            "label": "Detect and collapse into one appointment"
+          },
+          {
+            "id": "allow_dupes",
+            "label": "Create each; staff clean up"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "idempotent": 0.5,
+          "allow_dupes": 0.5
+        },
+        "implies": {
+          "idempotent": [],
+          "allow_dupes": []
+        },
+        "excludes": {
+          "idempotent": [],
+          "allow_dupes": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x4",
+        "topic": "time-boundaries",
+        "question": "How is availability computed around salon hours, stylist working days, and time off at day/month boundaries?",
+        "options": [
+          {
+            "id": "strict_intersection",
+            "label": "Slot must fit fully within salon hours AND stylist hours AND outside time off"
+          },
+          {
+            "id": "salon_hours_only",
+            "label": "Only salon hours enforced; stylist checks manually"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "strict_intersection": 0.5,
+          "salon_hours_only": 0.5
+        },
+        "implies": {
+          "strict_intersection": [],
+          "salon_hours_only": []
+        },
+        "excludes": {
+          "strict_intersection": [],
+          "salon_hours_only": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x5",
+        "topic": "lifecycle-backwards",
+        "question": "Can a cancelled appointment be reinstated/undone?",
+        "options": [
+          {
+            "id": "forbidden",
+            "label": "No — must rebook (slot may be gone)"
+          },
+          {
+            "id": "restore_if_free",
+            "label": "Restore only if the slot is still open"
+          }
+        ],
+        "consequence": 3,
+        "prior": {
+          "forbidden": 0.5,
+          "restore_if_free": 0.5
+        },
+        "implies": {
+          "forbidden": [],
+          "restore_if_free": []
+        },
+        "excludes": {
+          "forbidden": [],
+          "restore_if_free": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x6",
+        "topic": "permission-escalation",
+        "question": "Can receptionists override booking rules (book during time off, past cutoff, double-book) that clients cannot?",
+        "options": [
+          {
+            "id": "same_rules",
+            "label": "Staff bound by same integrity rules"
+          },
+          {
+            "id": "staff_override",
+            "label": "Staff may override with a warning"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "same_rules": 0.5,
+          "staff_override": 0.5
+        },
+        "implies": {
+          "same_rules": [],
+          "staff_override": []
+        },
+        "excludes": {
+          "same_rules": [],
+          "staff_override": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x7",
+        "topic": "partial-failure",
+        "question": "If a booking is confirmed but the reminder/notification fails to send, what happens?",
+        "options": [
+          {
+            "id": "booking_stands",
+            "label": "Booking stands; reminder retried/flagged"
+          },
+          {
+            "id": "surface_error",
+            "label": "Flag to staff to contact client manually"
+          }
+        ],
+        "consequence": 2,
+        "prior": {
+          "booking_stands": 0.5,
+          "surface_error": 0.5
+        },
+        "implies": {
+          "booking_stands": [],
+          "surface_error": []
+        },
+        "excludes": {
+          "booking_stands": [],
+          "surface_error": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      },
+      {
+        "id": "x8",
+        "topic": "service-duration-slotting",
+        "question": "How does a service's duration map to the booking grid and stylist availability?",
+        "options": [
+          {
+            "id": "exact_duration",
+            "label": "Block exact service length; next slot starts after"
+          },
+          {
+            "id": "fixed_grid",
+            "label": "Round up to fixed slot increments (e.g., 15/30 min)"
+          }
+        ],
+        "consequence": 4,
+        "prior": {
+          "exact_duration": 0.5,
+          "fixed_grid": 0.5
+        },
+        "implies": {
+          "exact_duration": [],
+          "fixed_grid": []
+        },
+        "excludes": {
+          "exact_duration": [],
+          "fixed_grid": []
+        },
+        "sections": [],
+        "bespoke": true,
+        "archetype": "bespoke",
+        "requires": [],
+        "tags": []
+      }
+    ],
+    "worlds": [
+      {
+        "id": "w0_0_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "platform": "web_mobile_first",
+          "data_import": "fresh_start",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "lists_only",
+          "booking_buffers": "none",
+          "booking_recurring": "no",
+          "booking_waitlist": "none",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "mark_only",
+          "booking_confirmation": "instant",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "contact_only",
+          "booking_pricing_variation": "fixed_per_service",
+          "x1": "cancel_notify",
+          "x2": "first_commit_wins",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "fixed_grid"
+        },
+        "weight": 0.009463875497460127,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_0_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "basic",
+          "platform": "web_mobile_first",
+          "data_import": "fresh_start",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "booking_buffers": "fixed_buffer",
+          "booking_recurring": "no",
+          "booking_waitlist": "manual_waitlist",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "track_and_restrict",
+          "booking_confirmation": "instant",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "contact_only",
+          "booking_pricing_variation": "fixed_per_service",
+          "x1": "reassign",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "exact_duration"
+        },
+        "weight": 0.1682466755104022,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_0_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "none",
+          "platform": "web",
+          "data_import": "fresh_start",
+          "data_export": "none",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "fixed",
+          "reporting": "lists_only",
+          "booking_buffers": "none",
+          "booking_recurring": "no",
+          "booking_waitlist": "none",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "mark_only",
+          "booking_confirmation": "request_approve",
+          "approval_workflow": "single_approver",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "contact_only",
+          "booking_pricing_variation": "fixed_per_service",
+          "x1": "block_if_booked",
+          "x2": "first_commit_wins",
+          "x3": "allow_dupes",
+          "x4": "salon_hours_only",
+          "x5": "forbidden",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "fixed_grid"
+        },
+        "weight": 0.006309250331640083,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_0_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "basic",
+          "platform": "web_mobile_first",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "personal_sensitive",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "booking_buffers": "fixed_buffer",
+          "booking_recurring": "no",
+          "booking_waitlist": "manual_waitlist",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "track_and_restrict",
+          "booking_confirmation": "instant",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "fixed_questions",
+          "booking_pricing_variation": "fixed_per_service",
+          "x1": "reassign",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "surface_error",
+          "x8": "exact_duration"
+        },
+        "weight": 0.10515417219400137,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "basic",
+          "platform": "web_mobile_first",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "personal_sensitive",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "booking_buffers": "none",
+          "booking_recurring": "no",
+          "booking_waitlist": "manual_waitlist",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "mark_only",
+          "booking_confirmation": "instant",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "contact_only",
+          "booking_pricing_variation": "fixed_per_service",
+          "x1": "reassign",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "exact_duration"
+        },
+        "weight": 0.20383731840683345,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "personal_sensitive",
+          "retention": "user_controlled",
+          "customization": "custom_fields",
+          "reporting": "basic_dashboard",
+          "booking_buffers": "fixed_buffer",
+          "booking_recurring": "series",
+          "recurring_scheduled": "recurring_records",
+          "booking_waitlist": "manual_waitlist",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "track_and_restrict",
+          "booking_confirmation": "instant",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "fixed_questions",
+          "booking_pricing_variation": "varies_by_staff_or_time",
+          "x1": "reassign",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "surface_error",
+          "x8": "exact_duration"
+        },
+        "weight": 0.1585401365386482,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "last_write_wins",
+          "audit_trail": "basic",
+          "platform": "web_mobile_first",
+          "data_import": "fresh_start",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "lists_only",
+          "booking_buffers": "none",
+          "booking_recurring": "no",
+          "booking_waitlist": "none",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "mark_only",
+          "booking_confirmation": "instant",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "contact_only",
+          "booking_pricing_variation": "fixed_per_service",
+          "x1": "reassign",
+          "x2": "first_commit_wins",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "fixed_grid"
+        },
+        "weight": 0.006794577280227782,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_1_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "basic",
+          "platform": "web_mobile_first",
+          "data_import": "migrate_from_tool",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "personal_sensitive",
+          "retention": "user_controlled",
+          "customization": "branding_templates",
+          "reporting": "custom_reports",
+          "booking_buffers": "per_service_buffer",
+          "booking_recurring": "series",
+          "recurring_scheduled": "recurring_records",
+          "booking_waitlist": "auto_offer",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "track_and_restrict",
+          "booking_confirmation": "instant",
+          "booking_calendar_sync": "none",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "per_service_form",
+          "booking_pricing_variation": "varies_by_staff_or_time",
+          "x1": "reassign",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "surface_error",
+          "x8": "exact_duration"
+        },
+        "weight": 0.004529718186818521,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_0",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "platform": "web",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "localization": "single_locale",
+          "attachments": "basic",
+          "compliance_sensitivity": "personal_sensitive",
+          "retention": "user_controlled",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "booking_buffers": "per_service_buffer",
+          "booking_recurring": "series",
+          "recurring_scheduled": "recurring_records",
+          "booking_waitlist": "auto_offer",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "track_and_restrict",
+          "booking_confirmation": "instant",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "fixed_questions",
+          "booking_pricing_variation": "varies_by_staff_or_time",
+          "x1": "reassign",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "exact_duration",
+          "booking_calendar_sync": "none"
+        },
+        "weight": 0.17665900928592232,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_1",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "email_password",
+          "concurrency": "guarded",
+          "audit_trail": "full",
+          "platform": "web_mobile_first",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "deletion": "never_delete",
+          "data_scale": "medium",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "personal_sensitive",
+          "retention": "policy_based",
+          "customization": "branding_templates",
+          "reporting": "custom_reports",
+          "booking_buffers": "fixed_buffer",
+          "booking_recurring": "series",
+          "recurring_scheduled": "recurring_records",
+          "booking_waitlist": "auto_offer",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "track_and_restrict",
+          "booking_confirmation": "request_approve",
+          "approval_workflow": "single_approver",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "per_service_form",
+          "booking_pricing_variation": "varies_by_staff_or_time",
+          "x1": "reassign",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "surface_error",
+          "x8": "exact_duration",
+          "booking_calendar_sync": "none"
+        },
+        "weight": 0.007360792053580097,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_2",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "google_microsoft",
+          "concurrency": "guarded",
+          "audit_trail": "basic",
+          "platform": "web",
+          "data_import": "migrate_from_tool",
+          "data_export": "full_export_api",
+          "deletion": "soft_delete",
+          "data_scale": "medium",
+          "localization": "single_locale",
+          "attachments": "rich",
+          "compliance_sensitivity": "personal_sensitive",
+          "retention": "user_controlled",
+          "customization": "custom_fields",
+          "reporting": "custom_reports",
+          "booking_buffers": "per_service_buffer",
+          "booking_recurring": "series",
+          "recurring_scheduled": "recurring_records",
+          "booking_waitlist": "manual_waitlist",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "mark_only",
+          "booking_confirmation": "instant",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "per_service_form",
+          "booking_pricing_variation": "quoted_per_booking",
+          "x1": "block_if_booked",
+          "x2": "lock_during_checkout",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "exact_duration",
+          "booking_calendar_sync": "none"
+        },
+        "weight": 0.005888633642864078,
+        "origin": "sampled"
+      },
+      {
+        "id": "w0_2_3",
+        "assignment": {
+          "user_accounts": "multi_user",
+          "roles": "owner_staff",
+          "external_access": "portal",
+          "integrations": "none",
+          "public_facing": "none",
+          "booking_who_books": "customers_with_account",
+          "booking_resource_model": "staff_time",
+          "booking_service_catalog": "menu_fixed_durations",
+          "booking_availability_rules": "per_resource_schedule",
+          "booking_slot_capacity": "one_per_slot",
+          "booking_cancellation_policy": "staff_only_cancel",
+          "booking_prepayment": "none",
+          "booking_reminders": "email_sms_confirm",
+          "notifications": "email_sms",
+          "booking_locations": "single_location",
+          "booking_walk_ins": "staff_manual",
+          "booking_customer_records": "customer_profile",
+          "booking_staff_schedule_control": "staff_own",
+          "invite_flow": "invite_by_admin",
+          "identity_provider": "magic_link",
+          "concurrency": "guarded",
+          "audit_trail": "basic",
+          "platform": "web_mobile_first",
+          "data_import": "import_spreadsheet",
+          "data_export": "csv_export",
+          "deletion": "soft_delete",
+          "data_scale": "small",
+          "localization": "single_locale",
+          "attachments": "none",
+          "compliance_sensitivity": "ordinary",
+          "retention": "forever",
+          "customization": "branding_templates",
+          "reporting": "basic_dashboard",
+          "booking_buffers": "fixed_buffer",
+          "booking_recurring": "no",
+          "booking_waitlist": "auto_offer",
+          "booking_reschedule": "contact_staff",
+          "booking_no_show": "track_and_restrict",
+          "booking_confirmation": "instant",
+          "booking_time_zones": "single_zone",
+          "booking_intake_form": "contact_only",
+          "booking_pricing_variation": "fixed_per_service",
+          "x1": "reassign",
+          "x2": "first_commit_wins",
+          "x3": "idempotent",
+          "x4": "strict_intersection",
+          "x5": "restore_if_free",
+          "x6": "staff_override",
+          "x7": "booking_stands",
+          "x8": "fixed_grid",
+          "booking_calendar_sync": "none"
+        },
+        "weight": 0.14721584107160193,
+        "origin": "sampled"
+      }
+    ],
+    "alpha": 0.08
+  },
+  "cards": [
+    {
+      "id": "bc9a5d55-be87-4a23-a5d4-201a3d0b0263",
+      "node_id": "reporting",
+      "context": "You want to see how your salon is doing across many bookings and clients",
+      "options": [
+        {
+          "option_id": "basic_dashboard",
+          "label": "A dashboard with totals and counts",
+          "scenario": "You open one screen and see today's numbers at a glance: total bookings, no-shows, and busiest stylists, all as simple totals you cannot dig into further."
+        },
+        {
+          "option_id": "lists_only",
+          "label": "Sortable, filterable lists",
+          "scenario": "You see full lists of every booking and client, then sort and filter them yourself to find exactly the appointments, stylists, or dates you care about."
+        },
+        {
+          "option_id": "custom_reports",
+          "label": "Custom reports people build themselves",
+          "scenario": "You build your own summaries by choosing what to measure and group, saving views like revenue per stylist or bookings by service for whenever you need them."
+        }
+      ],
+      "also_sets": [
+        "Download your lists to a spreadsheet",
+        "A booking is confirmed instantly when the slot is free"
+      ],
+      "created_at": "2026-08-26T10:10:36.828Z",
+      "model": "claude-opus-4-8",
+      "latency_ms": 6857,
+      "phrasing_arm": "base"
+    }
+  ],
+  "answers": [
+    {
+      "card_id": "bc9a5d55-be87-4a23-a5d4-201a3d0b0263",
+      "node_id": "reporting",
+      "kind": "option",
+      "at": "2026-08-26T10:10:36.852Z",
+      "option_id": "basic_dashboard"
+    }
+  ],
+  "precomputed": {},
+  "consequence_override": {},
+  "history": [
+    {
+      "card_id": "bc9a5d55-be87-4a23-a5d4-201a3d0b0263",
+      "worlds": [
+        {
+          "id": "w0_0_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "platform": "web_mobile_first",
+            "data_import": "fresh_start",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "localization": "single_locale",
+            "attachments": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "lists_only",
+            "booking_buffers": "none",
+            "booking_recurring": "no",
+            "booking_waitlist": "none",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "mark_only",
+            "booking_confirmation": "instant",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "contact_only",
+            "booking_pricing_variation": "fixed_per_service",
+            "x1": "cancel_notify",
+            "x2": "first_commit_wins",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "fixed_grid"
+          },
+          "weight": 0.10714285714285715,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "basic",
+            "platform": "web_mobile_first",
+            "data_import": "fresh_start",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "localization": "single_locale",
+            "attachments": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "booking_buffers": "fixed_buffer",
+            "booking_recurring": "no",
+            "booking_waitlist": "manual_waitlist",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "track_and_restrict",
+            "booking_confirmation": "instant",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "contact_only",
+            "booking_pricing_variation": "fixed_per_service",
+            "x1": "reassign",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "exact_duration"
+          },
+          "weight": 0.09523809523809523,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "none",
+            "platform": "web",
+            "data_import": "fresh_start",
+            "data_export": "none",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "localization": "single_locale",
+            "attachments": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "fixed",
+            "reporting": "lists_only",
+            "booking_buffers": "none",
+            "booking_recurring": "no",
+            "booking_waitlist": "none",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "mark_only",
+            "booking_confirmation": "request_approve",
+            "approval_workflow": "single_approver",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "contact_only",
+            "booking_pricing_variation": "fixed_per_service",
+            "x1": "block_if_booked",
+            "x2": "first_commit_wins",
+            "x3": "allow_dupes",
+            "x4": "salon_hours_only",
+            "x5": "forbidden",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "fixed_grid"
+          },
+          "weight": 0.07142857142857142,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_0_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "basic",
+            "platform": "web_mobile_first",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "booking_buffers": "fixed_buffer",
+            "booking_recurring": "no",
+            "booking_waitlist": "manual_waitlist",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "track_and_restrict",
+            "booking_confirmation": "instant",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "fixed_questions",
+            "booking_pricing_variation": "fixed_per_service",
+            "x1": "reassign",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "surface_error",
+            "x8": "exact_duration"
+          },
+          "weight": 0.05952380952380952,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "basic",
+            "platform": "web_mobile_first",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "localization": "single_locale",
+            "attachments": "none",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "booking_buffers": "none",
+            "booking_recurring": "no",
+            "booking_waitlist": "manual_waitlist",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "mark_only",
+            "booking_confirmation": "instant",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "contact_only",
+            "booking_pricing_variation": "fixed_per_service",
+            "x1": "reassign",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "exact_duration"
+          },
+          "weight": 0.11538461538461538,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "user_controlled",
+            "customization": "custom_fields",
+            "reporting": "basic_dashboard",
+            "booking_buffers": "fixed_buffer",
+            "booking_recurring": "series",
+            "recurring_scheduled": "recurring_records",
+            "booking_waitlist": "manual_waitlist",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "track_and_restrict",
+            "booking_confirmation": "instant",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "fixed_questions",
+            "booking_pricing_variation": "varies_by_staff_or_time",
+            "x1": "reassign",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "surface_error",
+            "x8": "exact_duration"
+          },
+          "weight": 0.08974358974358973,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "last_write_wins",
+            "audit_trail": "basic",
+            "platform": "web_mobile_first",
+            "data_import": "fresh_start",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "localization": "single_locale",
+            "attachments": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "lists_only",
+            "booking_buffers": "none",
+            "booking_recurring": "no",
+            "booking_waitlist": "none",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "mark_only",
+            "booking_confirmation": "instant",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "contact_only",
+            "booking_pricing_variation": "fixed_per_service",
+            "x1": "reassign",
+            "x2": "first_commit_wins",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "fixed_grid"
+          },
+          "weight": 0.07692307692307693,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_1_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "basic",
+            "platform": "web_mobile_first",
+            "data_import": "migrate_from_tool",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "user_controlled",
+            "customization": "branding_templates",
+            "reporting": "custom_reports",
+            "booking_buffers": "per_service_buffer",
+            "booking_recurring": "series",
+            "recurring_scheduled": "recurring_records",
+            "booking_waitlist": "auto_offer",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "track_and_restrict",
+            "booking_confirmation": "instant",
+            "booking_calendar_sync": "none",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "per_service_form",
+            "booking_pricing_variation": "varies_by_staff_or_time",
+            "x1": "reassign",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "surface_error",
+            "x8": "exact_duration"
+          },
+          "weight": 0.05128205128205128,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_0",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "platform": "web",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "localization": "single_locale",
+            "attachments": "basic",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "user_controlled",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "booking_buffers": "per_service_buffer",
+            "booking_recurring": "series",
+            "recurring_scheduled": "recurring_records",
+            "booking_waitlist": "auto_offer",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "track_and_restrict",
+            "booking_confirmation": "instant",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "fixed_questions",
+            "booking_pricing_variation": "varies_by_staff_or_time",
+            "x1": "reassign",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "exact_duration",
+            "booking_calendar_sync": "none"
+          },
+          "weight": 0.09999999999999999,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_1",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "email_password",
+            "concurrency": "guarded",
+            "audit_trail": "full",
+            "platform": "web_mobile_first",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "deletion": "never_delete",
+            "data_scale": "medium",
+            "localization": "single_locale",
+            "attachments": "none",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "policy_based",
+            "customization": "branding_templates",
+            "reporting": "custom_reports",
+            "booking_buffers": "fixed_buffer",
+            "booking_recurring": "series",
+            "recurring_scheduled": "recurring_records",
+            "booking_waitlist": "auto_offer",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "track_and_restrict",
+            "booking_confirmation": "request_approve",
+            "approval_workflow": "single_approver",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "per_service_form",
+            "booking_pricing_variation": "varies_by_staff_or_time",
+            "x1": "reassign",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "surface_error",
+            "x8": "exact_duration",
+            "booking_calendar_sync": "none"
+          },
+          "weight": 0.08333333333333333,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_2",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "google_microsoft",
+            "concurrency": "guarded",
+            "audit_trail": "basic",
+            "platform": "web",
+            "data_import": "migrate_from_tool",
+            "data_export": "full_export_api",
+            "deletion": "soft_delete",
+            "data_scale": "medium",
+            "localization": "single_locale",
+            "attachments": "rich",
+            "compliance_sensitivity": "personal_sensitive",
+            "retention": "user_controlled",
+            "customization": "custom_fields",
+            "reporting": "custom_reports",
+            "booking_buffers": "per_service_buffer",
+            "booking_recurring": "series",
+            "recurring_scheduled": "recurring_records",
+            "booking_waitlist": "manual_waitlist",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "mark_only",
+            "booking_confirmation": "instant",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "per_service_form",
+            "booking_pricing_variation": "quoted_per_booking",
+            "x1": "block_if_booked",
+            "x2": "lock_during_checkout",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "exact_duration",
+            "booking_calendar_sync": "none"
+          },
+          "weight": 0.06666666666666667,
+          "origin": "sampled"
+        },
+        {
+          "id": "w0_2_3",
+          "assignment": {
+            "user_accounts": "multi_user",
+            "roles": "owner_staff",
+            "external_access": "portal",
+            "integrations": "none",
+            "public_facing": "none",
+            "booking_who_books": "customers_with_account",
+            "booking_resource_model": "staff_time",
+            "booking_service_catalog": "menu_fixed_durations",
+            "booking_availability_rules": "per_resource_schedule",
+            "booking_slot_capacity": "one_per_slot",
+            "booking_cancellation_policy": "staff_only_cancel",
+            "booking_prepayment": "none",
+            "booking_reminders": "email_sms_confirm",
+            "notifications": "email_sms",
+            "booking_locations": "single_location",
+            "booking_walk_ins": "staff_manual",
+            "booking_customer_records": "customer_profile",
+            "booking_staff_schedule_control": "staff_own",
+            "invite_flow": "invite_by_admin",
+            "identity_provider": "magic_link",
+            "concurrency": "guarded",
+            "audit_trail": "basic",
+            "platform": "web_mobile_first",
+            "data_import": "import_spreadsheet",
+            "data_export": "csv_export",
+            "deletion": "soft_delete",
+            "data_scale": "small",
+            "localization": "single_locale",
+            "attachments": "none",
+            "compliance_sensitivity": "ordinary",
+            "retention": "forever",
+            "customization": "branding_templates",
+            "reporting": "basic_dashboard",
+            "booking_buffers": "fixed_buffer",
+            "booking_recurring": "no",
+            "booking_waitlist": "auto_offer",
+            "booking_reschedule": "contact_staff",
+            "booking_no_show": "track_and_restrict",
+            "booking_confirmation": "instant",
+            "booking_time_zones": "single_zone",
+            "booking_intake_form": "contact_only",
+            "booking_pricing_variation": "fixed_per_service",
+            "x1": "reassign",
+            "x2": "first_commit_wins",
+            "x3": "idempotent",
+            "x4": "strict_intersection",
+            "x5": "restore_if_free",
+            "x6": "staff_override",
+            "x7": "booking_stands",
+            "x8": "fixed_grid",
+            "booking_calendar_sync": "none"
+          },
+          "weight": 0.08333333333333333,
+          "origin": "sampled"
+        }
+      ],
+      "consequence_override": {},
+      "sheet_version": 3
+    }
+  ],
+  "resample_count": 1,
+  "versions": {
+    "catalog": "b2b-invoicing@2026.08.24-1+booking@2026.08.23-1+core@2026.08.22-1+crud-saas@2026.08.25-1+e-commerce@2026.08.23-1+marketplace@2026.08.23-1",
+    "prompts": "2026.08.25-2",
+    "models": {
+      "strong": "claude-opus-4-8",
+      "fast": "claude-opus-4-8"
+    }
+  },
+  "created_at": "2026-08-26T10:09:51.398Z",
+  "updated_at": "2026-08-26T10:10:36.867Z",
+  "last_stop_reason": "converged"
+}

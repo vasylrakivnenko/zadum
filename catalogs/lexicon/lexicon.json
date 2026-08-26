@@ -1,6 +1,6 @@
 {
-  "version": "2026.08.25-1",
-  "description": "Evidence-layer feature lexicon: the columns of the repos-vs-specs evidence matrix. Each feature is a binary observable with declared witness loci per document type; `maps_to` is the catalog decision the observation is evidence for, or null for a catalog-gap candidate.",
+  "version": "2026.08.25-2",
+  "description": "Evidence-layer feature lexicon: the columns of the repos-vs-specs evidence matrix. Each feature is a binary observable with declared witness loci per document type; `maps_to` is the catalog decision the observation is evidence for, or null for a catalog-gap candidate. The 2026.08.25-2 blind-node coverage pass adds at least two opposing observables for each of the 33 catalog nodes that previously had no feature at all, so no decision is structurally invisible to the matrix; pure-policy nodes (late fee basis, walk-ins, cancellation rules) ship with an empty `repo` locus list because a repository genuinely cannot witness them.",
   "categories": [
     {
       "id": "identity_access",
@@ -3372,6 +3372,1682 @@
         "spec_doc": [
           "non_goals_section",
           "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_link_open_to_anyone",
+      "label": "Anyone holding the invoice link can open it, with no sign-in",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "link_access",
+        "option": "anyone_with_link"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_link_email_code_challenge",
+      "label": "Opening the invoice link needs a code emailed to the client first",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "link_access",
+        "option": "email_code"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "routes",
+          "email_templates"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "actors_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "admin_only_edits_working_hours",
+      "label": "Only the owner or admin changes working hours and time off",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "booking_staff_schedule_control",
+        "option": "admin_only"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "staff_edit_their_own_hours",
+      "label": "Each staff member sets their own working hours and time off",
+      "category": "identity_access",
+      "maps_to": {
+        "node": "booking_staff_schedule_control",
+        "option": "staff_own"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "routes",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_marked_paid_by_hand",
+      "label": "Someone marks an invoice as paid by hand",
+      "category": "payments",
+      "maps_to": {
+        "node": "payment_recording",
+        "option": "manual"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "db_schema",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "incoming_payment_marks_invoice_paid",
+      "label": "An incoming online payment marks the invoice paid on its own",
+      "category": "payments",
+      "maps_to": {
+        "node": "payment_recording",
+        "option": "online_auto"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "integration_code",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "one_tax_rate_per_invoice",
+      "label": "One tax rate applies to the whole invoice",
+      "category": "payments",
+      "maps_to": {
+        "node": "taxes",
+        "option": "single_rate"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "tax_rate_per_invoice_line",
+      "label": "Each line on the invoice carries its own tax rate",
+      "category": "payments",
+      "maps_to": {
+        "node": "taxes",
+        "option": "per_line"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "deposit_applied_to_later_invoice",
+      "label": "Money taken up front is held and later applied to an invoice",
+      "category": "payments",
+      "maps_to": {
+        "node": "deposits",
+        "option": "yes"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "nothing_taken_before_the_invoice",
+      "label": "Nothing is taken up front — the invoice is the first request for money",
+      "category": "payments",
+      "maps_to": {
+        "node": "deposits",
+        "option": "no"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "payments_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "discount_on_the_invoice_total",
+      "label": "A single discount is taken off the invoice total",
+      "category": "payments",
+      "maps_to": {
+        "node": "invoice_discounts",
+        "option": "invoice_level"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "discount_on_each_invoice_line",
+      "label": "Individual invoice lines can each be discounted",
+      "category": "payments",
+      "maps_to": {
+        "node": "invoice_discounts",
+        "option": "line_and_invoice"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "late_fee_is_a_flat_amount",
+      "label": "A late fee is a fixed amount added once",
+      "category": "payments",
+      "maps_to": {
+        "node": "late_fee_basis",
+        "option": "flat_fee"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "payments_section",
+          "pricing_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "late_fee_is_monthly_percentage",
+      "label": "A late fee is a monthly percentage of what is still owed",
+      "category": "payments",
+      "maps_to": {
+        "node": "late_fee_basis",
+        "option": "percent_monthly"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "payments_section",
+          "pricing_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "failed_charge_is_retried",
+      "label": "A failed automatic charge is retried before anyone is told",
+      "category": "payments",
+      "maps_to": {
+        "node": "recurring_failure_handling",
+        "option": "retry_then_email"
+      },
+      "loci": {
+        "repo": [
+          "background_jobs",
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "payments_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "failed_charge_emailed_at_once",
+      "label": "A failed automatic charge is emailed out straight away, with no retries",
+      "category": "payments",
+      "maps_to": {
+        "node": "recurring_failure_handling",
+        "option": "email_only"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "payments_section",
+          "notifications_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "single_shop_currency",
+      "label": "Everything is priced and charged in one currency",
+      "category": "payments",
+      "maps_to": {
+        "node": "shop_currency",
+        "option": "single"
+      },
+      "loci": {
+        "repo": [
+          "config_env"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "prices_converted_for_display_only",
+      "label": "Prices are shown in the visitor's currency but charged in the shop's",
+      "category": "payments",
+      "maps_to": {
+        "node": "shop_currency",
+        "option": "display_conversion"
+      },
+      "loci": {
+        "repo": [
+          "payment_code",
+          "integration_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "charged_in_the_buyers_currency",
+      "label": "Buyers are priced and charged in their own currency",
+      "category": "payments",
+      "maps_to": {
+        "node": "shop_currency",
+        "option": "multi_currency_checkout"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "single_seller_identity_on_invoices",
+      "label": "Invoices always go out from the business itself, from one sender identity",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoicing_model",
+        "option": "firm_bills_own_clients"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoices_raised_for_clients_customers",
+      "label": "Invoices are raised for a client's own customers, not for the business's",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoicing_model",
+        "option": "on_behalf_of_clients"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "actors_section",
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_three_state_lifecycle",
+      "label": "An invoice is only ever draft, sent or paid",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoice_statuses",
+        "option": "simple"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_viewed_overdue_void_states",
+      "label": "Invoices also carry viewed, partly paid, overdue or void states",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "invoice_statuses",
+        "option": "detailed"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "tests"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_link_expires_after_sending",
+      "label": "The online invoice link has an expiry and stops working",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "link_expiry",
+        "option": "expires_30_days"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "invoice_link_works_forever",
+      "label": "The online invoice link keeps working forever",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "link_expiry",
+        "option": "never"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "workflow_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "credit_notes_share_invoice_numbers",
+      "label": "Credit notes take their numbers from the same run as invoices",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "credit_note_numbering",
+        "option": "same_sequence"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "credit_notes_own_number_series",
+      "label": "Credit notes are numbered in their own separate series",
+      "category": "invoicing",
+      "maps_to": {
+        "node": "credit_note_numbering",
+        "option": "own_sequence"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "payments_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "storefront_browsable_without_signing_in",
+      "label": "The catalog can be browsed without signing in",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_storefront_access",
+        "option": "public"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "storefront_behind_a_login_or_password",
+      "label": "The store cannot be seen until you sign in or enter a password",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_storefront_access",
+        "option": "private_invite"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "routes"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "three_step_order_status",
+      "label": "An order is only placed, shipped or delivered",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_order_lifecycle",
+        "option": "simple"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "order_states_for_packing_holds_refunds",
+      "label": "Orders also carry packing, on-hold, cancelled and refunded states",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_order_lifecycle",
+        "option": "detailed"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "tests"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "buyer_cancels_until_it_ships",
+      "label": "Customers can cancel their own order until it ships",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_cancellations",
+        "option": "customer_until_shipped"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "orders_section",
+          "scheduling_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "only_staff_can_cancel_an_order",
+      "label": "Only staff can cancel an order; customers have to ask",
+      "category": "commerce_catalog",
+      "maps_to": {
+        "node": "shop_cancellations",
+        "option": "staff_only"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "orders_section",
+          "scheduling_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sellers_offer_their_own_time",
+      "label": "What is sold is a person's time or labour",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_supply_type",
+        "option": "services"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sellers_sell_physical_items",
+      "label": "What is sold is a physical item that gets shipped or handed over",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_supply_type",
+        "option": "physical_goods"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sellers_sell_downloadable_goods",
+      "label": "What is sold is downloaded or unlocked online",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_supply_type",
+        "option": "digital_goods"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sellers_rent_things_for_a_period",
+      "label": "Things are rented for a period and then come back",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_supply_type",
+        "option": "rentals"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "listings_browsable_without_an_account",
+      "label": "Listings can be browsed without an account",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_listing_visibility",
+        "option": "public_browse"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "nothing_visible_until_signed_in",
+      "label": "Nothing can be seen until you sign in",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_listing_visibility",
+        "option": "members_only"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "routes"
+        ],
+        "spec_doc": [
+          "permissions_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "buyer_account_required_to_order",
+      "label": "A buyer must have an account before they can order",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_buyer_accounts",
+        "option": "account_required"
+      },
+      "loci": {
+        "repo": [
+          "auth_code",
+          "routes",
+          "db_schema"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "guest_buyers_with_just_an_email",
+      "label": "A buyer can order as a guest with just an email address",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_buyer_accounts",
+        "option": "guest_allowed"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "db_schema",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "actors_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "distance_or_service_area_decides",
+      "label": "Buyers and sellers have to be near each other; distance or a service area decides",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_geography",
+        "option": "local_with_distance"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "dependency_manifest"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "cross_border_currency_and_customs",
+      "label": "Transactions cross countries, with different currencies, taxes and shipping",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_geography",
+        "option": "international"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code",
+          "config_env"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "orders_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "one_country_only_goods_shipped",
+      "label": "Everything happens inside one country and goods are shipped",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_geography",
+        "option": "national_shipping"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "orders_section",
+          "overview"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "buyer_window_then_seller_penalty",
+      "label": "Buyers may cancel free inside a window, and seller cancellations count against the seller",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_cancellation",
+        "option": "buyer_window_seller_penalty"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "scheduling_section",
+          "payments_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "each_seller_sets_cancellation_terms",
+      "label": "Each seller sets their own cancellation terms and the platform enforces them",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_cancellation",
+        "option": "seller_policy"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "scheduling_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "no_cancelling_once_confirmed",
+      "label": "Nothing is cancelled once confirmed — only refunded or disputed",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_cancellation",
+        "option": "no_cancellation"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "scheduling_section",
+          "payments_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "buyer_and_seller_meet_in_person",
+      "label": "The buyer and seller meet in person to hand it over",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_fulfilment",
+        "option": "in_person"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "seller_enters_shipping_tracking",
+      "label": "The seller ships it and types in a tracking number",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_fulfilment",
+        "option": "seller_ships"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "email_templates"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "notifications_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "platform_books_the_courier",
+      "label": "The platform books a courier for pickup and delivery",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_fulfilment",
+        "option": "platform_arranges"
+      },
+      "loci": {
+        "repo": [
+          "integration_code",
+          "dependency_manifest",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "orders_section",
+          "integrations_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sellers_run_their_own_discounts",
+      "label": "Sellers create their own discounts and coupon codes",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_promotions",
+        "option": "seller_discounts"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "featured_or_boosted_listings",
+      "label": "The platform runs its own promotions and sells featured placements",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_promotions",
+        "option": "platform_promos_featured"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "catalog_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "fixed_platform_category_list",
+      "label": "Categories and fields are fixed by the platform; sellers only pick from them",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_taxonomy_control",
+        "option": "platform_fixed"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sellers_add_free_tags",
+      "label": "Sellers add their own free tags on top of the platform's categories",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_taxonomy_control",
+        "option": "platform_plus_seller_tags"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "sellers_propose_new_categories",
+      "label": "Sellers can propose a new category and the platform approves it",
+      "category": "marketplace",
+      "maps_to": {
+        "node": "mp_taxonomy_control",
+        "option": "sellers_propose"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "admin_ui"
+        ],
+        "spec_doc": [
+          "catalog_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "fixed_gap_after_every_booking",
+      "label": "A fixed gap is left after every booking",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_buffers",
+        "option": "fixed_buffer"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "framework_config"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "settings_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "setup_cleanup_time_per_service",
+      "label": "Each service has its own setup or cleanup time",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_buffers",
+        "option": "per_service_buffer"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "catalog_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "bookings_run_back_to_back",
+      "label": "Bookings run back to back with no gap between them",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_buffers",
+        "option": "none"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "scheduling_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "reschedule_only_before_a_cutoff",
+      "label": "Customers can move their own booking, but only before a cut-off",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_reschedule",
+        "option": "self_within_window"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes",
+          "tests"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "workflow_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "reschedule_handled_by_staff_only",
+      "label": "Only the business can move a booking; customers have to ask",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_reschedule",
+        "option": "contact_staff"
+      },
+      "loci": {
+        "repo": [
+          "routes",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "scheduling_section",
+          "actors_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "staff_add_walk_ins_and_blocked_time",
+      "label": "Staff also add walk-ins, phone bookings and blocked time by hand",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_walk_ins",
+        "option": "staff_manual"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "scheduling_section",
+          "actors_section",
+          "admin_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "every_booking_comes_through_the_online_flow",
+      "label": "Every booking comes through the online flow; nothing is added by hand",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_walk_ins",
+        "option": "online_only"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "scheduling_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "one_price_per_service",
+      "label": "Every service has a single price",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_pricing_variation",
+        "option": "fixed_per_service"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "catalog_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "price_varies_by_staff_or_time",
+      "label": "The price changes with who does it or when it happens",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_pricing_variation",
+        "option": "varies_by_staff_or_time"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "payment_code"
+        ],
+        "spec_doc": [
+          "pricing_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "contact_details_kept_on_the_booking",
+      "label": "Contact details are typed onto each booking and kept nowhere else",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_customer_records",
+        "option": "per_booking_contact"
+      },
+      "loci": {
+        "repo": [
+          "db_schema"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "customer_record_with_visit_history",
+      "label": "Each customer has a record listing every past and future visit",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_customer_records",
+        "option": "customer_profile"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "private_staff_notes_on_customers",
+      "label": "Staff keep private notes and preferences on a customer",
+      "category": "booking_scheduling",
+      "maps_to": {
+        "node": "booking_customer_records",
+        "option": "profile_with_notes"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "auth_code"
+        ],
+        "spec_doc": [
+          "data_model_section",
+          "permissions_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "new_records_from_a_template",
+      "label": "A new record can start from a pre-filled template",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_templates",
+        "option": "templates"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "new_records_always_start_blank",
+      "label": "A new record always starts blank",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_templates",
+        "option": "none"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "workflow_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "notify_assignee_and_mentions_only",
+      "label": "Only the assignee and anyone @mentioned are told about a change",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_watchers",
+        "option": "assignee_and_mentions"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "email_templates",
+          "background_jobs"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "follow_a_record_to_be_notified",
+      "label": "People can follow a record and choose what they are told about",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_watchers",
+        "option": "subscribers"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "routes"
+        ],
+        "spec_doc": [
+          "notifications_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "records_created_on_a_schedule",
+      "label": "Records are created automatically on a repeating schedule",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_recurring",
+        "option": "recurring_records"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "background_jobs",
+          "framework_config"
+        ],
+        "spec_doc": [
+          "workflow_section",
+          "data_model_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "records_only_created_by_hand",
+      "label": "Records are only ever created by a person",
+      "category": "records_workflow",
+      "maps_to": {
+        "node": "record_recurring",
+        "option": "no"
+      },
+      "loci": {
+        "repo": [],
+        "spec_doc": [
+          "workflow_section",
+          "non_goals_section"
+        ]
+      },
+      "detectable_in": [
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "one_local_time_zone_everywhere",
+      "label": "Everything runs in one fixed local time zone",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "booking_time_zones",
+        "option": "single_zone"
+      },
+      "loci": {
+        "repo": [
+          "config_env"
+        ],
+        "spec_doc": [
+          "settings_section",
+          "scheduling_section"
+        ]
+      },
+      "detectable_in": [
+        "repo",
+        "spec_doc"
+      ]
+    },
+    {
+      "id": "times_shown_in_each_persons_zone",
+      "label": "Times are shown to each person in their own time zone",
+      "category": "localization_platform",
+      "maps_to": {
+        "node": "booking_time_zones",
+        "option": "customer_zone_shown"
+      },
+      "loci": {
+        "repo": [
+          "db_schema",
+          "config_env"
+        ],
+        "spec_doc": [
+          "settings_section",
+          "scheduling_section"
         ]
       },
       "detectable_in": [

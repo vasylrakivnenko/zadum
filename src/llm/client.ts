@@ -2,7 +2,10 @@
  * The only door to the LLM. Every call is a stateless structured function: (system, user, schema) -> parsed JSON.
  *  - AnthropicLLM: real calls via @anthropic-ai/sdk `messages.parse` + zodOutputFormat (strict JSON schema).
  *  - MockLLM: scripted responses for tests and `--mock` demos (no credentials needed).
- *  - CachedLLM: disk cache keyed by (fn, model, system, user, schema) for deterministic replays.
+ *  - CachedLLM: disk cache keyed by (fn, model, system, user, userPrefix, schema) for deterministic replays.
+ *
+ * A request may split its user turn into a cacheable `userPrefix` (a big constant artifact) plus a varying
+ * `user` (the question about it); see `LLMRequest.userPrefix` and `userContent`.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
@@ -26,6 +29,37 @@ export interface LLMRequest<T> {
   temperature?: number;
   /** extra bytes mixed into the cache key (e.g. sample index) so identical prompts can yield distinct cached samples */
   cacheSalt?: string;
+  /**
+   * The stable, cacheable leading part of the user message — a large artifact, a shared preamble, a set of
+   * few-shot examples that several calls reuse verbatim. When set, the user turn is sent as TWO text blocks:
+   * this one, marked `cache_control: {type:"ephemeral"}`, then `user`.
+   *
+   * Anthropic prompt caching is a **prefix** match, so this only pays off if the bytes are identical across
+   * calls and everything that varies lives in `user`. Two consequences worth stating out loud:
+   *   - Never interpolate a clock, a uuid, or a batch index in here.
+   *   - The provider's minimum cacheable prefix is model-dependent (1024 tokens on Opus 4.8, 512 on Opus 5,
+   *     4096 on Opus 4.6/Haiku 4.5). A shorter prefix does not error — it silently reports
+   *     `cache_creation_input_tokens: 0`, which is why the caller should check the usage numbers.
+   * Omit it and the request is byte-identical to what this interface sent before the field existed (a single
+   * string `content`), which is what every other LLM function in this repo relies on.
+   */
+  userPrefix?: string;
+}
+
+/** A user-turn text block, optionally the cache breakpoint. Structurally a subset of the SDK's `TextBlockParam`. */
+export type UserTextBlock = { type: "text"; text: string; cache_control?: { type: "ephemeral" } };
+
+/**
+ * The user turn's `content` for a request: a bare string when there is no cacheable prefix (byte-identical to
+ * the pre-`userPrefix` behaviour), or two text blocks with the breakpoint on the stable one. Shared by both
+ * real clients so the two transports cannot drift apart on the one thing caching depends on.
+ */
+export function userContent<T>(req: Pick<LLMRequest<T>, "user" | "userPrefix">): string | UserTextBlock[] {
+  if (!req.userPrefix) return req.user;
+  return [
+    { type: "text", text: req.userPrefix, cache_control: { type: "ephemeral" } },
+    { type: "text", text: req.user },
+  ];
 }
 
 export interface LLMUsage {
@@ -100,7 +134,7 @@ export class AnthropicLLM implements LLM {
       model,
       max_tokens: req.maxTokens ?? (req.tier === "strong" ? 16_000 : 4_096),
       system: [{ type: "text", text: req.system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: req.user }],
+      messages: [{ role: "user", content: userContent(req) }],
       output_config: {
         format: zodOutputFormat(req.schema),
         ...(adaptive && req.effort ? { effort: req.effort } : {}),
@@ -141,7 +175,7 @@ export type MockHandler = (req: LLMRequest<unknown>, callIndex: number) => unkno
 /** Scripted LLM: handlers keyed by fn name return plain data (validated against the request schema). */
 export class MockLLM implements LLM {
   readonly name = "mock";
-  readonly calls: { fn: string; tier: Tier; user: string; system: string }[] = [];
+  readonly calls: { fn: string; tier: Tier; user: string; system: string; userPrefix?: string }[] = [];
   private counts = new Map<string, number>();
   constructor(
     private handlers: Record<string, MockHandler>,
@@ -153,7 +187,8 @@ export class MockLLM implements LLM {
     if (!h) throw new LLMError("mock_missing", `MockLLM: no handler for fn "${req.fn}"`, req.fn);
     const idx = this.counts.get(req.fn) ?? 0;
     this.counts.set(req.fn, idx + 1);
-    this.calls.push({ fn: req.fn, tier: req.tier, user: req.user, system: req.system });
+    // `userPrefix` is recorded only when set, so a handler or a test sees exactly what the caller sent.
+    this.calls.push({ fn: req.fn, tier: req.tier, user: req.user, system: req.system, ...(req.userPrefix ? { userPrefix: req.userPrefix } : {}) });
     const raw = await h(req as LLMRequest<unknown>, idx);
     const parsed = req.schema.safeParse(raw);
     if (!parsed.success) throw new LLMError("parse", `MockLLM(${req.fn}): handler output failed schema: ${parsed.error.message}`, req.fn);
@@ -182,9 +217,13 @@ export class CachedLLM implements LLM {
   private key<T>(req: LLMRequest<T>): string {
     const model = req.tier === "strong" ? this.models.strong : this.models.fast;
     const schema = JSON.stringify(z.toJSONSchema(req.schema));
-    return createHash("sha256")
-      .update([req.fn, model, req.system, req.user, schema, req.effort ?? "", String(req.temperature ?? ""), req.cacheSalt ?? ""].join("\n"))
-      .digest("hex");
+    const parts = [req.fn, model, req.system, req.user, schema, req.effort ?? "", String(req.temperature ?? ""), req.cacheSalt ?? ""];
+    // `userPrefix` MUST be in the key: it carries the artifact, so two different documents asked the same
+    // batch of questions have identical `user` bytes and would otherwise collide on one cache entry — a
+    // replay would silently answer document B with document A's labels. It is appended only when present so
+    // that keys for the ~15 prefix-less LLM functions stay byte-identical and existing replay caches survive.
+    if (req.userPrefix) parts.push(`prefix:${req.userPrefix}`);
+    return createHash("sha256").update(parts.join("\n")).digest("hex");
   }
   async structured<T>(req: LLMRequest<T>): Promise<LLMResponse<T>> {
     const file = path.join(this.dir, `${req.fn}.${this.key(req)}.json`);

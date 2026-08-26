@@ -1,0 +1,2283 @@
+{
+  "sheet_version": 7,
+  "critic": {
+    "violations": [
+      {
+        "rule_id": "r8",
+        "severity": "high",
+        "where": "Spreadsheet Import → 'Identifiers / uniqueness': \"the business key is (`file_name`, `month_covered`, `upload_date`), which lets a confirmed identical-file re-import be retained as a distinct row without colliding on (`file_name`, `month_covered`)\"",
+        "why": "Sheet r8 states each Spreadsheet Import \"must carry a unique file name and month-covered identifier.\" The spec silently redefines uniqueness to include the surrogate id/upload_date so two imports may share the same file_name and month_covered — directly weakening the Sheet rule the spec claims to implement (R-8 even says \"Two imports may share the same file name and month covered\").",
+        "fix_hint": "Either enforce true (file_name, month_covered) uniqueness per r8 (and reject identical re-uploads), or amend the Sheet r8 before allowing duplicates."
+      },
+      {
+        "rule_id": "r5 × r8",
+        "severity": "high",
+        "where": "R-5 test (\"upload the same file name for the same month twice ... assert two Spreadsheet Import rows both persist\") vs R-8 (\"each Spreadsheet Import is uniquely identified by ... file_name, month_covered\")",
+        "why": "r5 (with x8) requires retaining BOTH import rows when the identical file is re-uploaded for the same month; r8 forbids two imports sharing file_name+month_covered. As literally stated in the Sheet, obeying r5 forces breaking r8 — neither is satisfiable for an identical re-upload. The spec masks this only by adding a surrogate key not present in r8.",
+        "fix_hint": "Resolve which rule governs identical re-uploads: keep uniqueness and store a single row (bumping a version), or drop the file_name+month uniqueness constraint in the Sheet."
+      },
+      {
+        "rule_id": "r5 × r8",
+        "severity": "high",
+        "where": "R-8 Test sketch: \"upload the same file name for the same month twice (after the R-D9 confirmation) → assert two Spreadsheet Import rows with distinct id both persist.\"",
+        "why": "R-8's own verification test requires creating two imports with the same file_name and month_covered, which is exactly what r8 (as worded in the Sheet) forbids. The test cannot be executed while r8's stated uniqueness holds, making r8 unverifiable.",
+        "fix_hint": "Make the test consistent with a single enforced uniqueness definition."
+      },
+      {
+        "rule_id": "r3",
+        "severity": "medium",
+        "where": "Monthly Financials data model status enum {draft, finalized, reviewed} and matrix row 'Finalize month' vs Monthly Financials lifecycle states {draft, ready_to_close, reviewed, reopened} where draft→ready_to_close is done by \"system\" automatically",
+        "why": "R-3's test ('attempt finalize → expect rejection; add expense line, finalize → success') presumes a human 'Finalize month' action to a 'finalized' state. The lifecycle has no 'finalized' state and performs the draft→ready_to_close transition automatically by the system with a guard — so the finalize test cannot be run against the declared state machine, and r3 is effectively unverifiable.",
+        "fix_hint": "Reconcile: define a single 'finalized' (or 'ready_to_close') state and one actor/trigger, and align R-3's test to it."
+      },
+      {
+        "rule_id": "data_model × lifecycle",
+        "severity": "medium",
+        "where": "Monthly Financials table status \"Enum: draft, finalized, reviewed\" vs Lifecycle states \"draft, ready_to_close, reviewed, reopened\"",
+        "why": "The data model and the state machine disagree about the same entity's states: 'finalized' exists only in the data model/matrix/scenarios, and 'ready_to_close' and 'reopened' exist only in the lifecycle. An implementer cannot build one enum from two conflicting lists.",
+        "fix_hint": "Use one authoritative set of states across data model, matrix, lifecycle and scenarios."
+      },
+      {
+        "rule_id": "data_model × lifecycle",
+        "severity": "medium",
+        "where": "Spreadsheet Import table status \"Enum: awaiting_confirmation, imported, rejected, superseded\" vs Lifecycle states \"uploaded, needs_confirmation, rejected, applied, superseded\"",
+        "why": "Two sections name different states for the same entity: 'awaiting_confirmation'/'imported' (data model) vs 'needs_confirmation'/'applied'/'uploaded' (lifecycle). The status field is unbuildable as specified.",
+        "fix_hint": "Align the Spreadsheet Import status enum between the data model and its state machine."
+      },
+      {
+        "rule_id": "actors_permissions × lifecycle",
+        "severity": "medium",
+        "where": "R-D2/Journey 5 (\"reopening returns it to `draft`\") and Journey 5 step 5 vs Monthly Financials lifecycle (\"reviewed → reopened\") and S24 (\"March enters `reopened`\")",
+        "why": "Sections disagree on the target state of reopening a reviewed month: some say it returns to `draft`, the lifecycle and S24 say it enters `reopened`. A guard/permission built on one contradicts the other.",
+        "fix_hint": "Pick a single reopen target state and use it consistently in lifecycle, derived invariants, scenarios and journeys."
+      },
+      {
+        "rule_id": "actors_permissions × lifecycle",
+        "severity": "low",
+        "where": "Matrix condition *2 and S7 (\"the Owner (the uploader) may confirm or cancel\") vs Spreadsheet Import lifecycle transition needs_confirmation→applied \"Who: Bookkeeper\"",
+        "why": "The matrix and scenarios allow the initiator (Owner or Bookkeeper) to confirm a duplicate upload, but the lifecycle transition names only 'Bookkeeper' as the actor, denying the Owner the capability granted elsewhere.",
+        "fix_hint": "List the uploader (Owner or Bookkeeper) as the actor on the confirmation transitions."
+      },
+      {
+        "rule_id": "data_model × rules",
+        "severity": "medium",
+        "where": "KPI 'Value source (default)': \"each KPI's `value` is read from a `Value` column in the uploaded spreadsheet ... KPIs are not computed by the app in v1\" vs R-D11: \"Each KPI's `value` is derived from the underlying Monthly Financials ... KPIs are never entered as free-standing figures\" (and S35 same)",
+        "why": "The data model says KPI values are imported from the spreadsheet and explicitly NOT computed, while R-D11/S35 say values are computed from figures and never entered. These directly contradict about the same field, including target (imported column vs 'set by the Owner').",
+        "fix_hint": "Decide whether KPI value/target are imported or computed and state it once."
+      }
+    ],
+    "omissions": [
+      {
+        "item": "n7 KPI",
+        "kind": "noun",
+        "why": "KPI is covered contradictorily: the data model imports value/target from spreadsheet columns and says KPIs are 'not computed', while R-D11/S35 compute them from figures and say they are 'never entered'. The noun's core behaviour is specified two incompatible ways."
+      }
+    ],
+    "score": 5,
+    "verdict": "fail"
+  },
+  "critic_rounds": 2,
+  "ir_findings": [
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Monthly Financials",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Revenue Line",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Expense Line",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Department",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    }
+  ],
+  "spec_findings": [
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a2 (\"Bookkeeper updates Revenue Line\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a3 (\"Bookkeeper updates Expense Line\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a9 (\"Owner sets Budget\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a12 (\"Owner compares KPI\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "partially_implemented_decision",
+      "severity": "medium",
+      "message": "the user answered \"Must anything happen automatically on a schedule?\" with \"Records get created automatically (recurring invoices, appointments, …\", and the spec covers it only loosely (best match 0.32): it never mentions \"appointments\". The nearest thing the spec says is \"Given a new calendar month begins, when the scheduled job runs, then a draft Monthly Fina…\".",
+      "fix_hint": "Check by hand whether the answer is really built. This band holds both real gaps and answers the spec implements in different words, so it is reported rather than enforced."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Monthly Financials (n1)",
+      "message": "table cell in row \"net_profit\" holds 102 characters of prose: \"`net_profit = total_income − total_expenses`; may be negative and is stored/shown as a negative number\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Budget (n4)",
+      "message": "table cell in row \"period\" holds a second sentence: \"Text (e.g. Q1 2024 or YYYY-MM)\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Department (n5)",
+      "message": "table cell in row \"cost_center_code\" holds a second sentence: \"Unique cost-center code (e.g. CC-200)\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Cash Balance (n6)",
+      "message": "table cell in row \"account\" holds a second sentence: \"Account name (e.g. Operating Account)\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "KPI (n7)",
+      "message": "table cell in row \"name\" holds a second sentence: \"Metric name (e.g. Gross Margin)\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Monthly Financials",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Revenue Line",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Expense Line",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Department",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    }
+  ],
+  "blocking": [
+    "the critic returned fail (score 5)"
+  ],
+  "deliverable": false,
+  "scope_creep": [
+    {
+      "kind": "noun",
+      "item": "Audit Entry",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Monthly Financials record may transition to finalized only when at least one non-archived Revenue Line and at least one non-archived Expense Line exist for that month.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Every stored and displayed amount is in USD; any value carrying a non-USD currency is rejected on import and on manual save.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Once the Accountant marks a Monthly Financials record reviewed, its Revenue Lines, Expense Lines, and Cash Balance are locked: no upload, figure edit, archive, or Department reassignment may change them while the month is reviewed. Editing resumes only after the Accountant reopens the month.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "When an uploaded spreadsheet contains any invalid, unparseable, or non-USD row, the entire file is rejected and no figures are written; the import row is saved with status rejected.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Stored monetary figures keep exact cents; displayed figures are rounded to whole dollars. amount and balance magnitudes are stored positive; only computed net_profit (and any negative balance) may be negative.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Concurrent edits to the same Revenue Line or Expense Line resolve last-write-wins with no conflict warning.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Manager's view scope may be extended only by the Owner explicitly granting additional Departments; Managers cannot self-grant or delegate access.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Budget creation and changes take effect only after the Owner (the single approver) approves them; a Bookkeeper proposal remains pending until Owner approval; the Owner may propose and approve in one act.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A soft-deleted (archived) record is hidden from all active dashboard views and excluded from totals; only the Owner may restore an archived record.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "On the first day of each calendar month the system automatically creates exactly one draft Monthly Financials record; this is the only auto-generated record and no human actor initiates scheduled generation.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Only the user who initiated a specific upload may confirm or cancel its duplicate-detection prompt.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "During import, the Department cell resolves to an existing Department by exact match on cost_center_code (trimmed, case-insensitive); no other matching field is used.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Cash Balance's date is a date-only value in the business's single timezone with no time component and no cross-timezone conversion; it is attributed to the calendar month of its as_of_date.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "The app serves a single business only; there is no separation of multiple organisations' data.",
+      "severity": "high"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|upload|Spreadsheet Import",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|confirm or cancel duplicate-upload prompt for|Spreadsheet Import",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|confirm or cancel duplicate-upload prompt for|Spreadsheet Import",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|update|Revenue Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|update|Expense Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|enter|Cash Balance",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|finalize|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|finalize|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Accountant|mark reviewed|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Accountant|reopen|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|archive|Revenue Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|archive|Expense Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|archive|Budget",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|archive|Expense Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|restore|Expense Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|reassign to another Department|Expense Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|reassign to another Department|Budget",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|archive|Department",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|grant Manager access to additional|Department",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|propose|Budget",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|propose|Budget",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|approve|Budget",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|view|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Accountant|view|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|export|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|export|Monthly Financials",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|view|Audit Entry",
+      "severity": "medium"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No multi-business separation; data is not partitioned for multiple organisations.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No external/customer access; only the four internal actors have accounts.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No self-service report builder or custom fields; the dashboard shows fixed totals, counts, and KPIs plus Excel/CSV export.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No offline use; the app works online only and does not queue or sync offline work.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "KPIs are not computed by the app in v1 beyond deriving from imported/source figures; no future projection or extrapolation.",
+      "severity": "low"
+    }
+  ],
+  "roundtrip": {
+    "recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 0.9166666666666666,
+      "rules": 0.8461538461538461,
+      "non_goals": 1,
+      "overall": 0.926829268292683
+    },
+    "missing": [
+      {
+        "kind": "action",
+        "item": "Owner|sets|Budget"
+      },
+      {
+        "kind": "rule",
+        "item": "A month's financials cannot be finalized until income and expense lines are both present."
+      },
+      {
+        "kind": "rule",
+        "item": "All amounts are shown in a single currency (USD) and no mixed currencies are allowed."
+      }
+    ],
+    "extra": [
+      {
+        "kind": "noun",
+        "item": "Audit Entry"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|upload|Spreadsheet Import"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|confirm or cancel duplicate-upload prompt for|Spreadsheet Import"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|confirm or cancel duplicate-upload prompt for|Spreadsheet Import"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|update|Revenue Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|update|Expense Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|enter|Cash Balance"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|finalize|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|finalize|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|mark reviewed|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|reopen|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|archive|Revenue Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|archive|Expense Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|archive|Budget"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|archive|Expense Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|restore|Expense Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|reassign to another Department|Expense Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|reassign to another Department|Budget"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|archive|Department"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|grant Manager access to additional|Department"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|propose|Budget"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|propose|Budget"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|approve|Budget"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|view|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|view|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|export|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|export|Monthly Financials"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|view|Audit Entry"
+      },
+      {
+        "kind": "rule",
+        "item": "A Monthly Financials record may transition to finalized only when at least one non-archived Revenue Line and at least one non-archived Expense Line exist for that month."
+      },
+      {
+        "kind": "rule",
+        "item": "Every stored and displayed amount is in USD; any value carrying a non-USD currency is rejected on import and on manual save."
+      },
+      {
+        "kind": "rule",
+        "item": "Once the Accountant marks a Monthly Financials record reviewed, its Revenue Lines, Expense Lines, and Cash Balance are locked: no upload, figure edit, archive, or Department reassignment may change them while the month is reviewed. Editing resumes only after the Accountant reopens the month."
+      },
+      {
+        "kind": "rule",
+        "item": "When an uploaded spreadsheet contains any invalid, unparseable, or non-USD row, the entire file is rejected and no figures are written; the import row is saved with status rejected."
+      },
+      {
+        "kind": "rule",
+        "item": "Stored monetary figures keep exact cents; displayed figures are rounded to whole dollars. amount and balance magnitudes are stored positive; only computed net_profit (and any negative balance) may be negative."
+      },
+      {
+        "kind": "rule",
+        "item": "Concurrent edits to the same Revenue Line or Expense Line resolve last-write-wins with no conflict warning."
+      },
+      {
+        "kind": "rule",
+        "item": "A Manager's view scope may be extended only by the Owner explicitly granting additional Departments; Managers cannot self-grant or delegate access."
+      },
+      {
+        "kind": "rule",
+        "item": "Budget creation and changes take effect only after the Owner (the single approver) approves them; a Bookkeeper proposal remains pending until Owner approval; the Owner may propose and approve in one act."
+      },
+      {
+        "kind": "rule",
+        "item": "A soft-deleted (archived) record is hidden from all active dashboard views and excluded from totals; only the Owner may restore an archived record."
+      },
+      {
+        "kind": "rule",
+        "item": "On the first day of each calendar month the system automatically creates exactly one draft Monthly Financials record; this is the only auto-generated record and no human actor initiates scheduled generation."
+      },
+      {
+        "kind": "rule",
+        "item": "Only the user who initiated a specific upload may confirm or cancel its duplicate-detection prompt."
+      },
+      {
+        "kind": "rule",
+        "item": "During import, the Department cell resolves to an existing Department by exact match on cost_center_code (trimmed, case-insensitive); no other matching field is used."
+      },
+      {
+        "kind": "rule",
+        "item": "A Cash Balance's date is a date-only value in the business's single timezone with no time component and no cross-timezone conversion; it is attributed to the calendar month of its as_of_date."
+      },
+      {
+        "kind": "rule",
+        "item": "The app serves a single business only; there is no separation of multiple organisations' data."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No multi-business separation; data is not partitioned for multiple organisations."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No external/customer access; only the four internal actors have accounts."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No self-service report builder or custom fields; the dashboard shows fixed totals, counts, and KPIs plus Excel/CSV export."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No offline use; the app works online only and does not queue or sync offline work."
+      },
+      {
+        "kind": "non_goal",
+        "item": "KPIs are not computed by the app in v1 beyond deriving from imported/source figures; no future projection or extrapolation."
+      }
+    ]
+  },
+  "traces": {
+    "overview": [
+      {
+        "anchor": "internal financial dashboard turning Excel into summaries",
+        "sources": [
+          "d:reporting",
+          "d:tenancy"
+        ]
+      },
+      {
+        "anchor": "Who it is for — four actors",
+        "sources": [
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "d:user_accounts",
+          "d:roles",
+          "d:external_access",
+          "d:invite_flow",
+          "d:identity_provider"
+        ]
+      },
+      {
+        "anchor": "Core loop step 1 upload",
+        "sources": [
+          "a1",
+          "n8"
+        ]
+      },
+      {
+        "anchor": "Core loop step 2 populate lines",
+        "sources": [
+          "a2",
+          "a3",
+          "a4",
+          "n2",
+          "n3",
+          "n6"
+        ]
+      },
+      {
+        "anchor": "Core loop step 3 monthly rollup",
+        "sources": [
+          "n1",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "Core loop step 4 owner review",
+        "sources": [
+          "a5",
+          "a6",
+          "a12",
+          "a9",
+          "n7",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "Core loop step 5 manager scope",
+        "sources": [
+          "a7",
+          "a8",
+          "n5",
+          "r2"
+        ]
+      },
+      {
+        "anchor": "Core loop step 6 accountant review/export",
+        "sources": [
+          "a10",
+          "r7",
+          "a11",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "single currency USD",
+        "sources": [
+          "r6",
+          "d:localization"
+        ]
+      },
+      {
+        "anchor": "Platform web online only",
+        "sources": [
+          "d:platform",
+          "d:offline"
+        ]
+      },
+      {
+        "anchor": "single business tenancy",
+        "sources": [
+          "d:tenancy"
+        ]
+      },
+      {
+        "anchor": "small data scale",
+        "sources": [
+          "d:data_scale"
+        ]
+      },
+      {
+        "anchor": "ordinary data, kept until deleted",
+        "sources": [
+          "d:compliance_sensitivity",
+          "d:retention"
+        ]
+      },
+      {
+        "anchor": "soft delete",
+        "sources": [
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "no integrations, import/export only",
+        "sources": [
+          "d:integrations",
+          "d:data_import",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "dashboard-only access",
+        "sources": [
+          "r12"
+        ]
+      },
+      {
+        "anchor": "Out of scope",
+        "sources": [
+          "g1",
+          "g2",
+          "g3",
+          "g4"
+        ]
+      }
+    ],
+    "data_model": [
+      {
+        "anchor": "Conventions — currency and sign",
+        "sources": [
+          "r6",
+          "localization",
+          "x3",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "Conventions — audit and deletion",
+        "sources": [
+          "audit_trail",
+          "r9",
+          "deletion",
+          "x4",
+          "concurrency"
+        ]
+      },
+      {
+        "anchor": "Monthly Financials derived totals",
+        "sources": [
+          "n1",
+          "r4",
+          "deletion",
+          "r8",
+          "x3",
+          "r3",
+          "r7",
+          "recurring_scheduled"
+        ]
+      },
+      {
+        "anchor": "Revenue Line",
+        "sources": [
+          "n2",
+          "r10",
+          "r11",
+          "x3",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Expense Line",
+        "sources": [
+          "n3",
+          "r10",
+          "r11",
+          "r2",
+          "r13",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Budget",
+        "sources": [
+          "n4",
+          "r10",
+          "r2",
+          "x3",
+          "deletion",
+          "r13"
+        ]
+      },
+      {
+        "anchor": "Department archive guard",
+        "sources": [
+          "n5",
+          "r2",
+          "r13",
+          "x5",
+          "x7",
+          "x2",
+          "r7",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Cash Balance",
+        "sources": [
+          "n6",
+          "x6",
+          "x3",
+          "r11",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "KPI value source",
+        "sources": [
+          "n7",
+          "data_import",
+          "default",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Spreadsheet Import uniqueness and retention",
+        "sources": [
+          "n8",
+          "r8",
+          "r5",
+          "x8",
+          "x1",
+          "r1",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Import contract",
+        "sources": [
+          "data_import",
+          "default",
+          "n2",
+          "n3",
+          "n5",
+          "n7",
+          "r6",
+          "r10",
+          "r11",
+          "x1",
+          "x8",
+          "r5"
+        ]
+      },
+      {
+        "anchor": "Audit Entry append-only",
+        "sources": [
+          "r9",
+          "default"
+        ]
+      }
+    ],
+    "actors_permissions": [
+      {
+        "anchor": "four actors sign in with email + password, single tenant",
+        "sources": [
+          "d:user_accounts",
+          "d:identity_provider",
+          "d:tenancy"
+        ]
+      },
+      {
+        "anchor": "Upload Spreadsheet Import row",
+        "sources": [
+          "a1",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Confirm or cancel duplicate-upload prompt row",
+        "sources": [
+          "x8",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Update Revenue Line row",
+        "sources": [
+          "a2",
+          "r1",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "Update Expense Line row",
+        "sources": [
+          "a3",
+          "r1",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "Enter Cash Balance row",
+        "sources": [
+          "a4",
+          "r1",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "Mark month reviewed / reopen rows",
+        "sources": [
+          "r7",
+          "x2",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "Reassign / Archive Department rows",
+        "sources": [
+          "x5",
+          "r13",
+          "r7",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Grant additional Department access row",
+        "sources": [
+          "x7",
+          "p1"
+        ]
+      },
+      {
+        "anchor": "Propose and Approve Budget rows",
+        "sources": [
+          "a9",
+          "d:approval_workflow"
+        ]
+      },
+      {
+        "anchor": "View / Review / Export Monthly Financials rows",
+        "sources": [
+          "a5",
+          "a10",
+          "a11",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "Review and Compare KPI rows",
+        "sources": [
+          "a6",
+          "a12"
+        ]
+      },
+      {
+        "anchor": "View Budget / View Department rows",
+        "sources": [
+          "a7",
+          "a8",
+          "r2",
+          "x7"
+        ]
+      },
+      {
+        "anchor": "View audit trail row",
+        "sources": [
+          "r9",
+          "p1"
+        ]
+      },
+      {
+        "anchor": "Generate scheduled records row",
+        "sources": [
+          "d:recurring_scheduled"
+        ]
+      },
+      {
+        "anchor": "Restore archived record row",
+        "sources": [
+          "d:deletion",
+          "p1"
+        ]
+      },
+      {
+        "anchor": "Conditional note 1 Manager scope",
+        "sources": [
+          "r2",
+          "x7"
+        ]
+      },
+      {
+        "anchor": "Conditional note 2 uploader confirms",
+        "sources": [
+          "x8",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Conditional note 3 draft-only lock",
+        "sources": [
+          "r7",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Conditional note 4 reassignment vs review lock",
+        "sources": [
+          "r13",
+          "x5",
+          "r7",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Owner visibility boundary",
+        "sources": [
+          "p1",
+          "r1",
+          "r9"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper visibility boundary",
+        "sources": [
+          "p2",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Manager visibility boundary",
+        "sources": [
+          "p3",
+          "r1",
+          "r2",
+          "x7"
+        ]
+      },
+      {
+        "anchor": "Accountant visibility boundary",
+        "sources": [
+          "p4",
+          "r1",
+          "r7",
+          "x2",
+          "a11"
+        ]
+      },
+      {
+        "anchor": "dashboard-only access boundary",
+        "sources": [
+          "r12"
+        ]
+      }
+    ],
+    "glossary": [
+      {
+        "anchor": "Owner",
+        "sources": [
+          "p1"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper",
+        "sources": [
+          "p2"
+        ]
+      },
+      {
+        "anchor": "Manager",
+        "sources": [
+          "p3"
+        ]
+      },
+      {
+        "anchor": "Accountant",
+        "sources": [
+          "p4"
+        ]
+      },
+      {
+        "anchor": "Monthly Financials",
+        "sources": [
+          "n1"
+        ]
+      },
+      {
+        "anchor": "Revenue Line",
+        "sources": [
+          "n2"
+        ]
+      },
+      {
+        "anchor": "Expense Line",
+        "sources": [
+          "n3"
+        ]
+      },
+      {
+        "anchor": "Budget",
+        "sources": [
+          "n4"
+        ]
+      },
+      {
+        "anchor": "Department",
+        "sources": [
+          "n5"
+        ]
+      },
+      {
+        "anchor": "Cash Balance",
+        "sources": [
+          "n6"
+        ]
+      },
+      {
+        "anchor": "KPI",
+        "sources": [
+          "n7"
+        ]
+      },
+      {
+        "anchor": "Spreadsheet Import",
+        "sources": [
+          "n8"
+        ]
+      },
+      {
+        "anchor": "Net profit",
+        "sources": [
+          "r4"
+        ]
+      },
+      {
+        "anchor": "Reviewed month",
+        "sources": [
+          "r7"
+        ]
+      },
+      {
+        "anchor": "Finalized month",
+        "sources": [
+          "r3"
+        ]
+      },
+      {
+        "anchor": "Cost center code",
+        "sources": [
+          "n5"
+        ]
+      },
+      {
+        "anchor": "USD",
+        "sources": [
+          "r6"
+        ]
+      }
+    ],
+    "state_machines": [
+      {
+        "anchor": "Monthly Financials",
+        "sources": [
+          "r3",
+          "a10",
+          "r7",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Revenue Line",
+        "sources": [
+          "a2",
+          "x4",
+          "r11",
+          "r7",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Expense Line",
+        "sources": [
+          "a3",
+          "x4",
+          "r11",
+          "r7",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Spreadsheet Import",
+        "sources": [
+          "x1",
+          "r6",
+          "r11",
+          "x8",
+          "r5"
+        ]
+      },
+      {
+        "anchor": "Department",
+        "sources": [
+          "r13",
+          "deletion",
+          "x5"
+        ]
+      }
+    ],
+    "rules_invariants": [
+      {
+        "anchor": "R-1 — Edit rights restricted to Owner and Bookkeeper",
+        "sources": [
+          "r:r1",
+          "a:a1",
+          "a:a2",
+          "a:a3",
+          "a:a4",
+          "a:a9",
+          "n:n8",
+          "n:n2",
+          "n:n3",
+          "n:n6",
+          "n:n4",
+          "p:p3",
+          "p:p4",
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "R-2 — Manager sees only their own department",
+        "sources": [
+          "r:r2",
+          "d:x7",
+          "a:a7",
+          "a:a8",
+          "n:n5",
+          "n:n4",
+          "n:n3",
+          "p:p3",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "R-3 — A month finalizes only with both income and expense lines present",
+        "sources": [
+          "r:r3",
+          "n:n1",
+          "p:p1",
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "R-4 — Net profit equals income minus expenses",
+        "sources": [
+          "r:r4",
+          "d:deletion",
+          "n:n1",
+          "n:n2",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "R-5 — Re-upload replaces figures, retains both import records",
+        "sources": [
+          "r:r5",
+          "a:a1",
+          "n:n8",
+          "n:n2",
+          "n:n3",
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "R-6 — Single currency (USD) only",
+        "sources": [
+          "r:r6",
+          "d:localization",
+          "n:n2",
+          "n:n3",
+          "n:n4",
+          "n:n6",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "R-7 — Reviewed months are locked",
+        "sources": [
+          "r:r7",
+          "d:x2",
+          "a:a1",
+          "a:a2",
+          "a:a3",
+          "a:a4",
+          "n:n1",
+          "p:p4"
+        ]
+      },
+      {
+        "anchor": "R-8 — Uniqueness of month record and imports",
+        "sources": [
+          "r:r8",
+          "r:r5",
+          "n:n1",
+          "n:n8",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "R-9 — Immutable audit records",
+        "sources": [
+          "r:r9",
+          "d:audit_trail",
+          "a:a1",
+          "a:a2",
+          "a:a3",
+          "a:a4",
+          "a:a9",
+          "a:a10"
+        ]
+      },
+      {
+        "anchor": "R-10 — No orphaned lines",
+        "sources": [
+          "r:r10",
+          "n:n2",
+          "n:n3",
+          "n:n4",
+          "n:n5",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "R-11 — Required fields before save",
+        "sources": [
+          "r:r11",
+          "a:a2",
+          "a:a3",
+          "a:a4",
+          "n:n2",
+          "n:n3",
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "R-12 — Dashboard-only access",
+        "sources": [
+          "r:r12",
+          "p:p1",
+          "p:p2",
+          "p:p3",
+          "p:p4"
+        ]
+      },
+      {
+        "anchor": "R-13 — Department cannot be archived while lines remain",
+        "sources": [
+          "r:r13",
+          "d:x5",
+          "r:r7",
+          "d:x2",
+          "n:n5",
+          "n:n4",
+          "n:n3",
+          "p:p4",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "R-D1 — All-or-nothing import",
+        "sources": [
+          "d:x1",
+          "a:a1"
+        ]
+      },
+      {
+        "anchor": "R-D2 — Only the Accountant reopens a reviewed month",
+        "sources": [
+          "d:x2",
+          "r:r7",
+          "p:p4",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "R-D3 — Rounding and sign convention",
+        "sources": [
+          "d:x3",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "R-D4 — Last-write-wins on concurrent edits",
+        "sources": [
+          "d:x4",
+          "d:concurrency"
+        ]
+      },
+      {
+        "anchor": "R-D5 — Reassignment before Department archival",
+        "sources": [
+          "d:x5",
+          "r:r13",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "R-D6 — Cash Balance dating",
+        "sources": [
+          "d:x6",
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "R-D7 — Owner grants extra department access",
+        "sources": [
+          "d:x7",
+          "r:r2",
+          "p:p1",
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "R-D8 — Budget change requires single-approver approval",
+        "sources": [
+          "d:approval_workflow",
+          "a:a9",
+          "p:p1",
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "R-D9 — Identical re-upload requires confirmation, still retained distinctly",
+        "sources": [
+          "d:x8",
+          "r:r5",
+          "r:r8",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "R-D10 — Archived rows excluded from active views and totals",
+        "sources": [
+          "d:deletion",
+          "r:r4",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "R-D11 — KPI values are computed from the month's figures",
+        "sources": [
+          "n:n7",
+          "a:a6",
+          "a:a12",
+          "r:r4",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "R-D12 — Automatic monthly draft generation",
+        "sources": [
+          "d:recurring_scheduled",
+          "r:r8",
+          "n:n1"
+        ]
+      }
+    ],
+    "journeys": [
+      {
+        "anchor": "Notifications by email",
+        "sources": [
+          "d:notifications",
+          "d:platform",
+          "d:offline",
+          "r:r12"
+        ]
+      },
+      {
+        "anchor": "J1 draft month generated",
+        "sources": [
+          "p:p2",
+          "a:a5",
+          "n:n1",
+          "d:recurring_scheduled"
+        ]
+      },
+      {
+        "anchor": "J1 upload import",
+        "sources": [
+          "p:p2",
+          "a:a1",
+          "n:n8"
+        ]
+      },
+      {
+        "anchor": "J1 all-or-nothing validation",
+        "sources": [
+          "d:x1",
+          "r:r6"
+        ]
+      },
+      {
+        "anchor": "J1 populate lines and summary",
+        "sources": [
+          "n:n2",
+          "n:n3",
+          "n:n6",
+          "n:n1",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J1 correct figures",
+        "sources": [
+          "p:p2",
+          "a:a2",
+          "a:a3",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J1 finalize requires lines",
+        "sources": [
+          "r:r3"
+        ]
+      },
+      {
+        "anchor": "J1 audit record",
+        "sources": [
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "J2 re-upload",
+        "sources": [
+          "p:p2",
+          "p:p1",
+          "a:a1",
+          "r:r5"
+        ]
+      },
+      {
+        "anchor": "J2 duplicate detection by uploader",
+        "sources": [
+          "d:x8",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "J2 cancel no record",
+        "sources": [
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "J2 retain both imports uniquely",
+        "sources": [
+          "r:r5",
+          "r:r8",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "J2 replace figures",
+        "sources": [
+          "r:r5",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J2 refused when reviewed",
+        "sources": [
+          "r:r7",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "J3 propose budget",
+        "sources": [
+          "p:p1",
+          "a:a9",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "J3 valid period/department",
+        "sources": [
+          "r:r10"
+        ]
+      },
+      {
+        "anchor": "J3 single approver",
+        "sources": [
+          "d:approval_workflow",
+          "a:a9"
+        ]
+      },
+      {
+        "anchor": "J3 activate and record",
+        "sources": [
+          "r:r9",
+          "a:a7"
+        ]
+      },
+      {
+        "anchor": "J4 manager own department",
+        "sources": [
+          "p:p3",
+          "a:a8",
+          "a:a7",
+          "n:n5",
+          "r:r2"
+        ]
+      },
+      {
+        "anchor": "J4 others hidden",
+        "sources": [
+          "r:r2",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "J4 owner grant",
+        "sources": [
+          "d:x7",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "J4 compare budget vs actual",
+        "sources": [
+          "a:a7",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "J5 accountant reviews",
+        "sources": [
+          "p:p4",
+          "a:a10",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "J5 export",
+        "sources": [
+          "a:a11",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "J5 mark reviewed locks",
+        "sources": [
+          "r:r7",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "J5 audit review",
+        "sources": [
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "J5 accountant reopen",
+        "sources": [
+          "d:x2",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "J6 department with links",
+        "sources": [
+          "p:p1",
+          "n:n5",
+          "r:r13"
+        ]
+      },
+      {
+        "anchor": "J6 reassign before archive",
+        "sources": [
+          "r:r13",
+          "d:x5"
+        ]
+      },
+      {
+        "anchor": "J6 reopen reviewed months first",
+        "sources": [
+          "r:r7",
+          "d:x2",
+          "r:r13",
+          "d:x5"
+        ]
+      },
+      {
+        "anchor": "J6 archive department soft",
+        "sources": [
+          "r:r13",
+          "d:deletion",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "J7 review KPI derived",
+        "sources": [
+          "p:p1",
+          "a:a6",
+          "n:n7",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J7 compare KPI",
+        "sources": [
+          "a:a12",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "J7 rounding and USD",
+        "sources": [
+          "d:x3",
+          "r:r6"
+        ]
+      }
+    ],
+    "acceptance_scenarios": [
+      {
+        "anchor": "S1 — Bookkeeper uploads a clean month",
+        "sources": [
+          "p2",
+          "a1",
+          "n8",
+          "n2",
+          "n3",
+          "n6"
+        ]
+      },
+      {
+        "anchor": "S2 — Whole-file rejection on any bad row",
+        "sources": [
+          "x1",
+          "r6",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S3 — Manager cannot upload",
+        "sources": [
+          "r1",
+          "p3",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S4 — Accountant cannot upload",
+        "sources": [
+          "r1",
+          "p4",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S5 — Re-upload replaces figures and keeps both records",
+        "sources": [
+          "r5",
+          "r8",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S6 — Identical re-upload prompts the initiator",
+        "sources": [
+          "x8",
+          "r1",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S7 — Owner-initiated duplicate can be confirmed by the Owner",
+        "sources": [
+          "x8",
+          "r1",
+          "p1",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S8 — Confirming an identical re-upload retains a new record",
+        "sources": [
+          "x8",
+          "r5",
+          "r8"
+        ]
+      },
+      {
+        "anchor": "S9 — Cancelling an identical re-upload changes nothing",
+        "sources": [
+          "x8",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S10 — Bookkeeper updates a Revenue Line",
+        "sources": [
+          "p2",
+          "a2",
+          "r11",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "S11 — Bookkeeper adds an Expense Line",
+        "sources": [
+          "p2",
+          "a3",
+          "r10",
+          "r11",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "S12 — Missing required field is refused",
+        "sources": [
+          "r11",
+          "a3"
+        ]
+      },
+      {
+        "anchor": "S13 — Orphan line is refused",
+        "sources": [
+          "r10",
+          "a2"
+        ]
+      },
+      {
+        "anchor": "S14 — Owner enters a Cash Balance",
+        "sources": [
+          "p1",
+          "a4",
+          "r11",
+          "x6"
+        ]
+      },
+      {
+        "anchor": "S15 — Manager cannot edit a figure",
+        "sources": [
+          "r1",
+          "p3",
+          "a3"
+        ]
+      },
+      {
+        "anchor": "S16 — Concurrent edit resolves last-write-wins",
+        "sources": [
+          "x4",
+          "a2"
+        ]
+      },
+      {
+        "anchor": "S17 — Net profit equals income minus expenses",
+        "sources": [
+          "r4"
+        ]
+      },
+      {
+        "anchor": "S18 — Archiving a line changes totals deterministically",
+        "sources": [
+          "r4",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "S19 — Negative net profit renders as a negative",
+        "sources": [
+          "x3",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "S20 — Finalize requires both line types",
+        "sources": [
+          "r3",
+          "a3"
+        ]
+      },
+      {
+        "anchor": "S21 — Owner may also finalize",
+        "sources": [
+          "r3",
+          "p1"
+        ]
+      },
+      {
+        "anchor": "S22 — Accountant reviews and locks a month",
+        "sources": [
+          "p4",
+          "a10",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "S23 — Reviewed month rejects figure edits",
+        "sources": [
+          "r7",
+          "a3"
+        ]
+      },
+      {
+        "anchor": "S24 — Only the Accountant may reopen a reviewed month",
+        "sources": [
+          "x2",
+          "r7",
+          "p1",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "S25 — Re-upload blocked on a reviewed month",
+        "sources": [
+          "r7",
+          "x2",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S26 — Owner sets and approves a Budget",
+        "sources": [
+          "p1",
+          "a9",
+          "approval_workflow",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "S27 — Bookkeeper's Budget proposal needs Owner approval",
+        "sources": [
+          "approval_workflow",
+          "p2",
+          "p1",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "S28 — Budget against a missing period is refused",
+        "sources": [
+          "r10",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "S29 — Manager cannot set a Budget",
+        "sources": [
+          "r1",
+          "p3",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "S30 — Manager views their own Budget and Department",
+        "sources": [
+          "p3",
+          "a7",
+          "a8"
+        ]
+      },
+      {
+        "anchor": "S31 — Manager cannot view another Department",
+        "sources": [
+          "r2",
+          "p3",
+          "a8"
+        ]
+      },
+      {
+        "anchor": "S32 — Owner grants cross-department access",
+        "sources": [
+          "x7",
+          "r2",
+          "p1",
+          "a8"
+        ]
+      },
+      {
+        "anchor": "S33 — Owner views Monthly Financials",
+        "sources": [
+          "p1",
+          "a5",
+          "n1"
+        ]
+      },
+      {
+        "anchor": "S34 — Manager cannot view org-wide Monthly Financials",
+        "sources": [
+          "r1",
+          "r2",
+          "p3",
+          "a5"
+        ]
+      },
+      {
+        "anchor": "S35 — Owner reviews a KPI against target",
+        "sources": [
+          "p1",
+          "a6",
+          "n7",
+          "data_import"
+        ]
+      },
+      {
+        "anchor": "S36 — Owner compares a KPI across periods",
+        "sources": [
+          "p1",
+          "a12",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "S37 — Accountant reviews figures at close",
+        "sources": [
+          "p4",
+          "a10",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "S38 — Accountant exports the month as Excel",
+        "sources": [
+          "p4",
+          "a11",
+          "data_export"
+        ]
+      },
+      {
+        "anchor": "S39 — Department with linked lines cannot be archived directly",
+        "sources": [
+          "r13",
+          "x5",
+          "p1"
+        ]
+      },
+      {
+        "anchor": "S40 — Reassigning lines in a reviewed month requires reopening first",
+        "sources": [
+          "r13",
+          "r7",
+          "x2",
+          "x5",
+          "p1",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "S41 — Cancelling a Department deletion restores it",
+        "sources": [
+          "x5",
+          "p1"
+        ]
+      },
+      {
+        "anchor": "S42 — Owner restores an archived record",
+        "sources": [
+          "deletion",
+          "r4",
+          "p1"
+        ]
+      },
+      {
+        "anchor": "S43 — Bookkeeper cannot restore",
+        "sources": [
+          "deletion",
+          "p2"
+        ]
+      },
+      {
+        "anchor": "S44 — Every change is recorded immutably",
+        "sources": [
+          "r9"
+        ]
+      },
+      {
+        "anchor": "S45 — Only the Owner may view the audit trail",
+        "sources": [
+          "r9",
+          "p1",
+          "p2",
+          "p3",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "S46 — Draft month is auto-generated on schedule",
+        "sources": [
+          "recurring_scheduled",
+          "n1"
+        ]
+      },
+      {
+        "anchor": "S47 — No human may trigger scheduled generation",
+        "sources": [
+          "recurring_scheduled"
+        ]
+      },
+      {
+        "anchor": "S48 — Figures are reachable only through the dashboard",
+        "sources": [
+          "r12"
+        ]
+      },
+      {
+        "anchor": "S49 — One Monthly Financials per calendar month",
+        "sources": [
+          "r8"
+        ]
+      },
+      {
+        "anchor": "Intro conventions",
+        "sources": [
+          "r6",
+          "x3"
+        ]
+      }
+    ],
+    "non_goals_defaults": [
+      {
+        "anchor": "No customer invoicing",
+        "sources": [
+          "g:g1",
+          "n:n2",
+          "n:n1",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "No direct bank or accounting-software connection",
+        "sources": [
+          "g:g2",
+          "d:integrations",
+          "a:a1",
+          "n:n8",
+          "a:a4",
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "No payroll or payment processing",
+        "sources": [
+          "g:g3",
+          "d:integrations",
+          "n:n3",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "No automatic forecasting or projection",
+        "sources": [
+          "g:g4",
+          "a:a6",
+          "a:a12",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "No multi-business separation",
+        "sources": [
+          "d:tenancy",
+          "n:n5",
+          "r:r2"
+        ]
+      },
+      {
+        "anchor": "No external/customer access",
+        "sources": [
+          "d:external_access",
+          "d:user_accounts",
+          "p:p4"
+        ]
+      },
+      {
+        "anchor": "No self-service report builder",
+        "sources": [
+          "d:reporting",
+          "d:customization",
+          "a:a11",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "No offline use",
+        "sources": [
+          "d:offline",
+          "r:r12"
+        ]
+      }
+    ]
+  },
+  "critic_passed": false,
+  "stale": false,
+  "sheet_moved": false,
+  "latest_sheet_version": 7,
+  "open_decisions": 0,
+  "ledger_conflicts": [],
+  "generated_at": "2026-08-26T10:04:26.919Z"
+}

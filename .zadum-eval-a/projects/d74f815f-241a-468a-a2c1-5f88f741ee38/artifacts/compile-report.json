@@ -1,0 +1,2147 @@
+{
+  "sheet_version": 7,
+  "critic": {
+    "violations": [
+      {
+        "rule_id": "data_model × lifecycles",
+        "severity": "medium",
+        "where": "Account Line lifecycle (states imported/flagged/unmapped/mapped) vs Import Staging Row model & R-6",
+        "why": "The data model and R-6 state emphatically that unresolved/invalid rows are held as Import Staging Rows and 'no Account Line is created for it until it is mapped'; a 'category-less Account Line can never exist'. But the Account Line lifecycle starts in `imported` and transits through `flagged` and `unmapped` states (and `mapped → unmapped`), which models Account Lines existing before mapping and without a category — the opposite of R6's implementation.",
+        "fix_hint": "Delete the imported/flagged/unmapped states from the Account Line lifecycle; those belong to Import Staging Row. Account Line should begin at `mapped`."
+      },
+      {
+        "rule_id": "actors_permissions × lifecycles",
+        "severity": "medium",
+        "where": "Dashboard View lifecycle 'Who' column vs permissions matrix and S-21",
+        "why": "The permissions matrix grants Bookkeeper ✓*(4) for Open/Save Dashboard View, and S-21 says 'Given the Bookkeeper has saved a Dashboard View'. But the Dashboard View lifecycle lists only 'Owner' as the actor for draft→saved, saved→archived, and archived→saved, denying the Bookkeeper a capability the matrix and a scenario grant.",
+        "fix_hint": "Change the Dashboard View lifecycle 'Who' to 'view owner (Owner or Bookkeeper)' to match the matrix/scenario, or restrict the matrix."
+      },
+      {
+        "rule_id": "r9",
+        "severity": "medium",
+        "where": "Permissions matrix row 'Restore an archived record' (Bookkeeper ✓) applied to the User entity (which has archived_by/archived_at)",
+        "why": "R-9 restricts all user-account management to the Owner ('Bookkeepers, Managers, and Accountants cannot manage user accounts'). Yet the matrix grants Bookkeeper an unqualified '✓' to Restore an archived record, and User is a soft-deletable record. A Bookkeeper restoring an archived User account would be managing an account, contradicting R9.",
+        "fix_hint": "Scope the 'Restore an archived record' permission to exclude User records for the Bookkeeper, or make User restore Owner-only."
+      },
+      {
+        "rule_id": "r12 × r4",
+        "severity": "medium",
+        "where": "R-12 delete guard vs R-4 edit lock / Account Line 'Edit lock'",
+        "why": "R-12 lets a Category be archived only after its Account Lines are 'reassigned to another Category or removed'. R-4 (and the Account Line Edit lock) forbid editing OR archiving any Account Line whose period is `closed`. If a Category's only lines live in closed periods, R-12's mandatory escape (reassign/remove those lines) is exactly what R-4 prohibits, so the Category can never be archived without first reopening a closed period — R-12's escape hatch is R-4's prohibition.",
+        "fix_hint": "State that R-12's delete guard ignores lines in closed periods, or require the Owner to reopen before reassigning; make the interaction explicit."
+      },
+      {
+        "rule_id": "r12 × r4",
+        "severity": "low",
+        "where": "R-12 Verify: 'reassign or archive those lines, retry → succeeds'",
+        "why": "R-12's verification test instructs the tester to reassign or archive the referencing Account Lines, but if those lines belong to a closed Period R-4 forbids that step, so the test cannot be executed for such a Category.",
+        "fix_hint": "Qualify the test to open-period lines, or add a reopen step."
+      },
+      {
+        "rule_id": "actors_permissions × data_model",
+        "severity": "low",
+        "where": "Dashboard View ownership note / R-20 vs cited decision d:record_ownership ('admins see all')",
+        "why": "R-20 and the visibility prose say saved Dashboard Views are visible only to their owner and 'the Owner is not exempt', while the cited decision record_ownership states 'admins see all'. The spec contradicts the very decision it cites as source.",
+        "fix_hint": "Cite a different rationale (personal views) rather than d:record_ownership, or reconcile the 'admins see all' language."
+      }
+    ],
+    "omissions": [
+      {
+        "item": "a9 Bookkeeper reopens Period",
+        "kind": "action",
+        "why": "The Sheet action a9 has the Bookkeeper reopening a period, but the spec makes reopen Owner-only (justified by r4/approval_workflow). The action as literally stated in the Sheet is not implemented for the Bookkeeper; this is a deliberate narrowing that should be flagged."
+      },
+      {
+        "item": "record_duplicates (warn about likely duplicates and offer to merge)",
+        "kind": "rule",
+        "why": "The resolved-ish decision to warn about likely duplicates and offer to merge is not implemented; the spec only enforces hard uniqueness (email, period label) and case-insensitive category matching, with no duplicate-warning or merge feature."
+      }
+    ],
+    "score": 6.5,
+    "verdict": "fail"
+  },
+  "critic_rounds": 2,
+  "ir_findings": [
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Excel Upload",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Account Line",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Category",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Period",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "User",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Dashboard View",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    }
+  ],
+  "spec_findings": [
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a7 (\"Owner closes Period\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a8 (\"Accountant reviews Revenue Figure\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a10 (\"Owner saves Dashboard View\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a11 (\"Bookkeeper creates Category\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a12 (\"Owner invites User\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "untraced_decision",
+      "severity": "medium",
+      "message": "decision \"customization\" is defaulted as \"fixed\" (Can each business customize the app?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"customization\" in any form (d:customization, customization, or customization:fixed).",
+      "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:customization⟩) or re-open it."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Excel Upload",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Account Line",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Category",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Period",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "User",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Dashboard View",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    }
+  ],
+  "blocking": [
+    "the critic returned fail (score 6.5)"
+  ],
+  "deliverable": false,
+  "scope_creep": [
+    {
+      "kind": "noun",
+      "item": "OrgSettings",
+      "severity": "high"
+    },
+    {
+      "kind": "noun",
+      "item": "Import Staging Row",
+      "severity": "high"
+    },
+    {
+      "kind": "noun",
+      "item": "AuditEntry",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Manager may view and export only Expense Figures whose Category is one of that Manager's allowed_areas; Revenue Figures, Profit Summary, and company-wide totals are hidden.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Every upload, mapping, correction, and period close/reopen writes an AuditEntry capturing the acting User and timestamp; AuditEntry rows can be created but never edited or deleted.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Every User has a role, and every User whose role is Manager has at least one allowed area assigned at invitation time.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Only the Owner may reopen a closed Period, acting as the single approver, overriding any example that showed another actor reopening; the reopen writes an AuditEntry.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Import Staging Rows that are unmapped or validation-failed never contribute to any figure; an irreparable flagged row may be discarded by the Owner or Bookkeeper to unblock the Period.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Account Lines store positive amounts for ordinary income/expense entries and negative amounts for refunds/credits; totals sum signed amounts within their type so refunds and credits reduce the relevant total.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Deletion is soft everywhere: a deleted record sets archived_at and archived_by and can be restored; there is no hard delete and no automatic purge in v1.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "When two editors save the same record, the later updated_at write wins; the app does not lock or merge.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A saved Dashboard View is visible only to the User named in its owner field; no other actor, including the Owner, may open or save another user's View.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Import staging rows are not Account Lines and are never counted in any figure.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "The Account Line type must match its Category's type.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "An Account Line is only ever created from a staging row after a Category is assigned.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "The uploaded file itself is retained after import (never discarded) to support rollback.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "email is unique across all users.",
+      "severity": "high"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|upload|Excel Upload",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|map|Import Staging Row",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|map|Import Staging Row",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|correct|Account Line",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|create|Category",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|archive|Category",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|archive|Category",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|discard|Import Staging Row",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|rollback|Excel Upload",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|restore|Category",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|restore|Dashboard View",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|reopen|Period",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|approve reopening of|Period",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|view|Revenue Figure",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Accountant|view|Revenue Figure",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Accountant|view|Expense Figure",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Accountant|view|Profit Summary",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|export|Revenue Figure",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|export|Revenue Figure",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Accountant|export|Revenue Figure",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Manager|export|Expense Figure",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|assign role and allowed areas to|User",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|deactivate|User",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|reactivate|User",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Owner|view|AuditEntry",
+      "severity": "medium"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not host multiple separate businesses with partitioned data; all records live in one shared pool for the single business.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not let anyone define their own roles or per-record permission sets; the four roles and their fixed powers are built in.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not work offline or sync later; it is an online-only browser application.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not detect foreign currencies on import or convert amounts; every file is assumed to already use the org's one configured currency.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not auto-remove records after any retention window; records are kept until an actor archives them via restorable soft delete.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not let admins add custom fields, build their own reports, or configure automation that acts on records automatically.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not expose a full data export or an API; the only way out is downloading figure lists as CSV subject to view permissions.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "There is no undo action in v1.",
+      "severity": "low"
+    }
+  ],
+  "roundtrip": {
+    "recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 0.75,
+      "rules": 0.8571428571428571,
+      "non_goals": 1,
+      "overall": 0.8863636363636364
+    },
+    "missing": [
+      {
+        "kind": "action",
+        "item": "Bookkeeper|maps|Category"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|reviews|Revenue Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|reopens|Period"
+      },
+      {
+        "kind": "rule",
+        "item": "Only the Owner and Bookkeeper may upload or edit spreadsheets and figures; Managers and Accountants can only view."
+      },
+      {
+        "kind": "rule",
+        "item": "A Manager may only see figures for the areas assigned to them, not the whole company."
+      }
+    ],
+    "extra": [
+      {
+        "kind": "noun",
+        "item": "OrgSettings"
+      },
+      {
+        "kind": "noun",
+        "item": "Import Staging Row"
+      },
+      {
+        "kind": "noun",
+        "item": "AuditEntry"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|upload|Excel Upload"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|map|Import Staging Row"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|map|Import Staging Row"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|correct|Account Line"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|create|Category"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|archive|Category"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|archive|Category"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|discard|Import Staging Row"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|rollback|Excel Upload"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|restore|Category"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|restore|Dashboard View"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|reopen|Period"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|approve reopening of|Period"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|view|Revenue Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|view|Revenue Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|view|Expense Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|view|Profit Summary"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|export|Revenue Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|export|Revenue Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Accountant|export|Revenue Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Manager|export|Expense Figure"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|assign role and allowed areas to|User"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|deactivate|User"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|reactivate|User"
+      },
+      {
+        "kind": "action",
+        "item": "Owner|view|AuditEntry"
+      },
+      {
+        "kind": "rule",
+        "item": "A Manager may view and export only Expense Figures whose Category is one of that Manager's allowed_areas; Revenue Figures, Profit Summary, and company-wide totals are hidden."
+      },
+      {
+        "kind": "rule",
+        "item": "Every upload, mapping, correction, and period close/reopen writes an AuditEntry capturing the acting User and timestamp; AuditEntry rows can be created but never edited or deleted."
+      },
+      {
+        "kind": "rule",
+        "item": "Every User has a role, and every User whose role is Manager has at least one allowed area assigned at invitation time."
+      },
+      {
+        "kind": "rule",
+        "item": "Only the Owner may reopen a closed Period, acting as the single approver, overriding any example that showed another actor reopening; the reopen writes an AuditEntry."
+      },
+      {
+        "kind": "rule",
+        "item": "Import Staging Rows that are unmapped or validation-failed never contribute to any figure; an irreparable flagged row may be discarded by the Owner or Bookkeeper to unblock the Period."
+      },
+      {
+        "kind": "rule",
+        "item": "Account Lines store positive amounts for ordinary income/expense entries and negative amounts for refunds/credits; totals sum signed amounts within their type so refunds and credits reduce the relevant total."
+      },
+      {
+        "kind": "rule",
+        "item": "Deletion is soft everywhere: a deleted record sets archived_at and archived_by and can be restored; there is no hard delete and no automatic purge in v1."
+      },
+      {
+        "kind": "rule",
+        "item": "When two editors save the same record, the later updated_at write wins; the app does not lock or merge."
+      },
+      {
+        "kind": "rule",
+        "item": "A saved Dashboard View is visible only to the User named in its owner field; no other actor, including the Owner, may open or save another user's View."
+      },
+      {
+        "kind": "rule",
+        "item": "Import staging rows are not Account Lines and are never counted in any figure."
+      },
+      {
+        "kind": "rule",
+        "item": "The Account Line type must match its Category's type."
+      },
+      {
+        "kind": "rule",
+        "item": "An Account Line is only ever created from a staging row after a Category is assigned."
+      },
+      {
+        "kind": "rule",
+        "item": "The uploaded file itself is retained after import (never discarded) to support rollback."
+      },
+      {
+        "kind": "rule",
+        "item": "email is unique across all users."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not host multiple separate businesses with partitioned data; all records live in one shared pool for the single business."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not let anyone define their own roles or per-record permission sets; the four roles and their fixed powers are built in."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not work offline or sync later; it is an online-only browser application."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not detect foreign currencies on import or convert amounts; every file is assumed to already use the org's one configured currency."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not auto-remove records after any retention window; records are kept until an actor archives them via restorable soft delete."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not let admins add custom fields, build their own reports, or configure automation that acts on records automatically."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not expose a full data export or an API; the only way out is downloading figure lists as CSV subject to view permissions."
+      },
+      {
+        "kind": "non_goal",
+        "item": "There is no undo action in v1."
+      }
+    ]
+  },
+  "traces": {
+    "overview": [
+      {
+        "anchor": "What this is",
+        "sources": [
+          "d:tenancy",
+          "n1",
+          "n7",
+          "d:reporting",
+          "n8"
+        ]
+      },
+      {
+        "anchor": "Who it is for",
+        "sources": [
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "d:user_accounts",
+          "d:roles"
+        ]
+      },
+      {
+        "anchor": "Core value loop step 1",
+        "sources": [
+          "a1",
+          "r13"
+        ]
+      },
+      {
+        "anchor": "Core value loop step 2",
+        "sources": [
+          "d:x3",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "Core value loop step 3",
+        "sources": [
+          "a2",
+          "a11",
+          "a3"
+        ]
+      },
+      {
+        "anchor": "Core value loop step 4",
+        "sources": [
+          "r3",
+          "d:x4",
+          "n5",
+          "n6",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "Core value loop step 5",
+        "sources": [
+          "a5",
+          "a10",
+          "a4",
+          "a6",
+          "a8",
+          "r2"
+        ]
+      },
+      {
+        "anchor": "Core value loop step 6",
+        "sources": [
+          "a7",
+          "r4",
+          "d:x2",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "Platform and delivery",
+        "sources": [
+          "d:platform",
+          "d:offline",
+          "d:identity_provider",
+          "d:notifications",
+          "d:localization",
+          "r7",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "Scale and tenancy",
+        "sources": [
+          "d:tenancy",
+          "d:workspace_structure",
+          "d:data_scale",
+          "d:compliance_sensitivity",
+          "d:retention",
+          "d:deletion",
+          "r10",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Out of scope",
+        "sources": [
+          "g1",
+          "g2",
+          "g3",
+          "g4",
+          "g5"
+        ]
+      }
+    ],
+    "data_model": [
+      {
+        "anchor": "Conventions — money & sign",
+        "sources": [
+          "r7",
+          "x6",
+          "x8",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Deletion & retention convention",
+        "sources": [
+          "deletion",
+          "retention"
+        ]
+      },
+      {
+        "anchor": "Audit fields & concurrency",
+        "sources": [
+          "audit_trail",
+          "concurrency"
+        ]
+      },
+      {
+        "anchor": "OrgSettings",
+        "sources": [
+          "tenancy",
+          "r7",
+          "x8"
+        ]
+      },
+      {
+        "anchor": "Period entity",
+        "sources": [
+          "n4",
+          "r14",
+          "r4",
+          "x7",
+          "audit_trail",
+          "deletion",
+          "n2",
+          "n5",
+          "n6",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "Category entity",
+        "sources": [
+          "n3",
+          "a2",
+          "r12",
+          "r2",
+          "deletion",
+          "audit_trail",
+          "n2"
+        ]
+      },
+      {
+        "anchor": "Excel Upload entity",
+        "sources": [
+          "n1",
+          "r13",
+          "x1",
+          "r8",
+          "x3",
+          "attachments",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Import Staging Row",
+        "sources": [
+          "a1",
+          "x3",
+          "x4",
+          "a2",
+          "n1",
+          "r3",
+          "r6"
+        ]
+      },
+      {
+        "anchor": "Account Line entity",
+        "sources": [
+          "n2",
+          "r6",
+          "x6",
+          "x1",
+          "a3",
+          "r4",
+          "x2",
+          "deletion",
+          "audit_trail"
+        ]
+      },
+      {
+        "anchor": "Revenue Figure derived",
+        "sources": [
+          "n5",
+          "r5",
+          "x6",
+          "x1"
+        ]
+      },
+      {
+        "anchor": "Expense Figure derived",
+        "sources": [
+          "n6",
+          "r2",
+          "x6"
+        ]
+      },
+      {
+        "anchor": "Profit Summary derived",
+        "sources": [
+          "n7",
+          "r5",
+          "n5",
+          "n6"
+        ]
+      },
+      {
+        "anchor": "Dashboard View",
+        "sources": [
+          "n8",
+          "a10",
+          "record_ownership",
+          "audit_trail",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "User entity",
+        "sources": [
+          "n9",
+          "identity_provider",
+          "r11",
+          "r2",
+          "x5",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "a12",
+          "invite_flow",
+          "default",
+          "audit_trail",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "AuditEntry",
+        "sources": [
+          "r10",
+          "audit_trail",
+          "a1",
+          "a2",
+          "a3",
+          "a7",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "Import contract",
+        "sources": [
+          "a1",
+          "data_import",
+          "n1",
+          "n2",
+          "x6",
+          "x7",
+          "r7",
+          "a2",
+          "r6",
+          "x3",
+          "x4",
+          "r3",
+          "x8",
+          "x1",
+          "attachments"
+        ]
+      }
+    ],
+    "actors_permissions": [
+      {
+        "anchor": "Four human actors sign in with email + password",
+        "sources": [
+          "d:identity_provider",
+          "g:g4"
+        ]
+      },
+      {
+        "anchor": "Owner — reviews the whole financial picture",
+        "sources": [
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper — maintains the numbers",
+        "sources": [
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "Manager — department lead",
+        "sources": [
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "Accountant — external advisor",
+        "sources": [
+          "p:p4"
+        ]
+      },
+      {
+        "anchor": "Note 1 correct/archive only while open",
+        "sources": [
+          "r:r4",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "Note 2 archive Category when no lines",
+        "sources": [
+          "r:r12"
+        ]
+      },
+      {
+        "anchor": "Note 3 Manager allowed areas",
+        "sources": [
+          "r:r2",
+          "d:x5",
+          "n:n9"
+        ]
+      },
+      {
+        "anchor": "Note 4 Dashboard View personal",
+        "sources": [
+          "n:n8"
+        ]
+      },
+      {
+        "anchor": "edit actions restricted to Owner and Bookkeeper",
+        "sources": [
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "Reopening and approving limited to Owner",
+        "sources": [
+          "r:r4",
+          "d:x2",
+          "d:approval_workflow"
+        ]
+      },
+      {
+        "anchor": "Generate Profit Summary computed by system",
+        "sources": [
+          "r:r5",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "Inviting Users and assigning roles",
+        "sources": [
+          "r:r9",
+          "r:r11"
+        ]
+      },
+      {
+        "anchor": "no undo action last-write-wins",
+        "sources": [
+          "d:concurrency"
+        ]
+      },
+      {
+        "anchor": "Owner sees every record and audit trail",
+        "sources": [
+          "p:p1",
+          "d:record_ownership",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper sees and edits all financial data",
+        "sources": [
+          "p:p2",
+          "r:r1",
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "Manager sees only assigned Expense Figures",
+        "sources": [
+          "p:p3",
+          "r:r2",
+          "d:x5",
+          "n:n9"
+        ]
+      },
+      {
+        "anchor": "Accountant view-only across Periods",
+        "sources": [
+          "p:p4",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "Saved Dashboard Views are personal",
+        "sources": [
+          "n:n8"
+        ]
+      }
+    ],
+    "glossary": [
+      {
+        "anchor": "Owner",
+        "sources": [
+          "p1"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper",
+        "sources": [
+          "p2"
+        ]
+      },
+      {
+        "anchor": "Manager",
+        "sources": [
+          "p3",
+          "r2"
+        ]
+      },
+      {
+        "anchor": "Accountant",
+        "sources": [
+          "p4",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "Excel Upload",
+        "sources": [
+          "n1"
+        ]
+      },
+      {
+        "anchor": "Account Line",
+        "sources": [
+          "n2"
+        ]
+      },
+      {
+        "anchor": "Category",
+        "sources": [
+          "n3"
+        ]
+      },
+      {
+        "anchor": "Period",
+        "sources": [
+          "n4",
+          "r14",
+          "x7"
+        ]
+      },
+      {
+        "anchor": "Revenue Figure",
+        "sources": [
+          "n5"
+        ]
+      },
+      {
+        "anchor": "Expense Figure",
+        "sources": [
+          "n6"
+        ]
+      },
+      {
+        "anchor": "Profit Summary",
+        "sources": [
+          "n7",
+          "r5"
+        ]
+      },
+      {
+        "anchor": "Dashboard View",
+        "sources": [
+          "n8"
+        ]
+      },
+      {
+        "anchor": "User",
+        "sources": [
+          "n9",
+          "r11"
+        ]
+      },
+      {
+        "anchor": "Import staging row",
+        "sources": [
+          "r6",
+          "x3",
+          "x4"
+        ]
+      },
+      {
+        "anchor": "Audit entry",
+        "sources": [
+          "r10",
+          "audit_trail"
+        ]
+      }
+    ],
+    "state_machines": [
+      {
+        "anchor": "Excel Upload",
+        "sources": [
+          "a1",
+          "r13",
+          "x3",
+          "r8",
+          "x1"
+        ]
+      },
+      {
+        "anchor": "Account Line",
+        "sources": [
+          "x3",
+          "a3",
+          "a2",
+          "r6",
+          "x4",
+          "r4",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "Category",
+        "sources": [
+          "r12",
+          "a11"
+        ]
+      },
+      {
+        "anchor": "Period",
+        "sources": [
+          "r3",
+          "x4",
+          "a7",
+          "r4",
+          "a9",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "User",
+        "sources": [
+          "a12",
+          "r11",
+          "invite_by_admin",
+          "r9"
+        ]
+      },
+      {
+        "anchor": "Dashboard View",
+        "sources": [
+          "a10"
+        ]
+      }
+    ],
+    "rules_invariants": [
+      {
+        "anchor": "R-1 — Editing is restricted to Owner and Bookkeeper",
+        "sources": [
+          "r1",
+          "a1",
+          "a2",
+          "a3",
+          "a7",
+          "a9",
+          "a11"
+        ]
+      },
+      {
+        "anchor": "R-2 — Managers see only their assigned areas",
+        "sources": [
+          "r2",
+          "x5",
+          "n9",
+          "a6",
+          "n6"
+        ]
+      },
+      {
+        "anchor": "R-3 — A Period shows no figures until fully uploaded and mapped",
+        "sources": [
+          "r3",
+          "x4",
+          "a1",
+          "a2",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "R-4 — Closed Periods are locked from edits",
+        "sources": [
+          "r4",
+          "x2",
+          "a3",
+          "a7",
+          "a9",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "R-5 — Profit Summary equals revenue minus expenses",
+        "sources": [
+          "r5",
+          "n7",
+          "n5",
+          "n6"
+        ]
+      },
+      {
+        "anchor": "R-6 — Every Account Line belongs to exactly one Category and one Period",
+        "sources": [
+          "r6",
+          "x4",
+          "x3",
+          "n2",
+          "a2"
+        ]
+      },
+      {
+        "anchor": "R-7 — Single currency across all data",
+        "sources": [
+          "r7",
+          "x8",
+          "n1",
+          "n2"
+        ]
+      },
+      {
+        "anchor": "R-8 — Re-uploading a Period replaces its figures",
+        "sources": [
+          "r8",
+          "x1",
+          "a1",
+          "n1"
+        ]
+      },
+      {
+        "anchor": "R-9 — Only the Owner manages users and access",
+        "sources": [
+          "r9",
+          "a12",
+          "n9"
+        ]
+      },
+      {
+        "anchor": "R-10 — Every mutation is recorded in an unalterable history",
+        "sources": [
+          "r10",
+          "audit_trail",
+          "a1",
+          "a2",
+          "a3",
+          "a7",
+          "a9"
+        ]
+      },
+      {
+        "anchor": "R-11 — Users carry role and allowed areas",
+        "sources": [
+          "r11",
+          "a12",
+          "n9"
+        ]
+      },
+      {
+        "anchor": "R-12 — A Category in use cannot be archived",
+        "sources": [
+          "r12",
+          "a11",
+          "n3",
+          "n2"
+        ]
+      },
+      {
+        "anchor": "R-13 — An upload needs file, period, and uploader",
+        "sources": [
+          "r13",
+          "a1",
+          "n1"
+        ]
+      },
+      {
+        "anchor": "R-14 — Period labels are unique",
+        "sources": [
+          "r14",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "R-15 — Unmapped and validation-failed rows are staged",
+        "sources": [
+          "x3",
+          "x4",
+          "r3",
+          "default"
+        ]
+      },
+      {
+        "anchor": "R-16 — Signed-amount aggregation",
+        "sources": [
+          "x6",
+          "n2",
+          "n5",
+          "n6"
+        ]
+      },
+      {
+        "anchor": "R-17 — Only the Owner reopens a closed Period",
+        "sources": [
+          "x2",
+          "approval_workflow",
+          "r4",
+          "r10",
+          "a9",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "R-18 — Deletion is soft and restorable",
+        "sources": [
+          "deletion",
+          "retention",
+          "n1",
+          "n2",
+          "n3",
+          "n4",
+          "n9"
+        ]
+      },
+      {
+        "anchor": "R-19 — Concurrent edits resolve last-write-wins",
+        "sources": [
+          "concurrency",
+          "n2",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "R-20 — Saved Dashboard Views are personal",
+        "sources": [
+          "n8",
+          "default",
+          "a5",
+          "a10"
+        ]
+      }
+    ],
+    "journeys": [
+      {
+        "anchor": "Journey sign-in preamble",
+        "sources": [
+          "d:platform",
+          "d:identity_provider"
+        ]
+      },
+      {
+        "anchor": "J1 upload with period and uploader",
+        "sources": [
+          "p:p2",
+          "a:a1",
+          "r:r13"
+        ]
+      },
+      {
+        "anchor": "J1 file retained, currency assumed",
+        "sources": [
+          "d:attachments",
+          "r:r7",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "J1 staging rows not yet account lines",
+        "sources": [
+          "d:x3",
+          "d:x4",
+          "r:r6"
+        ]
+      },
+      {
+        "anchor": "J1 map to category, create category",
+        "sources": [
+          "a:a2",
+          "a:a11"
+        ]
+      },
+      {
+        "anchor": "J1 promote to account line exactly one category",
+        "sources": [
+          "r:r6"
+        ]
+      },
+      {
+        "anchor": "J1 discard irreparable flagged row",
+        "sources": [
+          "a:a3",
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "J1 correct while open",
+        "sources": [
+          "a:a3",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J1 figures appear once all mapped",
+        "sources": [
+          "r:r3",
+          "d:x4",
+          "n:n5",
+          "n:n6",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "J1 profit computed",
+        "sources": [
+          "r:r5",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "J1 audit upload/mapping/correction",
+        "sources": [
+          "r:r10"
+        ]
+      },
+      {
+        "anchor": "J1 email owner ready",
+        "sources": [
+          "default",
+          "d:notifications"
+        ]
+      },
+      {
+        "anchor": "J2 open personal dashboard view",
+        "sources": [
+          "p:p1",
+          "a:a5",
+          "n:n8"
+        ]
+      },
+      {
+        "anchor": "J2 view profit summary",
+        "sources": [
+          "a:a4",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "J2 owner closes, bookkeeper cannot",
+        "sources": [
+          "a:a7",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "J2 figures locked",
+        "sources": [
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J2 close logged",
+        "sources": [
+          "r:r10",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "J2 email accountant closed",
+        "sources": [
+          "default",
+          "d:notifications"
+        ]
+      },
+      {
+        "anchor": "J3 closed locked",
+        "sources": [
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J3 only owner reopens single approver",
+        "sources": [
+          "a:a9",
+          "d:x2",
+          "d:approval_workflow",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J3 reopen returns to open",
+        "sources": [
+          "a:a9",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "J3 correct and recompute",
+        "sources": [
+          "a:a3",
+          "r:r5"
+        ]
+      },
+      {
+        "anchor": "J3 reopen and correction logged",
+        "sources": [
+          "r:r10"
+        ]
+      },
+      {
+        "anchor": "J3 reclose",
+        "sources": [
+          "a:a7",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J4 invite user role and areas",
+        "sources": [
+          "a:a12",
+          "r:r9",
+          "r:r11",
+          "d:invite_flow"
+        ]
+      },
+      {
+        "anchor": "J4 email invite set password",
+        "sources": [
+          "d:notifications",
+          "d:identity_provider"
+        ]
+      },
+      {
+        "anchor": "J4 manager sees only allowed areas",
+        "sources": [
+          "a:a6",
+          "r:r2",
+          "d:x5",
+          "n:n9"
+        ]
+      },
+      {
+        "anchor": "J4 manager cannot edit or manage",
+        "sources": [
+          "r:r1",
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "J5 accountant reviews revenue",
+        "sources": [
+          "p:p4",
+          "a:a8",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "J5 view expense and profit view-only",
+        "sources": [
+          "n:n6",
+          "n:n7",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "J5 export csv",
+        "sources": [
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "J5 accountant cannot save/invite/audit",
+        "sources": [
+          "r:r1",
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "J6 re-upload while open",
+        "sources": [
+          "a:a1",
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "J6 replace not add",
+        "sources": [
+          "r:r8"
+        ]
+      },
+      {
+        "anchor": "J6 versioned rollback",
+        "sources": [
+          "d:x1"
+        ]
+      },
+      {
+        "anchor": "J6 same staging flow",
+        "sources": [
+          "d:x3",
+          "d:x4",
+          "r:r6"
+        ]
+      },
+      {
+        "anchor": "J6 re-upload logged",
+        "sources": [
+          "r:r10"
+        ]
+      },
+      {
+        "anchor": "J6 email owner revised",
+        "sources": [
+          "default",
+          "d:notifications"
+        ]
+      }
+    ],
+    "acceptance_scenarios": [
+      {
+        "anchor": "header currency/signin",
+        "sources": [
+          "r7",
+          "identity_provider"
+        ]
+      },
+      {
+        "anchor": "S-1",
+        "sources": [
+          "a1",
+          "r13",
+          "attachments",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "S-2",
+        "sources": [
+          "r13",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S-3",
+        "sources": [
+          "r1",
+          "p3"
+        ]
+      },
+      {
+        "anchor": "S-4",
+        "sources": [
+          "r1",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "S-5",
+        "sources": [
+          "x3",
+          "a1"
+        ]
+      },
+      {
+        "anchor": "S-6",
+        "sources": [
+          "r8",
+          "x1"
+        ]
+      },
+      {
+        "anchor": "S-7",
+        "sources": [
+          "x1"
+        ]
+      },
+      {
+        "anchor": "S-8",
+        "sources": [
+          "a2",
+          "r6",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "S-9",
+        "sources": [
+          "r6",
+          "x4"
+        ]
+      },
+      {
+        "anchor": "S-10",
+        "sources": [
+          "a2"
+        ]
+      },
+      {
+        "anchor": "S-11",
+        "sources": [
+          "a11",
+          "n3"
+        ]
+      },
+      {
+        "anchor": "S-12",
+        "sources": [
+          "a3",
+          "r4",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "S-13",
+        "sources": [
+          "x3",
+          "r3"
+        ]
+      },
+      {
+        "anchor": "S-14",
+        "sources": [
+          "r12"
+        ]
+      },
+      {
+        "anchor": "S-15",
+        "sources": [
+          "r12",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "S-16",
+        "sources": [
+          "r3",
+          "x4",
+          "n5",
+          "n6",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "S-17",
+        "sources": [
+          "r5",
+          "a4",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "S-18",
+        "sources": [
+          "x6"
+        ]
+      },
+      {
+        "anchor": "S-19",
+        "sources": [
+          "a8",
+          "r1",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "S-20",
+        "sources": [
+          "a10",
+          "a5",
+          "n8"
+        ]
+      },
+      {
+        "anchor": "S-21",
+        "sources": [
+          "n8",
+          "default"
+        ]
+      },
+      {
+        "anchor": "S-22",
+        "sources": [
+          "a6",
+          "r2",
+          "x5",
+          "n9"
+        ]
+      },
+      {
+        "anchor": "S-23",
+        "sources": [
+          "r2",
+          "x5"
+        ]
+      },
+      {
+        "anchor": "S-24",
+        "sources": [
+          "r1",
+          "p3"
+        ]
+      },
+      {
+        "anchor": "S-25",
+        "sources": [
+          "a7",
+          "r4",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "S-26",
+        "sources": [
+          "r1",
+          "a7",
+          "p2"
+        ]
+      },
+      {
+        "anchor": "S-27",
+        "sources": [
+          "r4",
+          "x2"
+        ]
+      },
+      {
+        "anchor": "S-28",
+        "sources": [
+          "a9",
+          "x2",
+          "approval_workflow",
+          "r4",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "S-29",
+        "sources": [
+          "a3",
+          "r5",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "S-30",
+        "sources": [
+          "a12",
+          "r11",
+          "notifications"
+        ]
+      },
+      {
+        "anchor": "S-31",
+        "sources": [
+          "r11",
+          "n9"
+        ]
+      },
+      {
+        "anchor": "S-32",
+        "sources": [
+          "r9",
+          "p2",
+          "p3",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "S-33",
+        "sources": [
+          "r7",
+          "x8"
+        ]
+      },
+      {
+        "anchor": "S-34",
+        "sources": [
+          "r14"
+        ]
+      },
+      {
+        "anchor": "S-35",
+        "sources": [
+          "r10",
+          "audit_trail"
+        ]
+      },
+      {
+        "anchor": "S-36",
+        "sources": [
+          "r10",
+          "default"
+        ]
+      },
+      {
+        "anchor": "S-37",
+        "sources": [
+          "data_export",
+          "r1"
+        ]
+      },
+      {
+        "anchor": "S-38",
+        "sources": [
+          "r2",
+          "x5",
+          "data_export"
+        ]
+      },
+      {
+        "anchor": "S-39",
+        "sources": [
+          "deletion",
+          "retention"
+        ]
+      }
+    ],
+    "non_goals_defaults": [
+      {
+        "anchor": "Bank and transaction feeds",
+        "sources": [
+          "g1",
+          "a1",
+          "r13"
+        ]
+      },
+      {
+        "anchor": "Invoicing",
+        "sources": [
+          "g2",
+          "n5",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "Tax filing and official statements",
+        "sources": [
+          "g3",
+          "a8",
+          "data_export"
+        ]
+      },
+      {
+        "anchor": "External and public access",
+        "sources": [
+          "g4",
+          "user_accounts",
+          "invite_flow",
+          "a12"
+        ]
+      },
+      {
+        "anchor": "Payroll and payments",
+        "sources": [
+          "g5",
+          "n6",
+          "n3"
+        ]
+      },
+      {
+        "anchor": "Multiple businesses",
+        "sources": [
+          "tenancy",
+          "workspace_structure",
+          "r2",
+          "x5"
+        ]
+      },
+      {
+        "anchor": "Custom roles and permissions",
+        "sources": [
+          "roles",
+          "r1",
+          "r9",
+          "r11"
+        ]
+      },
+      {
+        "anchor": "Offline use",
+        "sources": [
+          "offline",
+          "platform"
+        ]
+      },
+      {
+        "anchor": "Currency detection and conversion",
+        "sources": [
+          "x8",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "Automatic data purge",
+        "sources": [
+          "retention",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Custom fields, reports, and automation",
+        "sources": [
+          "record_custom_fields",
+          "reporting",
+          "record_automation",
+          "n8"
+        ]
+      },
+      {
+        "anchor": "Programmatic export and API",
+        "sources": [
+          "data_export",
+          "r2"
+        ]
+      }
+    ]
+  },
+  "critic_passed": false,
+  "stale": false,
+  "sheet_moved": false,
+  "latest_sheet_version": 7,
+  "open_decisions": 0,
+  "ledger_conflicts": [],
+  "generated_at": "2026-08-26T09:48:03.586Z"
+}

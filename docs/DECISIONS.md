@@ -1018,3 +1018,187 @@ nodes have no lexicon feature at all**, so the matrix is structurally blind to t
 report; and no live corpus run has been made against the new pipeline yet, so every number above is a
 mechanism, not a measurement. Rule 1 of CLAUDE.md is unchanged and now extends one layer further: the LLM
 never writes to the Sheet, and neither does the corpus.
+
+## ADR-041 — The card loop stops after one question on a strong model (2026-08-26)
+
+**Context.** ADR-039 fixed the compile gates. This session put the same one-liner through the whole pipeline
+on Claude Opus 4.8 — a replay of the real session `f9280b97` ("internal dashboard based on our excel files
+with financials"), with that owner's own answers taken from its event log — and measured the artifact rather
+than the decision recovery. Three live runs of the same input:
+
+| scenario | archetype | decisions | cards asked | stop | defaulted | judge |
+|---|---|---|---|---|---|---|
+| excel-financials | internal-dashboard | 40 | 2 | `converged` | 38 | — |
+| excel-financials (repeat) | internal-dashboard | 36 | **1** | `converged` | 35 | 5/10 `needs_work` |
+| excel-financials + `contrarianSampling` | internal-dashboard | 31 | **1** | `converged` | 30 | 3/10 `not_acceptable` |
+| salon-booking | booking | 50 | **1** | `converged` | 49 | 5/10 `needs_work` |
+| invoicing-firm | b2b-invoicing | 58 | **1** | `converged` | 57 | — |
+
+Five runs, five inputs, one to two cards every time. It is not the input: `salon-booking`
+("booking system for my hair salon so clients can book online instead of calling") is concrete and specific,
+and `invoicing-firm` runs against the richest catalog we have (58 decisions planned). It is not the archetype:
+three different ones behave identically. And in two of the five the single question asked was **not one of the
+four the owner cared about**, so `deliberate decisions reaching the spec` was 0 — the product asked its one
+question about something else entirely. Both `salon-booking` and `invoicing-firm` opened with the same card
+(`reporting = basic_dashboard`) despite having nothing else in common, which suggests the ranking is dominated
+by something archetype-independent rather than by what is uncertain about THIS app.
+
+Rule 7 budgets **twelve** cards. The product asked one. The stop event records what it walked away from:
+
+    {"reason":"converged","cards":2,"settledness":0.807,
+     "top_remaining":[{"node":"x5","value":20.605},{"node":"x8","value":17.845},{"node":"x7","value":16.632}]}
+
+against a shipped θ of 24 — a question worth **86% of the threshold** abandoned, and `x5`/`x7`/`x8` are
+*bespoke* nodes, i.e. the ones the planner proposed for THIS app specifically. In the real human session `x5`
+was asked and answered. This is the same shape as the ADR-039 incident (stopped at 5 cards with the best
+remaining question at 94% of θ, and that question became the worst defect in the spec), so it is not a
+one-off.
+
+**What we tested and what it cost us to learn.**
+
+1. **`contrarianSampling` does not fix it.** The option exists for exactly this — *"the last sampler batch is
+   prompted to stake out coherent minority positions, attacking the concentrated-belief blind spot"* — and was
+   shipped off pending a live A/B. The A/B is now run: still one card, still `converged`. Recorded as a
+   **negative result** so nobody enables it expecting this.
+2. **`relativeStopFloor` cannot rescue a one-card session.** `relativeFloor` is deliberately inert below two
+   cards ("one card is not a scale for this session"), so the mechanism ADR-039 built and evidenced on mock is
+   structurally unable to fire on the worst case. Its candidate value 0.5 *would* have held the two-card
+   session open — mean(46.25, 34.29) × 0.5 = 20.14 against a next question worth 20.605 — which is the first
+   live data point for that number, and it is one data point.
+3. **θ replay cannot answer this.** `theta_replay` reports 1.0 cards at θ=0, which looks like proof that θ is
+   innocent and is not: replay only ever *stops earlier* than the logged run, so it cannot ask a card that was
+   never shown. Noted because the number is genuinely misleading.
+
+**Decision.** Record the measurement; change no default. θ is calibrated by the harness, never by argument
+(CLAUDE.md), and one scenario on one archetype is not a calibration — the honest state is that the shipped
+θ = 24 comes from **mock** beliefs whose card values run 33–124, while live Opus values on this scenario run
+46 → 34 → 20.6. Mock and live are not the same distribution, docs/STATUS.md has said so since the first live
+run ("mock-calibrated θ stops after 1 card live"), and this ADR upgrades that from a remark to a measurement
+with the sequence written down.
+
+**Consequence — the product's core claim is the thing at risk.** "Ask only what cannot be safely defaulted" is
+sound only if the defaults are actually safe. Here 35 of 36 decisions were defaulted from priors on a
+one-line description, and the outside judge (an independent Opus reading the spec cold) returned
+`needs_work, 5/10` with five concrete contradictions and six things "a builder would still have to ask" —
+several of which map directly onto decisions that were never put to the owner. A requirements engineer that
+asks one question is not being efficient, it is guessing.
+
+**Next, in order.** (a) A live θ sweep with a real arm, which is the only sanctioned way to move it. (b) Then
+re-price `relativeStopFloor`, whose candidate 0.5 now has one live data point in favour. (c) Investigate why
+belief concentration survives contrarian sampling — the sampler's worlds are repaired by `resolveAssignment`
+and frozen by the planner's `fixed_by_sheet`, and either could be flattening the minority positions the
+contrarian batch was asked to stake out.
+
+## ADR-042 — Budget by output size, and let a truncated response say so (2026-08-26)
+
+**Context.** A live compile on Claude Opus 4.8 died with:
+
+    LLMError: critic: structured output was not JSON (stop_reason=max_tokens):
+    Unterminated string in JSON at position 350
+
+That message describes a grammar or encoding fault, and it was neither. The `critic` function had
+`maxTokens: 6000`, and **adaptive thinking is drawn from the same `max_tokens` allowance as the answer**. On a
+40,000-character spec the model thought, began the JSON, and ran out mid-string. Every budget in
+`src/llm/functions.ts` had been tuned against Azure OpenAI gpt-4.1, which does not think, so the whole table
+was calibrated on a model with different accounting.
+
+**First attempt, and why it was wrong.** The obvious heuristic — raise anything with `effort: "high"` and a
+small budget — fixed `critic`, `reverse` and the section writers, and the very next live run died on
+`planner`: `effort: "medium"`, 6,000 tokens, 8,778 characters of JSON emitted before it stopped. Medium-effort
+calls think too. Effort is a *depth* dial, not a predictor of how much room the answer needs.
+
+**Decision.** Budget by the size of the thing being produced, not by the effort setting.
+
+  - 16,000 for functions that emit a LARGE structured object: `drafter` and `planner` (a whole draft Sheet /
+    interaction plan), `critic` and `reverse` (findings over an entire spec), `compile_<section>` and
+    `compile_state_machines_ir` (a spec section). 16,000 is also the SDK's guidance for non-streaming
+    requests; past that, streaming is wanted to avoid HTTP timeouts.
+  - 8,000 for the middling ones (`patcher`, `spec_feedback`, `story`, `augment_rules`).
+  - The genuinely small ones stay small: `card` writes one question, `sim_user` picks one option, and a large
+    ceiling there buys nothing but latency.
+
+**And make the failure legible.** `anthropic_foundry.ts` now treats `stop_reason: "max_tokens"` as its own
+diagnosis — it reports how many characters were emitted, says to raise the budget, and states that thinking
+shares the allowance. That message is what found the `planner` defect on the next run, in one read, with no
+debugging. An error that names the knob is worth more than a stack trace.
+
+## ADR-043 — Encode what the judge found; measure before building the rest (2026-08-26)
+
+**Context.** `scripts/scenario.ts` compiles a spec and then has an independent Opus read it cold as a senior
+requirements engineer. On the first live run it returned `needs_work, 5/10` with five contradictions, and named
+where the damage lives:
+
+> "The lifecycle/state-machine section contradicts the very invariants the rest of the document treats as
+> inviolable — the section that should reconcile behaviour instead introduces the most damaging conflicts."
+
+Two of those contradictions were **mechanically checkable and unchecked**:
+
+    Period  data model `status enum(open, closed)`     ·  lifecycle "starts in `empty` … 3 states"
+    User    data model `status enum(invited, active)`   ·  lifecycle "… deactivated"
+
+The critic *did* catch a sibling defect on that run and correctly failed the spec. That is not a substitute.
+ADR-039's whole lesson is that an LLM noticing something once is not the same as it being checked.
+
+**Decision.** Add `lifecycle_state_not_in_enum` (severity **high** — it is a schema the builder cannot
+implement, not a wording slip). Validated on 39 real `spec.md` files: **4 real findings across 2 independent
+specs, 0 false positives on the other 37.** Both of the other spec's findings had been reported independently
+by the judge, which is about as good a confirmation as this kind of check gets.
+
+Two implementation notes worth keeping, because both were silent failures:
+
+  - The first version scored **0 findings on a known-bad spec** because it stripped parenthetical qualifiers
+    from data-model headings but not the compiler's `⟨src: …⟩` markers, so no heading ever matched a lifecycle
+    entity. A zero result on a known-bad input now has its own regression test.
+  - The compiler emits **two enum syntaxes** — `enum(a, b, c)` and `Enum: a, b, c` — because the section
+    writer is an LLM writing prose. Handling one meant missing the second spec entirely.
+
+**And a check deliberately NOT built.** The judge also found lifecycle actors the permissions matrix does not
+grant. Before implementing, the question was measured across the same 39 specs: **zero instances**, and only 5
+of the 39 had a parseable permissions matrix at all. So it would have been dead code over a format that varies
+too much to parse reliably. Measuring first is cheaper than deleting later, and the cycle-2 self-critique named
+this failure mode explicitly — "a statistic in search of a consumer".
+
+**Still only caught by the judge, i.e. the honest remaining gap.** Rule-pair deadlocks (R-12 requires
+reassigning a Category's lines, R-4 forbids editing lines in closed periods, so a Category whose lines all sit
+in closed periods can never be archived), and enums with no value for mutations the rules imply.
+
+## ADR-044 — A soft edge must clear its own denominator, not a bigger one (2026-08-26)
+
+**Context.** The first design graph built from real data — 150 small repos labelled live by Opus 4.8 — reported
+two soft edges at production thresholds. The headline one looked good:
+
+    identity_provider=magic_link → invite_flow=invite_by_admin
+    soft_positive · p(B|A) 0.750 · p(B) 0.160 · lift 4.70 · eligible_n 46 · 95% CI [0.207, 1.000]
+
+It rests on **n11 = 1, n10 = 0**. One row.
+
+**The defect.** `p(B|A)` is `smoothed(n11, n11 + n10)` — its denominator is the number of rows where the
+ANTECEDENT holds, which here is 1. But `classifyPair` checked `softMinN = 30` against `eligible_n = 46`, the
+count of rows where *both nodes were observed at all*. Those are different quantities and only the first one
+bounds the estimate's precision. The Wilson interval was doing its job — `[0.207, 1.000]` spans 79 points,
+which is what n=1 looks like — but the distinguishability test only asks whether the interval EXCLUDES the
+baseline, and `0.207 > 0.160` clears that. So a single observation produced a confident-looking lift of 4.70
+and passed the gate built to stop precisely this.
+
+Worth being clear about the shape of the mistake: every individual piece was correct. The counts were right,
+the smoothing was right, the interval was right and honestly wide, and the arithmetic invariant
+`n11+n10+n01+n00 = eligible_n` held. The error was comparing a threshold against the wrong one of two numbers
+that both look like "how much evidence do we have".
+
+**Decision.** Both floors apply to `n11 + n10` as well as to `eligible_n`. `eligible_n` is kept as the weaker
+outer gate it always was — a pair nobody could have observed jointly is still not reportable — but it can no
+longer stand in for the conditional's own sample. The note on a rejected edge names the number and says why:
+`low support: p(B|A) rests on 4 row(s) where the antecedent holds (< 30); eligible_n 46 is the wrong
+denominator for this estimate`.
+
+**Consequence.** At 150 rows the graph now emits **zero** soft edges and holds 1,401 pairs as insufficient or
+low support. That is a worse-looking result and a truer one. It also re-prices the corpus requirement: clearing
+`softMinN = 30` needs 30 rows *in which the antecedent option is actually chosen*, not 30 rows in which its
+node was observed — so a rare option needs far more corpus than the earlier estimate of ~240 rows implied. The
+honest number depends on the option's prevalence, which `mine:elements` already reports.
+
+**How it was found.** Not by a test — by asking why a plausible number was plausible. The interval was the tell:
+an edge with `eligible_n = 46` should not have a 79-point interval, and the only way it can is if the estimate
+is not using those 46 rows. Three regression tests now pin it, including one asserting a well-supported edge
+still passes, because a fix that makes everything `unknown` would be no fix at all.
+

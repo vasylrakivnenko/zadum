@@ -113,6 +113,36 @@ The graph is not enabled by default until: no hard-constraint regressions, no ba
 held-out data, and a harness graph-on/graph-off arm shows a measurable improvement or no material harm. Same
 bar the rule bank cleared (ADR-027), same bar `contrarianSampling` has not yet cleared.
 
+### First real numbers (2026-08-26) — and why there are almost none
+
+150 small repos labelled live by Opus 4.8, aggregated into decision rows, run through the co-occurrence
+statistics and the graph builder. At **production thresholds the graph emits zero soft edges** and reports 122
+pairs as "low support". That is the intended answer, not a failure: `softMinN = 30` requires ~30 rows inside a
+single (archetype × source kind) stratum, and 42 rows spread over eight archetypes cannot reach it.
+
+Lowering `softMinN` to 10 to see the machinery work surfaces a first, semantically plausible edge:
+
+    identity_provider=magic_link  →  invite_flow=invite_by_admin
+    soft_positive · p(B|A) 0.750 · p(B) 0.167 · lift 4.50 · n 14 · 95% CI [0.207, 1.000]
+
+Magic-link auth going with admin-issued invites rather than open self-signup is exactly the kind of joint
+structure marginal priors cannot express — which is the whole reason the graph exists. It is also n=14 with an
+interval reaching 1.000, POOLED rather than archetype-scoped, and only visible below the shipped threshold. It
+is an existence proof of the pipeline, not a finding about the world.
+
+Two structural facts the first real matrix surfaced, both recorded rather than acted on:
+
+- **`negative_only` is 54% of unobserved cells.** The labeller produces a licensed `absent`, rule 5 correctly
+  refuses to let it select a different option, and the evidence is then used for nothing. A self-critique of
+  the obvious fix (elect the surviving option when all others are eliminated) rejected it: the mechanism needs
+  the option set to be exhaustive AND exclusive, and the same run independently showed it is neither. Worse,
+  elimination onto a `none` option would re-derive the banned "apps like this don't do X" prior per row. The
+  surviving idea is far weaker — treat it as an ask-me-first signal that settles nothing — and it is not built.
+- **Conflicts are catalog feedback.** 29 conflicts on 42 rows, led by `identity_provider`
+  (`email_password` vs `google_microsoft`): real apps support several login methods while the catalog models
+  one exclusive choice. The honest `conflict` status surfaced a modelling error instead of silently picking a
+  side. Not changed at n=2-of-14 — the same evidentiary bar this layer demands of everything else.
+
 ### Rationale text is a product feature, not a debug view
 
 Because every edge carries support counts and an interval, a default can explain itself in the owner's terms:

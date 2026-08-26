@@ -281,7 +281,11 @@ export type DesignGraph = z.infer<typeof DesignGraphSchema>;
 export interface GraphThresholds {
   /** a pair is worth REPORTING at all */
   reportMinN: number;
-  /** a pair may become a soft edge */
+  /**
+   * A pair may become a soft edge. Applied to BOTH `eligible_n` and to `n11 + n10` — the rows where the
+   * antecedent actually holds, which is the denominator `p(B|A)` is computed from. Checking only the former
+   * once let a lift of 4.70 through on a single observation; see `classifyPair`.
+   */
   softMinN: number;
   /** a pair may be PROPOSED as a hard edge (never auto-promoted) */
   hardMinN: number;
@@ -319,8 +323,25 @@ export interface Classification {
  *     uncertainty. An interval that straddles the baseline is `unknown`, however large the point estimate.
  */
 export function classifyPair(s: PairStat, t: GraphThresholds = DEFAULT_THRESHOLDS): Classification {
+  // THE DENOMINATOR THAT MATTERS is n11 + n10 — the rows where the ANTECEDENT holds — because that is the
+  // sample `p(B|A) = smoothed(n11, n11 + n10)` is computed from. `eligible_n` counts rows where both nodes
+  // were observed at all, which is a much larger and much weaker number.
+  //
+  // Guarding the wrong one shipped a real edge on the first 150-row corpus:
+  //
+  //   identity_provider=magic_link → invite_flow=invite_by_admin
+  //   lift 4.70 · p(B|A) 0.750 · eligible_n 46  ...  n11 = 1, n10 = 0
+  //
+  // One row. It cleared `softMinN = 30` on `eligible_n = 46`, and its Wilson interval [0.207, 1.000] — the
+  // honest signal, an interval spanning 79 points — still excluded the baseline 0.160, so it passed the
+  // distinguishability test too. An association asserted from a single observation, wearing a confident lift.
+  // That is precisely the failure this layer exists to prevent, so the floor now applies to the antecedent
+  // count and `eligible_n` is kept only as the weaker outer gate it always was.
+  const antecedent_n = s.n11 + s.n10;
   if (s.eligible_n < t.reportMinN) return { relation: "unknown", note: `insufficient evidence: ${s.eligible_n} eligible rows (< ${t.reportMinN})` };
+  if (antecedent_n < t.reportMinN) return { relation: "unknown", note: `insufficient evidence: the antecedent holds in only ${antecedent_n} row(s) (< ${t.reportMinN})` };
   if (s.eligible_n < t.softMinN) return { relation: "unknown", note: `low support: ${s.eligible_n} eligible rows (< ${t.softMinN} needed for a soft edge)` };
+  if (antecedent_n < t.softMinN) return { relation: "unknown", note: `low support: p(B|A) rests on ${antecedent_n} row(s) where the antecedent holds (< ${t.softMinN}); eligible_n ${s.eligible_n} is the wrong denominator for this estimate` };
   const excludesBaseline = s.ci95.low > s.p_to || s.ci95.high < s.p_to;
   if (!excludesBaseline) return { relation: "unknown", note: `not distinguishable from the baseline: p(B|A) interval [${round3(s.ci95.low)}, ${round3(s.ci95.high)}] contains p(B)=${round3(s.p_to)}` };
   if (s.difference > 0) return { relation: "soft_positive", note: null };

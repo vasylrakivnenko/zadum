@@ -1,6 +1,7 @@
 # zadum — Design Sheet ("TurboTax for AI coding")
 
-Read this first, then `docs/STATUS.md` (where we are + how to resume), then `docs/ARCHITECTURE.md`.
+Read this first, then `docs/SESSION-2026-08-26.md` (latest session: what changed and what is broken),
+then `docs/STATUS.md` (where we are + how to resume), then `docs/ARCHITECTURE.md`.
 Product intent lives in `docs/SPEC.md`; the reasoning behind non-obvious choices in `docs/DECISIONS.md`;
 the learning/flywheel design in `docs/LEARNING.md`; the eval harness in `docs/EVALS.md`.
 

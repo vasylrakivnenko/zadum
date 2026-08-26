@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkSpec, splitSections, formatSpecFindings, type SpecFinding } from "./spec_checks.js";
+import { checkSpec, splitSections, formatSpecFindings, checkLifecycleStatesAgainstEnums, type SpecFinding } from "./spec_checks.js";
 import { SheetSchema, type Sheet } from "./sheet.js";
 
 /** Minimal Sheet; every list defaults to empty, so each test declares only what its check reads. */
@@ -746,5 +746,126 @@ describe("checkSpec", () => {
     const fs: SpecFinding[] = [{ code: "enum_placeholder", severity: "medium", section: "Data model", message: "m.", fix_hint: "f." }];
     expect(formatSpecFindings(fs)).toContain('- [medium] enum_placeholder in "Data model": m. Fix: f.');
     expect(formatSpecFindings([])).toBe("No structural findings.");
+  });
+});
+
+describe("lifecycle_state_not_in_enum", () => {
+  const spec = (body: string) => splitSections(body);
+
+  const REAL_SHAPE = `## Data model
+
+### Period ⟨src: n:n4⟩
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| id | UUID | yes | |
+| status | enum(open, closed) | yes | Closed locks figures ⟨src: r:r4⟩ |
+
+### User ⟨src: n:n9⟩
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| status | enum(invited, active) | yes | Invited by the Owner |
+
+## Lifecycles (state machines)
+
+Each Period starts in \`empty\` and moves through 3 states.
+
+| From | To | Trigger |
+|---|---|---|
+| \`empty\` | \`open\` | first upload |
+| \`open\` | \`closed\` | Owner closes |
+
+Each User starts in \`invited\` and moves through 3 states.
+
+| From | To | Trigger |
+|---|---|---|
+| \`invited\` | \`active\` | signs in |
+| \`active\` | \`deactivated\` | Owner deactivates |
+`;
+
+  it("catches the two defects a live Opus spec actually shipped", () => {
+    // Verbatim shape from scenario-results/excel-financials-baseline/spec.md, where an independent Opus judge
+    // reported both as contradictions and the deterministic checks had missed them.
+    const found = checkLifecycleStatesAgainstEnums(spec(REAL_SHAPE));
+    expect(found).toHaveLength(2);
+    expect(found.map((f) => f.severity)).toEqual(["high", "high"]);
+    const msgs = found.map((f) => f.message).join(" | ");
+    expect(msgs).toContain("`empty`");
+    expect(msgs).toContain("enum(open, closed)");
+    expect(msgs).toContain("`deactivated`");
+    expect(msgs).toContain("enum(invited, active)");
+  });
+
+  it("says nothing when every lifecycle state has a home in the enum", () => {
+    const clean = REAL_SHAPE.replace("enum(open, closed)", "enum(empty, open, closed)").replace("enum(invited, active)", "enum(invited, active, deactivated)");
+    expect(checkLifecycleStatesAgainstEnums(spec(clean))).toEqual([]);
+  });
+
+  it("strips trace markers and parentheticals from the entity heading", () => {
+    // The first version of this check scored ZERO on a spec with two real findings, because it stripped
+    // parentheses but not the compiler's `⟨src: …⟩` markers, so no heading ever matched a lifecycle entity.
+    // A 0-finding result on a known-bad input is the failure mode this test exists to prevent.
+    const withMarkers = REAL_SHAPE.replace("### Period ⟨src: n:n4⟩", "### Period (calendar month) ⟨src: n:n4, d:x7⟩");
+    expect(checkLifecycleStatesAgainstEnums(spec(withMarkers))).toHaveLength(2);
+  });
+
+  it("ignores an entity with no persisted status column", () => {
+    const noStatus = `## Data model
+
+### Snapshot ⟨src: n:n1⟩
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| id | UUID | yes | |
+
+## Lifecycles
+
+Each Snapshot starts in \`fresh\` and moves through 2 states.
+`;
+    expect(checkLifecycleStatesAgainstEnums(spec(noStatus))).toEqual([]);
+  });
+
+  it("does not mistake audit columns or literals for states", () => {
+    const noisy = REAL_SHAPE.replace(
+      "| \`active\` | \`deactivated\` | Owner deactivates |",
+      "| \`active\` | \`active\` | sets \`archived_at\`, \`archived_by\`, \`null\`, \`true\` |",
+    );
+    const found = checkLifecycleStatesAgainstEnums(spec(noisy));
+    // only the Period `empty` finding survives; none of the audit/literal tokens are reported as states
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("`empty`");
+  });
+
+  it("handles the `Enum: a, b, c` syntax as well as `enum(a, b, c)`", () => {
+    // The section writer is an LLM and is not consistent: one live spec used the paren form, another used the
+    // colon form for the same field. Handling only one meant scoring 0 on a spec whose judge had just
+    // reported two enum-vs-lifecycle contradictions — the defect was present, the parser was blind.
+    const colon = `## Data model
+
+### Monthly Financials ⟨src: n:n1⟩
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| status | Enum: draft, finalized, reviewed | yes | Lifecycle state ⟨src: r:r3⟩ |
+
+## Lifecycles
+
+Each Monthly Financials starts in \`draft\` and moves through 4 states.
+
+| From | To | Trigger |
+|---|---|---|
+| \`draft\` | \`ready_to_close\` | lines present |
+| \`reviewed\` | \`reopened\` | Owner reopens |
+`;
+    const found = checkLifecycleStatesAgainstEnums(splitSections(colon));
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("`ready_to_close`");
+    expect(found[0]!.message).toContain("`reopened`");
+    expect(found[0]!.severity).toBe("high");
+  });
+
+  it("ignores a spec with no enums at all rather than flagging everything", () => {
+    expect(checkLifecycleStatesAgainstEnums(spec("## Lifecycles\n\nEach Thing starts in `new` and moves through 2 states.\n"))).toEqual([]);
   });
 });

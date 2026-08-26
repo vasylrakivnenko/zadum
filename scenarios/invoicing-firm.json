@@ -1,0 +1,13 @@
+{
+  "id": "invoicing-firm",
+  "one_liner": "invoicing app for our small bookkeeping firm that bills clients monthly",
+  "edits": [],
+  "answers": {
+    "invoice_numbering": "sequential",
+    "invoice_edit_after_send": "locked",
+    "payment_recording": "manual",
+    "recurring_invoices": "yes"
+  },
+  "overrides": {},
+  "notes": "The archetype with the richest catalog (b2b-invoicing, 28 nodes) and the one the harness golds are built on. If the card loop under-asks here too, the finding is about the stopping rule rather than about a thin catalog."
+}

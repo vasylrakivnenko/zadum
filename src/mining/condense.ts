@@ -43,9 +43,31 @@ export interface Digest {
   stats: Record<string, number>;
 }
 
-/** Rough token estimate. Good enough for budgeting; the cost report uses the API's real counts. */
-export const CHARS_PER_TOKEN = 4;
-export const DEFAULT_MAX_TOKENS = 50_000;
+/**
+ * Token estimate, CALIBRATED against a real billed request on 2026-08-26.
+ *
+ * This was 4 — the rule of thumb for English prose — and it was wrong by ~2x for what this file actually
+ * produces. A digest is code, config, schema and file trees, which tokenize far denser than prose:
+ *
+ *     invoiceninja.github.io digest:  26,105 chars  ->  12,887 REAL tokens (billed, cached-prefix count)
+ *                                     = 2.03 chars/token, against the assumed 4.00
+ *
+ * Two consequences, both silent until measured. `--max-digest-tokens 20000` was shipping ~40,000 real
+ * tokens, so every digest was twice the nominal cap; and every token-derived cost estimate in the repo
+ * understated the bill by the same factor, which is part of why this session's budget figures kept coming in
+ * low.
+ *
+ * `DEFAULT_MAX_TOKENS` and the labeller's default cap are raised by the same factor, so the actual character
+ * budget — and therefore how much of each artifact reaches the labeller — is UNCHANGED by this correction.
+ * The flag now means what it says.
+ *
+ * The real ratio varies with content (a readme-heavy digest runs lighter, a file-tree-heavy one denser), so
+ * 2.1 is a deliberately slightly-conservative single constant: it errs toward over-estimating tokens, which
+ * errs toward smaller digests and smaller bills rather than surprises. The ground truth is always the API's
+ * own counts, which every run reports.
+ */
+export const CHARS_PER_TOKEN = 2.1;
+export const DEFAULT_MAX_TOKENS = 95_000;
 export const approxTokens = (chars: number) => Math.ceil(chars / CHARS_PER_TOKEN);
 
 // ---------- repo: file listing ----------

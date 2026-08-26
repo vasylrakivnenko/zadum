@@ -1,0 +1,1349 @@
+{
+  "project_id": "28f338b5-c3ee-40cb-99b3-358aaedbb063",
+  "version": 9,
+  "one_liner": "internal dashboard based on our excel files with financials",
+  "name": "",
+  "archetypes": [
+    "internal-dashboard",
+    "crud-saas"
+  ],
+  "actors": [
+    {
+      "id": "p1",
+      "name": "Finance Manager",
+      "description": "Reviews company financials and approves the monthly numbers.",
+      "source": "draft"
+    },
+    {
+      "id": "p2",
+      "name": "Bookkeeper",
+      "description": "Enters and updates transactions and account balances from the source files.",
+      "source": "draft"
+    },
+    {
+      "id": "p3",
+      "name": "Department Head",
+      "description": "Views spending and budget for their own department only.",
+      "source": "draft"
+    },
+    {
+      "id": "p4",
+      "name": "Company Owner",
+      "description": "Sees the full financial picture and top-level summaries.",
+      "source": "draft"
+    }
+  ],
+  "nouns": [
+    {
+      "id": "n1",
+      "name": "Account",
+      "description": "A line in the chart of accounts that groups transactions.",
+      "fields_hint": [
+        "Account name",
+        "Account code",
+        "Type (income/expense/asset)"
+      ],
+      "example": "6100 - Office Rent, Expense",
+      "source": "draft"
+    },
+    {
+      "id": "n2",
+      "name": "Transaction",
+      "description": "A single financial entry recorded against an account.",
+      "fields_hint": [
+        "Date",
+        "Amount",
+        "Account",
+        "Description"
+      ],
+      "example": "Mar 3 - $1,200 to 6100 Office Rent, 'March lease'",
+      "source": "draft"
+    },
+    {
+      "id": "n3",
+      "name": "Budget",
+      "description": "The planned amount for an account or department in a period.",
+      "fields_hint": [
+        "Department",
+        "Account",
+        "Period",
+        "Planned amount"
+      ],
+      "example": "Marketing, Q1 2024, $15,000 planned",
+      "source": "draft"
+    },
+    {
+      "id": "n4",
+      "name": "Department",
+      "description": "A business unit whose spending is tracked separately.",
+      "fields_hint": [
+        "Name",
+        "Head",
+        "Budget total"
+      ],
+      "example": "Marketing, led by J. Ruiz, $60,000/yr",
+      "source": "draft"
+    },
+    {
+      "id": "n5",
+      "name": "Monthly Report",
+      "description": "A summary of income, expenses and profit for a month.",
+      "fields_hint": [
+        "Month",
+        "Total income",
+        "Total expense",
+        "Net profit"
+      ],
+      "example": "Feb 2024: income $84,000, expense $61,000, net $23,000",
+      "source": "draft"
+    },
+    {
+      "id": "n6",
+      "name": "Import File",
+      "description": "An uploaded Excel file the numbers are pulled from.",
+      "fields_hint": [
+        "File name",
+        "Upload date",
+        "Uploaded by",
+        "Row count"
+      ],
+      "example": "financials_Feb2024.xlsx, 412 rows, uploaded Mar 1",
+      "source": "draft"
+    },
+    {
+      "id": "n7",
+      "name": "Period",
+      "description": "The month or quarter a set of figures belongs to.",
+      "fields_hint": [
+        "Name",
+        "Start date",
+        "End date",
+        "Status (open/closed)"
+      ],
+      "example": "Feb 2024, Feb 1-29, Closed",
+      "source": "draft"
+    },
+    {
+      "id": "n8",
+      "name": "Cash Balance",
+      "description": "Running bank/cash total at a point in time.",
+      "fields_hint": [
+        "Account",
+        "As-of date",
+        "Amount"
+      ],
+      "example": "Operating account, Mar 1, $128,450",
+      "source": "draft"
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "actor": "p2",
+      "verb": "uploads",
+      "object": "n6",
+      "example": "Uploads financials_Feb2024.xlsx on Mar 1",
+      "source": "draft"
+    },
+    {
+      "id": "a2",
+      "actor": "p2",
+      "verb": "adds",
+      "object": "n2",
+      "example": "Adds a $1,200 rent entry for Mar 3",
+      "source": "draft"
+    },
+    {
+      "id": "a3",
+      "actor": "p2",
+      "verb": "edits",
+      "object": "n1",
+      "example": "Renames 6100 to 'Office Rent'",
+      "source": "draft"
+    },
+    {
+      "id": "a4",
+      "actor": "p2",
+      "verb": "sets",
+      "object": "n3",
+      "example": "Sets Marketing Q1 budget to $15,000",
+      "source": "draft"
+    },
+    {
+      "id": "a5",
+      "actor": "p1",
+      "verb": "closes",
+      "object": "n7",
+      "example": "Closes Feb 2024 after review",
+      "source": "draft"
+    },
+    {
+      "id": "a6",
+      "actor": "p1",
+      "verb": "approves",
+      "object": "n5",
+      "example": "Approves the Feb 2024 report",
+      "source": "draft"
+    },
+    {
+      "id": "a7",
+      "actor": "p3",
+      "verb": "views",
+      "object": "n3",
+      "example": "Views Marketing spend vs budget",
+      "source": "draft"
+    },
+    {
+      "id": "a8",
+      "actor": "p3",
+      "verb": "views",
+      "object": "n2",
+      "example": "Views Marketing transactions for March",
+      "source": "draft"
+    },
+    {
+      "id": "a9",
+      "actor": "p4",
+      "verb": "views",
+      "object": "n5",
+      "example": "Views Feb 2024 net profit of $23,000",
+      "source": "draft"
+    },
+    {
+      "id": "a10",
+      "actor": "p4",
+      "verb": "views",
+      "object": "n8",
+      "example": "Views operating cash of $128,450",
+      "source": "draft"
+    },
+    {
+      "id": "a11",
+      "actor": "p1",
+      "verb": "reviews",
+      "object": "n6",
+      "example": "Reviews the 412 imported rows before accepting",
+      "source": "draft"
+    }
+  ],
+  "rules": [
+    {
+      "id": "r1",
+      "text": "A Department Head may only view transactions and budgets for their own department.",
+      "kind": "access",
+      "example": "Marketing head cannot open Sales figures.",
+      "source": "draft"
+    },
+    {
+      "id": "r2",
+      "text": "Only the Finance Manager may close a Period.",
+      "kind": "access",
+      "example": "A Bookkeeper's attempt to close Feb is blocked.",
+      "source": "draft"
+    },
+    {
+      "id": "r3",
+      "text": "Once a Period is closed, its transactions can no longer be edited or added.",
+      "kind": "state",
+      "example": "Editing a Feb entry after close is rejected.",
+      "source": "draft"
+    },
+    {
+      "id": "r4",
+      "text": "A Monthly Report must be approved before it is shown to the Company Owner.",
+      "kind": "state",
+      "example": "Unapproved Feb report is hidden from the owner view.",
+      "source": "draft"
+    },
+    {
+      "id": "r5",
+      "text": "Total income minus total expense in a Monthly Report must equal net profit.",
+      "kind": "integrity",
+      "example": "$84,000 - $61,000 must show as $23,000.",
+      "source": "draft"
+    },
+    {
+      "id": "r6",
+      "text": "Every Transaction must reference an existing Account.",
+      "kind": "integrity",
+      "example": "A transaction with no account cannot be saved.",
+      "source": "draft"
+    },
+    {
+      "id": "r7",
+      "text": "Imported rows must reconcile to the file totals before the file is accepted.",
+      "kind": "integrity",
+      "example": "412 rows summing to file total, else flagged.",
+      "source": "draft"
+    },
+    {
+      "id": "r8",
+      "text": "Financial figures are viewed and edited only by named staff, never shared outside the company.",
+      "kind": "access",
+      "example": "No external party has any access.",
+      "source": "draft"
+    },
+    {
+      "id": "r9",
+      "text": "Each Account must have a unique Account code, and each Period a unique name, within the system.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r10",
+      "text": "All changes to Transactions, Accounts, Budgets, and Period status must be recorded in an audit log showing who made the change and when.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r11",
+      "text": "Only the Bookkeeper may add or edit Transactions and Accounts; other actors have view-only access to these records.",
+      "kind": "access",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r12",
+      "text": "An Account that still has Transactions recorded against it cannot be deleted until those transactions are removed or reassigned.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r13",
+      "text": "A Transaction cannot be saved unless its Date, Amount, and Account fields are all filled in.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r14",
+      "text": "A Monthly Report can only be approved after its corresponding Period has been closed.",
+      "kind": "state",
+      "source": "rule_bank"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "g1",
+      "text": "Does not send invoices or collect payments from customers.",
+      "source": "draft"
+    },
+    {
+      "id": "g2",
+      "text": "Does not connect directly to bank feeds; figures come from uploaded Excel files.",
+      "source": "draft"
+    },
+    {
+      "id": "g3",
+      "text": "Does not file taxes or generate official tax forms.",
+      "source": "draft"
+    },
+    {
+      "id": "g4",
+      "text": "Does not give clients or outside parties any login.",
+      "source": "draft"
+    },
+    {
+      "id": "g5",
+      "text": "Does not do payroll processing.",
+      "source": "draft"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "user_accounts",
+      "topic": "who logs in",
+      "question": "Who needs an account to use the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nobody logs in — one person uses it on their own device"
+        },
+        {
+          "id": "single_user",
+          "label": "Exactly one person logs in (the owner)"
+        },
+        {
+          "id": "multi_user",
+          "label": "Several people log in, possibly with different powers"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "multi_user",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Four named actor roles all log in with different powers."
+    },
+    {
+      "id": "roles",
+      "topic": "who can do what",
+      "question": "Do different people have different powers?",
+      "options": [
+        {
+          "id": "single",
+          "label": "Everyone who logs in can do everything"
+        },
+        {
+          "id": "owner_staff",
+          "label": "An owner/admin plus staff with fewer powers"
+        },
+        {
+          "id": "custom",
+          "label": "Admins define their own roles and permissions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "plan",
+      "chosen": "owner_staff",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Distinct powers: Bookkeeper enters, Finance Manager approves/closes, heads/owner view only."
+    },
+    {
+      "id": "tenancy",
+      "topic": "one business or many",
+      "question": "Is this for one business, or will many separate businesses use it with their data kept apart?",
+      "options": [
+        {
+          "id": "single_org",
+          "label": "One business (ours)"
+        },
+        {
+          "id": "multi_org",
+          "label": "Many separate businesses, each seeing only its own data"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "single_org",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Explicitly 'our excel files' / internal to one company."
+    },
+    {
+      "id": "invite_flow",
+      "topic": "adding people",
+      "question": "How do additional people get access?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No additional people"
+        },
+        {
+          "id": "invite_by_admin",
+          "label": "An admin invites them"
+        },
+        {
+          "id": "self_signup",
+          "label": "Anyone can sign up themselves"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "invite_by_admin",
+      "confidence": 0.963,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "identity_provider",
+      "topic": "signing in",
+      "question": "How do people sign in?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No sign-in"
+        },
+        {
+          "id": "email_password",
+          "label": "Email + password"
+        },
+        {
+          "id": "magic_link",
+          "label": "Email link, no password"
+        },
+        {
+          "id": "google_microsoft",
+          "label": "Google/Microsoft sign-in"
+        },
+        {
+          "id": "enterprise_sso",
+          "label": "Company single sign-on (SAML/OIDC)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "email_password",
+      "confidence": 0.71,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "concurrency",
+      "topic": "simultaneous edits",
+      "question": "What happens when two people edit the same thing at once?",
+      "options": [
+        {
+          "id": "last_write_wins",
+          "label": "Rare; the last save wins"
+        },
+        {
+          "id": "guarded",
+          "label": "Common; the app must prevent or merge conflicting edits"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "guarded",
+      "confidence": 0.713,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "audit_trail",
+      "topic": "history",
+      "question": "Do you need a record of who changed what and when?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Just created/updated by whom and when"
+        },
+        {
+          "id": "full",
+          "label": "A full, viewable history of every change"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "full",
+      "confidence": 0.811,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "notifications",
+      "topic": "reaching people",
+      "question": "How does the app reach people when something happens?",
+      "options": [
+        {
+          "id": "none",
+          "label": "It doesn't — people check the app"
+        },
+        {
+          "id": "email",
+          "label": "Email"
+        },
+        {
+          "id": "email_sms",
+          "label": "Email and SMS"
+        },
+        {
+          "id": "in_app",
+          "label": "Only inside the app (bell/inbox)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "email",
+      "confidence": 0.923,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "offline",
+      "topic": "connectivity",
+      "question": "Must it work without internet?",
+      "options": [
+        {
+          "id": "online_only",
+          "label": "Online only"
+        },
+        {
+          "id": "offline_tolerant",
+          "label": "Keeps working offline and syncs later"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "online_only",
+      "confidence": 0.989,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "platform",
+      "topic": "where it runs",
+      "question": "Where is it used?",
+      "options": [
+        {
+          "id": "web",
+          "label": "In a browser, on desktop and phone"
+        },
+        {
+          "id": "web_mobile_first",
+          "label": "In a browser, mostly on phones"
+        },
+        {
+          "id": "native_mobile",
+          "label": "As an installed phone app"
+        },
+        {
+          "id": "desktop_app",
+          "label": "As an installed desktop app"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "web",
+      "confidence": 0.97,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "data_import",
+      "topic": "starting data",
+      "question": "Do you start with existing data?",
+      "options": [
+        {
+          "id": "fresh_start",
+          "label": "Start empty"
+        },
+        {
+          "id": "import_spreadsheet",
+          "label": "Import from a spreadsheet/CSV once"
+        },
+        {
+          "id": "migrate_from_tool",
+          "label": "Migrate from another tool"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "import_spreadsheet",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Figures come from uploaded Excel files (n6, a1, g2)."
+    },
+    {
+      "id": "data_export",
+      "topic": "getting data out",
+      "question": "Do people need to get their data out?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "csv_export",
+          "label": "Download lists as CSV/Excel"
+        },
+        {
+          "id": "full_export_api",
+          "label": "Full export and/or an API"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "csv_export",
+      "confidence": 0.907,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "deletion",
+      "topic": "deleting",
+      "question": "When something is deleted, what really happens?",
+      "options": [
+        {
+          "id": "hard_delete",
+          "label": "It's gone"
+        },
+        {
+          "id": "soft_delete",
+          "label": "It's archived and can be restored"
+        },
+        {
+          "id": "never_delete",
+          "label": "Records are never deleted, only voided/cancelled"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "soft_delete",
+      "confidence": 0.755,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "data_scale",
+      "topic": "volume",
+      "question": "How much data will there be?",
+      "options": [
+        {
+          "id": "small",
+          "label": "Hundreds of records"
+        },
+        {
+          "id": "medium",
+          "label": "Tens of thousands"
+        },
+        {
+          "id": "large",
+          "label": "Millions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "medium",
+      "confidence": 0.622,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "integrations",
+      "topic": "other tools",
+      "question": "Does it need to connect to other tools?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "a_few_key",
+          "label": "A few key ones (e.g., accounting, payments, calendar)"
+        },
+        {
+          "id": "many_via_api",
+          "label": "Many — it needs a public API / webhooks"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "none",
+      "confidence": 0.602,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "localization",
+      "topic": "languages & regions",
+      "question": "Languages and regions?",
+      "options": [
+        {
+          "id": "single_locale",
+          "label": "One language, one country"
+        },
+        {
+          "id": "multi_language",
+          "label": "Several languages"
+        },
+        {
+          "id": "multi_region",
+          "label": "Several countries (taxes, formats, currencies)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "implied:x6",
+      "chosen": "single_locale",
+      "confidence": 0.962,
+      "implied_by": "x6",
+      "rationale": "very likely given x6=manager_reopen_audited"
+    },
+    {
+      "id": "attachments",
+      "topic": "files",
+      "question": "Can files/photos be attached to things?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Yes — upload and download"
+        },
+        {
+          "id": "rich",
+          "label": "Yes — with previews, versions, and sharing"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "basic",
+      "confidence": 0.785,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "approval_workflow",
+      "topic": "sign-off",
+      "question": "Do some actions need someone else's approval first?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "single_approver",
+          "label": "One approver"
+        },
+        {
+          "id": "multi_step",
+          "label": "Multi-step approval chains"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 4,
+      "source": "defaults_review",
+      "chosen": "single_approver",
+      "confidence": 1,
+      "rationale": "corrected in defaults review"
+    },
+    {
+      "id": "recurring_scheduled",
+      "topic": "automation",
+      "question": "Must anything happen automatically on a schedule?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "reminders_only",
+          "label": "Only reminders/notifications"
+        },
+        {
+          "id": "recurring_records",
+          "label": "Records get created automatically (recurring invoices, appointments, reports)"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 3,
+      "source": "defaults_review",
+      "chosen": "recurring_records",
+      "confidence": 1,
+      "rationale": "corrected in defaults review"
+    },
+    {
+      "id": "compliance_sensitivity",
+      "topic": "sensitive data",
+      "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+      "options": [
+        {
+          "id": "ordinary",
+          "label": "Ordinary business data"
+        },
+        {
+          "id": "personal_sensitive",
+          "label": "Personal data needing consent/retention care (GDPR-like)"
+        },
+        {
+          "id": "regulated",
+          "label": "Regulated data (health, cards, finance)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "default",
+      "chosen": "regulated",
+      "confidence": 0.499,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "retention",
+      "topic": "keeping data",
+      "question": "How long is data kept?",
+      "options": [
+        {
+          "id": "forever",
+          "label": "Until someone deletes it"
+        },
+        {
+          "id": "policy_based",
+          "label": "Auto-removed after a set period"
+        },
+        {
+          "id": "user_controlled",
+          "label": "Each business sets its own policy"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "forever",
+      "confidence": 0.701,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "customization",
+      "topic": "per-business customization",
+      "question": "Can each business customize the app?",
+      "options": [
+        {
+          "id": "fixed",
+          "label": "No — everyone gets the same thing"
+        },
+        {
+          "id": "branding_templates",
+          "label": "Branding and templates (logo, colors, wording)"
+        },
+        {
+          "id": "custom_fields",
+          "label": "Custom fields and workflows"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 3,
+      "source": "default",
+      "chosen": "fixed",
+      "confidence": 0.807,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "reporting",
+      "topic": "overviews",
+      "question": "What do people need to see across many records?",
+      "options": [
+        {
+          "id": "lists_only",
+          "label": "Sortable, filterable lists"
+        },
+        {
+          "id": "basic_dashboard",
+          "label": "A dashboard with totals and counts"
+        },
+        {
+          "id": "custom_reports",
+          "label": "Custom reports people build themselves"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "default",
+      "chosen": "basic_dashboard",
+      "confidence": 0.83,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "workspace_structure",
+      "topic": "how things are grouped",
+      "question": "Are records grouped into separate projects/workspaces, or is it one shared pool?",
+      "options": [
+        {
+          "id": "single_pool",
+          "label": "One shared pool — everything lives in one place with filters"
+        },
+        {
+          "id": "projects_with_members",
+          "label": "Separate projects/workspaces, each with its own members"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "single_pool",
+      "confidence": 0.967,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_ownership",
+      "topic": "who sees what",
+      "question": "Who can see a record?",
+      "options": [
+        {
+          "id": "everyone_in_workspace",
+          "label": "Everyone in the team sees everything"
+        },
+        {
+          "id": "owner_plus_shared",
+          "label": "Records are private to their owner unless shared or assigned"
+        },
+        {
+          "id": "team_scoped",
+          "label": "Visible within the owner's team/department; admins see all"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2.5,
+      "source": "plan",
+      "chosen": "team_scoped",
+      "confidence": 0.95,
+      "rationale": "stated in the description: r1 — Department Heads see only their own department; Manager/Owner see all."
+    },
+    {
+      "id": "record_edit_rights",
+      "topic": "who can do what",
+      "question": "Who can change a record?",
+      "options": [
+        {
+          "id": "anyone_who_sees",
+          "label": "Anyone who can see it can edit it"
+        },
+        {
+          "id": "owner_assignee_admin",
+          "label": "Only its owner/assignee and admins; others just view"
+        },
+        {
+          "id": "per_record_roles",
+          "label": "Set per record: view / comment / edit"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "owner_assignee_admin",
+      "confidence": 0.952,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_custom_fields",
+      "topic": "fields",
+      "question": "Are the fields on a record fixed, or can admins add their own?",
+      "options": [
+        {
+          "id": "fixed_fields",
+          "label": "Fixed — the same fields for everyone"
+        },
+        {
+          "id": "admin_custom_fields",
+          "label": "Admins add custom fields (text, number, date, dropdown) to each record type"
+        },
+        {
+          "id": "custom_record_types",
+          "label": "Admins define whole new record types with their own fields"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2.5,
+      "source": "default",
+      "chosen": "fixed_fields",
+      "confidence": 0.938,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_relationships",
+      "topic": "links between records",
+      "question": "Are records linked to each other?",
+      "options": [
+        {
+          "id": "standalone",
+          "label": "No — each record stands alone"
+        },
+        {
+          "id": "linked_types",
+          "label": "Yes — records of different types reference each other (contact → company → deal)"
+        },
+        {
+          "id": "hierarchy",
+          "label": "Yes — including parent/child trees (projects → tasks → sub-tasks)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "linked_types",
+      "confidence": 0.906,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_automation",
+      "topic": "automation",
+      "question": "Should the app do things on its own when records change?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No — people do everything by hand"
+        },
+        {
+          "id": "simple_rules",
+          "label": "Simple rules: when X happens, notify/assign/change stage"
+        },
+        {
+          "id": "multi_step_workflows",
+          "label": "Multi-step workflows with conditions and delays"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "default",
+      "chosen": "simple_rules",
+      "confidence": 0.473,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_duplicates",
+      "topic": "data quality",
+      "question": "Can two records be the same thing (same email, same serial number)?",
+      "options": [
+        {
+          "id": "allowed",
+          "label": "Allowed — nothing stops duplicates"
+        },
+        {
+          "id": "warn",
+          "label": "The app warns about likely duplicates and offers to merge"
+        },
+        {
+          "id": "unique_key_enforced",
+          "label": "A key field must be unique; duplicates are rejected"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1.5,
+      "source": "default",
+      "chosen": "unique_key_enforced",
+      "confidence": 0.572,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_search",
+      "topic": "finding things",
+      "question": "How do people find a record?",
+      "options": [
+        {
+          "id": "filters_in_lists",
+          "label": "Filter and sort within each list"
+        },
+        {
+          "id": "global_search",
+          "label": "One search box across all record types"
+        },
+        {
+          "id": "full_text_everything",
+          "label": "Search that also looks inside comments and attachments"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1.5,
+      "source": "default",
+      "chosen": "filters_in_lists",
+      "confidence": 0.527,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "record_bulk_edit",
+      "topic": "bulk actions",
+      "question": "Can people change many records at once?",
+      "options": [
+        {
+          "id": "one_at_a_time",
+          "label": "No — one record at a time"
+        },
+        {
+          "id": "bulk_actions",
+          "label": "Yes — select many and assign/move/tag/delete together"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1,
+      "source": "default",
+      "chosen": "one_at_a_time",
+      "confidence": 0.568,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x1",
+      "topic": "deletion-with-dependents",
+      "question": "What happens when a Bookkeeper deletes/renames an Account that already has Transactions and Budgets attached?",
+      "options": [
+        {
+          "id": "block",
+          "label": "Block deletion while any transaction/budget references it"
+        },
+        {
+          "id": "reassign",
+          "label": "Force reassigning transactions to another account first"
+        },
+        {
+          "id": "soft_void",
+          "label": "Soft-archive the account but keep historical postings intact"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "soft_void",
+      "confidence": 0.605,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x2",
+      "topic": "duplicate-submission / idempotency",
+      "question": "If the same Import File (or a re-upload of the same month) is submitted twice, what happens?",
+      "options": [
+        {
+          "id": "detect_reject",
+          "label": "Detect by name/hash/period and reject the duplicate"
+        },
+        {
+          "id": "supersede",
+          "label": "Replace the prior import for that period"
+        },
+        {
+          "id": "append",
+          "label": "Append rows, allowing duplicates"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "default",
+      "chosen": "detect_reject",
+      "confidence": 0.59,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x3",
+      "topic": "zero-negative-rounding",
+      "question": "How are negative amounts, refunds/credits, and rounding handled so reports stay balanced?",
+      "options": [
+        {
+          "id": "signed_cents",
+          "label": "Store signed integer cents; allow negatives; no rounding"
+        },
+        {
+          "id": "round_display",
+          "label": "Round only for display, keep full precision internally"
+        },
+        {
+          "id": "reject_negative",
+          "label": "Reject negative/zero amounts entirely"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "signed_cents",
+      "confidence": 0.71,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x4",
+      "topic": "time-boundaries",
+      "question": "How is the Period a Transaction belongs to determined (e.g. a Mar 31 late-night entry, or a backdated invoice)?",
+      "options": [
+        {
+          "id": "txn_date",
+          "label": "By the transaction's own date field, fixed org timezone"
+        },
+        {
+          "id": "import_period",
+          "label": "By the period declared on the import file"
+        },
+        {
+          "id": "manual_assign",
+          "label": "Bookkeeper assigns the period explicitly"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "txn_date",
+      "confidence": 0.8,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x5",
+      "topic": "partial-failure",
+      "question": "If an Import File passes some rows but fails reconciliation or has bad rows, what state is saved?",
+      "options": [
+        {
+          "id": "all_or_nothing",
+          "label": "Reject the whole file until it fully reconciles"
+        },
+        {
+          "id": "staging",
+          "label": "Load into staging; nothing hits reports until Finance Manager accepts"
+        },
+        {
+          "id": "partial_commit",
+          "label": "Commit good rows, flag the bad ones"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "default",
+      "chosen": "staging",
+      "confidence": 0.745,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x6",
+      "topic": "lifecycle-backwards",
+      "question": "Can a closed Period be reopened or an approved Monthly Report be un-approved?",
+      "options": [
+        {
+          "id": "forbidden",
+          "label": "No — closed/approved is final"
+        },
+        {
+          "id": "manager_reopen_audited",
+          "label": "Finance Manager may reopen, logged in the audit trail"
+        },
+        {
+          "id": "versioned",
+          "label": "Reopening creates a new versioned revision of the period/report"
+        }
+      ],
+      "status": "resolved",
+      "consequence": 4,
+      "source": "card:beb2540f-d952-46b6-a2fb-25e3d4987f61",
+      "chosen": "manager_reopen_audited",
+      "confidence": 1,
+      "rationale": "card answer: Your finance manager can reopen a finalized month and fix the numbers directly, and every reopening is stamped with who did it and when."
+    },
+    {
+      "id": "x7",
+      "topic": "permission-escalation",
+      "question": "How is cross-department or delegated access handled (e.g. a Department Head covering another, or Owner drilling into raw transactions)?",
+      "options": [
+        {
+          "id": "strict",
+          "label": "Strict — each head sees only their own department, no delegation"
+        },
+        {
+          "id": "manager_grant",
+          "label": "Finance Manager can grant temporary cross-department view"
+        },
+        {
+          "id": "owner_full",
+          "label": "Owner sees all details; heads strictly scoped"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "owner_full",
+      "confidence": 0.752,
+      "rationale": "not asked; defaulted from belief"
+    },
+    {
+      "id": "x8",
+      "topic": "data-reconciliation",
+      "question": "When a new import updates figures that were also manually entered (a2) for the same accounts/period, which wins?",
+      "options": [
+        {
+          "id": "import_authoritative",
+          "label": "Import is authoritative and overwrites manual entries"
+        },
+        {
+          "id": "manual_protected",
+          "label": "Manual entries are preserved; import only adds new rows"
+        },
+        {
+          "id": "flag_conflict",
+          "label": "Conflicts are flagged for Finance Manager review"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 4,
+      "source": "default",
+      "chosen": "flag_conflict",
+      "confidence": 0.794,
+      "rationale": "not asked; defaulted from belief"
+    }
+  ]
+}

@@ -1,0 +1,2453 @@
+{
+  "sheet_version": 5,
+  "critic": {
+    "violations": [
+      {
+        "rule_id": "credit_note_numbering",
+        "severity": "medium",
+        "where": "Data model → Credit Note: `credit_note_number` \"own `CN-` sequence, strictly sequential; kept separate from `invoice_number`\"; R-d11; S31",
+        "why": "The Sheet decision d:credit_note_numbering states credit notes \"share the invoice number sequence.\" The spec does the exact opposite — a separate CN- sequence — silently reversing the decision it cites.",
+        "fix_hint": "Either update the Sheet decision to a separate sequence, or number credit notes within the invoice sequence as the Sheet dictates."
+      },
+      {
+        "rule_id": "data_model × lifecycles",
+        "severity": "high",
+        "where": "Invoice lifecycle lists 7 states incl. `viewed`; Data model Invoice `status` enum = (draft,sent,partially_paid,paid,overdue,void) with no `viewed`",
+        "why": "The lifecycle section adds a `viewed` state and sent→viewed transition, but the Invoice status enum and status-derivation in the data model have no `viewed` state at all. The two sections disagree about the set of legal Invoice states.",
+        "fix_hint": "Reconcile: either add `viewed` to the enum/derivation or remove the `viewed` state from the lifecycle."
+      },
+      {
+        "rule_id": "actors_permissions × lifecycles",
+        "severity": "high",
+        "where": "Invoice lifecycle row `sent`→`viewed` | Who: Client | \"Client receives and opens the invoice\" vs permissions Client column all ✗ and note 2 \"performs no in-app action\" and non-goals \"no email open-tracking or 'viewed' signal\"",
+        "why": "The lifecycle has the Client (an actor with no account and no in-app action) drive a state transition, and relies on an open/viewed signal the permissions prose and non-goals both say does not exist. The scenario the lifecycle describes is forbidden by the permission matrix and explicitly denied elsewhere.",
+        "fix_hint": "Remove the Client-driven `viewed` transition; there is no viewed signal or Client action in v1."
+      },
+      {
+        "rule_id": "r3 × r7",
+        "severity": "high",
+        "where": "Invoice status derivation + R-r3 balance cap (amount − payments − credits) + R-r7 (paid iff payments==amount)",
+        "why": "With any credit note applied, R-r3 caps recordable payments at amount−credits, so payments can never equal amount, so R-r7's `paid` is unreachable. Meanwhile status derivation only defines sent (requires credited_amount==0), partially_paid (requires amount_paid>0), and paid (amount_paid==amount). A credited invoice with amount_paid=0 (e.g. $450 invoice, $200 credit) matches NO status and can never leave it — an unsatisfiable, statusless stuck record.",
+        "fix_hint": "Add an explicit 'settled/closed-by-credit' status and make status derivation exhaustive for any credited invoice."
+      },
+      {
+        "rule_id": "actors_permissions × lifecycles",
+        "severity": "medium",
+        "where": "Permissions matrix \"Review a Statement | Bookkeeper ✓\" vs Statement lifecycle `generated`→`reviewed` | Who: Firm Owner only (⟨a8⟩)",
+        "why": "The matrix grants the Bookkeeper the ability to review a Statement, but the Statement lifecycle allows only the Firm Owner to perform the review transition. The two sections disagree about who can review; the Sheet action a8 is Firm-Owner-only.",
+        "fix_hint": "Deny Bookkeeper review in the matrix or add a Bookkeeper review transition — but a8 restricts review to the Firm Owner."
+      },
+      {
+        "rule_id": "r5",
+        "severity": "medium",
+        "where": "R-r5 / permissions note 1 / Delegation entity — Bookkeeper with delegation may void",
+        "why": "Sheet r5 states \"Only the Firm Owner may void an invoice.\" The spec weakens this by granting a delegated Bookkeeper void rights. The Sheet's own x7 conflicts with r5's \"only,\" and the spec resolves toward x7, contradicting the literal inviolable rule.",
+        "fix_hint": "Reconcile r5 and x7 at the Sheet level before implementing delegated void."
+      },
+      {
+        "rule_id": "r6",
+        "severity": "medium",
+        "where": "R-r6 / permissions note 1 — Bookkeeper with delegation may change monthly rate",
+        "why": "Sheet r6 states \"Only the Firm Owner may change a client's monthly rate,\" but the spec permits a delegated Bookkeeper to do so, weakening the rule's \"only.\"",
+        "fix_hint": "Reconcile r6 and x7 at the Sheet level before implementing delegated rate change."
+      },
+      {
+        "rule_id": "data_model × rules",
+        "severity": "low",
+        "where": "R-d2 \"An Invoice's `amount` equals the sum of its Line Item `amount` values\" vs Invoice derived `amount` = `subtotal` − `discount_amount`",
+        "why": "R-d2 asserts amount is the plain sum of line items, but the Invoice model subtracts a whole-invoice discount. When a discount exists the two definitions disagree.",
+        "fix_hint": "Restate R-d2 as amount = subtotal − discount_amount."
+      }
+    ],
+    "omissions": [
+      {
+        "item": "n11 reference",
+        "kind": "noun",
+        "why": "Permissions note 2 cites ⟨src: n:n11⟩ which does not exist in the Sheet noun list (n1–n6); dangling/incorrect trace marker."
+      },
+      {
+        "item": "auto_reminder_schedule / late_fee_basis",
+        "kind": "rule",
+        "why": "Sheet decisions d:auto_reminder_schedule (two automatic nudges) and d:late_fee_basis (flat late fee) are contradicted by the spec's manual-only reminders and no-late-fee stance; they conflict with d:overdue_reminders/d:late_fees but the spec never explicitly resolves the contradiction."
+      }
+    ],
+    "score": 6,
+    "verdict": "fail"
+  },
+  "critic_rounds": 2,
+  "ir_findings": [],
+  "spec_findings": [
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a1 (\"Bookkeeper creates Invoice\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a10 (\"Bookkeeper generates Statement\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permissions matrix",
+      "message": "Sheet action a11 (\"Client receives Invoice\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Client",
+      "message": "table cell in row \"`business_name`\" holds a second sentence: \"e.g. Acme Landscaping\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Client",
+      "message": "table cell in row \"`monthly_rate`\" holds 92 characters of prose: \"changeable only by Firm Owner or a Bookkeeper with an active `change_client_rate` delegation\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Invoice",
+      "message": "table cell in row \"`invoice_number`\" holds 101 characters of prose: \"strictly sequential per firm; unique; the only permitted gaps are numbers retained by voided invoices\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Invoice",
+      "message": "table cell in row \"`delivery_status`\" holds 130 characters of prose: \"on send, marked `delivered`; if the email fails the invoice stays `sent` but `delivery_status` becomes `delivery_failed…\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Line Item",
+      "message": "table cell in row \"`description`\" holds a second sentence: \"e.g. Monthly bookkeeping\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Line Item",
+      "message": "table cell in row \"`amount` (derived)\" holds 90 characters of prose: \"= round-to-cents(`quantity` × `rate`); a computed `amount` of zero or negative is rejected\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Payment",
+      "message": "table cell in row \"`amount`\" holds 126 characters of prose: \"stored positive; each save must satisfy `amount` ≤ current `balance_due`, so total payments plus credits never exceed `…\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Payment",
+      "message": "table cell in row \"`date_received`\" holds a second sentence: \"e.g. Mar 12\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Credit Note",
+      "message": "table cell in row \"`credit_note_number`\" holds 121 characters of prose: \"own `CN-` sequence, strictly sequential; kept separate from `invoice_number` so the invoice series stays gapless per R-…\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Credit Note",
+      "message": "table cell in row \"`amount`\" holds 97 characters of prose: \"stored positive; subtracted in `balance_due`; sum of applied credit notes may not exceed `amount`\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Service",
+      "message": "table cell in row \"`name`\" holds a second sentence: \"e.g. Monthly bookkeeping\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Statement",
+      "message": "table cell in row \"`total_billed` (derived)\" holds 113 characters of prose: \"= sum of `Invoice.amount` for the client with `issue_date` within [`period_start`,`period_end`], excluding `void`\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "untraced_decision",
+      "severity": "medium",
+      "message": "decision \"localization\" is defaulted as \"single_locale\" (Languages and regions?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"localization\" in any form (d:localization, localization, or localization:single_locale).",
+      "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:localization⟩) or re-open it."
+    },
+    {
+      "code": "untraced_decision",
+      "severity": "medium",
+      "message": "decision \"compliance_sensitivity\" is defaulted as \"ordinary\" (Does it hold data with special legal handling (health, payment cards, minors)?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"compliance_sensitivity\" in any form (d:compliance_sensitivity, compliance_sensitivity, or compliance_sensitivity:ordinary).",
+      "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:compliance_sensitivity⟩) or re-open it."
+    },
+    {
+      "code": "untraced_decision",
+      "severity": "medium",
+      "message": "decision \"late_fee_basis\" is defaulted as \"flat_fee\" (How is an automatic late fee calculated?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"late_fee_basis\" in any form (d:late_fee_basis, late_fee_basis, or late_fee_basis:flat_fee).",
+      "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:late_fee_basis⟩) or re-open it."
+    }
+  ],
+  "blocking": [
+    "the critic returned fail (score 6)"
+  ],
+  "deliverable": false,
+  "scope_creep": [
+    {
+      "kind": "actor",
+      "item": "system",
+      "severity": "high"
+    },
+    {
+      "kind": "noun",
+      "item": "User",
+      "severity": "high"
+    },
+    {
+      "kind": "noun",
+      "item": "Delegation",
+      "severity": "high"
+    },
+    {
+      "kind": "noun",
+      "item": "Credit Note",
+      "severity": "high"
+    },
+    {
+      "kind": "noun",
+      "item": "Firm Settings",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "The sum of Payment amounts applied to an Invoice may never exceed its outstanding balance (amount minus applied payments minus applied credit-note amounts); no overpaid or negative balance can arise.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A paid Invoice cannot be edited; corrections require voiding it and issuing a new Invoice.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "No entity is ever hard-deleted; records leave active use only by void (Invoice) or archived (Client) status, including through bulk actions.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "For every Line Item, amount = round-to-cents(quantity × rate); a computed amount of zero or negative is rejected.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "An Invoice's amount equals the sum of its Line Item amounts minus any single whole-invoice discount, and must be greater than zero to send.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "All monetary values are stored as positive integer cents in a single currency; reductions (payments, credit notes) are stored positive and subtracted, so a balance only decreases toward zero and never below it.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "When a Client's billing_day does not exist in a given month, the invoice and due dates use the last day of that month.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Send or Record-Payment action fired twice with the same idempotency key is detected and applied once; the duplicate is ignored.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "When an Invoice is sent but the email fails, the Invoice remains sent and delivery_status is set to delivery_failed for retry; it is never silently dropped or held in draft.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Undo affects only the most recent field edit on a draft Invoice or a Client; it can never change an Invoice's status and can never touch a paid or void Invoice.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Credit notes are numbered in a separate CN- sequence so they never consume invoice numbers.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Each mutable record carries a version; a save whose submitted version differs from the stored version is rejected and the editor is shown the current record.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "No Invoice, Line Item, or Statement carries a tax field, and all amounts are in one currency.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Every sent Invoice PDF is rendered from the firm's configured branding, set only by the Firm Owner.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Initial CSV import is available only while the firm has no Invoices; after first successful use it is disabled.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Archiving a Client sets status archived and keeps all its Invoices and Payments intact; there is no cascade delete and no restore path in v1.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "The Client holds no account, has no session, and performs no in-app action; it only receives the Invoice PDF by email with no login, portal, or open-tracking.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Only the Firm Owner may invite or manage user accounts, set Service default rates, issue credit notes, grant delegations, and edit firm branding.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "An invoice's due_date is issue_date + net_terms_days from Firm Settings.",
+      "severity": "high"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|edit non-rate fields of|Client",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|archive|Client",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|add Line Item to|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|edit unsent/unpaid|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|send overdue reminder for|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|review|Statement",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|view dashboard totals of|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|export as CSV|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|import initial data of|Client",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|change monthly rate of (with delegation)|Client",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|void (with delegation)|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|undo last field edit on|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Bookkeeper|apply bulk action to|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Firm Owner|change monthly rate of|Client",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Firm Owner|issue|Credit Note",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Firm Owner|invite or manage|User",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Firm Owner|grant|Delegation",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Firm Owner|edit branding and invoice template of|Firm Settings",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "system|flag overdue|Invoice",
+      "severity": "medium"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No third-party integrations, public API, or webhooks; the accountant is served by file export only.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No multi-currency and no multi-organisation tenancy; one firm, one currency.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No automatic overdue reminders and no late fees; reminders are sent by hand.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No estimates, quotes, or time tracking that convert to invoices.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No deposits or up-front retainers applied to future invoices.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No hard deletion of any record, including through bulk actions.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No approval workflow; nothing is queued for a second party's sign-off.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No restore of an archived Client; archiving is one-way in v1.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "No installed app and no offline mode; browser and online only.",
+      "severity": "low"
+    }
+  ],
+  "roundtrip": {
+    "recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 0.9090909090909091,
+      "rules": 0.9166666666666666,
+      "non_goals": 1,
+      "overall": 0.9459459459459459
+    },
+    "missing": [
+      {
+        "kind": "action",
+        "item": "Bookkeeper|adds|Line Item"
+      },
+      {
+        "kind": "rule",
+        "item": "A paid invoice cannot be edited; it must be voided and reissued instead."
+      }
+    ],
+    "extra": [
+      {
+        "kind": "actor",
+        "item": "system"
+      },
+      {
+        "kind": "noun",
+        "item": "User"
+      },
+      {
+        "kind": "noun",
+        "item": "Delegation"
+      },
+      {
+        "kind": "noun",
+        "item": "Credit Note"
+      },
+      {
+        "kind": "noun",
+        "item": "Firm Settings"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|edit non-rate fields of|Client"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|archive|Client"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|add Line Item to|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|edit unsent/unpaid|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|send overdue reminder for|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|review|Statement"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|view dashboard totals of|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|export as CSV|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|import initial data of|Client"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|change monthly rate of (with delegation)|Client"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|void (with delegation)|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|undo last field edit on|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Bookkeeper|apply bulk action to|Invoice"
+      },
+      {
+        "kind": "action",
+        "item": "Firm Owner|change monthly rate of|Client"
+      },
+      {
+        "kind": "action",
+        "item": "Firm Owner|issue|Credit Note"
+      },
+      {
+        "kind": "action",
+        "item": "Firm Owner|invite or manage|User"
+      },
+      {
+        "kind": "action",
+        "item": "Firm Owner|grant|Delegation"
+      },
+      {
+        "kind": "action",
+        "item": "Firm Owner|edit branding and invoice template of|Firm Settings"
+      },
+      {
+        "kind": "action",
+        "item": "system|flag overdue|Invoice"
+      },
+      {
+        "kind": "rule",
+        "item": "The sum of Payment amounts applied to an Invoice may never exceed its outstanding balance (amount minus applied payments minus applied credit-note amounts); no overpaid or negative balance can arise."
+      },
+      {
+        "kind": "rule",
+        "item": "A paid Invoice cannot be edited; corrections require voiding it and issuing a new Invoice."
+      },
+      {
+        "kind": "rule",
+        "item": "No entity is ever hard-deleted; records leave active use only by void (Invoice) or archived (Client) status, including through bulk actions."
+      },
+      {
+        "kind": "rule",
+        "item": "For every Line Item, amount = round-to-cents(quantity × rate); a computed amount of zero or negative is rejected."
+      },
+      {
+        "kind": "rule",
+        "item": "An Invoice's amount equals the sum of its Line Item amounts minus any single whole-invoice discount, and must be greater than zero to send."
+      },
+      {
+        "kind": "rule",
+        "item": "All monetary values are stored as positive integer cents in a single currency; reductions (payments, credit notes) are stored positive and subtracted, so a balance only decreases toward zero and never below it."
+      },
+      {
+        "kind": "rule",
+        "item": "When a Client's billing_day does not exist in a given month, the invoice and due dates use the last day of that month."
+      },
+      {
+        "kind": "rule",
+        "item": "A Send or Record-Payment action fired twice with the same idempotency key is detected and applied once; the duplicate is ignored."
+      },
+      {
+        "kind": "rule",
+        "item": "When an Invoice is sent but the email fails, the Invoice remains sent and delivery_status is set to delivery_failed for retry; it is never silently dropped or held in draft."
+      },
+      {
+        "kind": "rule",
+        "item": "Undo affects only the most recent field edit on a draft Invoice or a Client; it can never change an Invoice's status and can never touch a paid or void Invoice."
+      },
+      {
+        "kind": "rule",
+        "item": "Credit notes are numbered in a separate CN- sequence so they never consume invoice numbers."
+      },
+      {
+        "kind": "rule",
+        "item": "Each mutable record carries a version; a save whose submitted version differs from the stored version is rejected and the editor is shown the current record."
+      },
+      {
+        "kind": "rule",
+        "item": "No Invoice, Line Item, or Statement carries a tax field, and all amounts are in one currency."
+      },
+      {
+        "kind": "rule",
+        "item": "Every sent Invoice PDF is rendered from the firm's configured branding, set only by the Firm Owner."
+      },
+      {
+        "kind": "rule",
+        "item": "Initial CSV import is available only while the firm has no Invoices; after first successful use it is disabled."
+      },
+      {
+        "kind": "rule",
+        "item": "Archiving a Client sets status archived and keeps all its Invoices and Payments intact; there is no cascade delete and no restore path in v1."
+      },
+      {
+        "kind": "rule",
+        "item": "The Client holds no account, has no session, and performs no in-app action; it only receives the Invoice PDF by email with no login, portal, or open-tracking."
+      },
+      {
+        "kind": "rule",
+        "item": "Only the Firm Owner may invite or manage user accounts, set Service default rates, issue credit notes, grant delegations, and edit firm branding."
+      },
+      {
+        "kind": "rule",
+        "item": "An invoice's due_date is issue_date + net_terms_days from Firm Settings."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No third-party integrations, public API, or webhooks; the accountant is served by file export only."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No multi-currency and no multi-organisation tenancy; one firm, one currency."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No automatic overdue reminders and no late fees; reminders are sent by hand."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No estimates, quotes, or time tracking that convert to invoices."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No deposits or up-front retainers applied to future invoices."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No hard deletion of any record, including through bulk actions."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No approval workflow; nothing is queued for a second party's sign-off."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No restore of an archived Client; archiving is one-way in v1."
+      },
+      {
+        "kind": "non_goal",
+        "item": "No installed app and no offline mode; browser and online only."
+      }
+    ]
+  },
+  "traces": {
+    "overview": [
+      {
+        "anchor": "What this is",
+        "sources": [
+          "d:invoicing_model",
+          "d:tenancy",
+          "d:platform",
+          "d:offline"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper role",
+        "sources": [
+          "p:p1",
+          "a:a1",
+          "a:a2",
+          "a:a3",
+          "a:a4",
+          "a:a5",
+          "a:a6",
+          "a:a10"
+        ]
+      },
+      {
+        "anchor": "Firm Owner role",
+        "sources": [
+          "p:p2",
+          "a:a7",
+          "a:a8",
+          "a:a9",
+          "r:r6",
+          "r:r5"
+        ]
+      },
+      {
+        "anchor": "Client role",
+        "sources": [
+          "p:p3",
+          "a:a11",
+          "d:external_access",
+          "g:g2"
+        ]
+      },
+      {
+        "anchor": "Staff accounts",
+        "sources": [
+          "d:user_accounts",
+          "d:roles",
+          "d:identity_provider",
+          "d:invite_flow"
+        ]
+      },
+      {
+        "anchor": "Add client step",
+        "sources": [
+          "a:a6",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "Create invoice step",
+        "sources": [
+          "a:a1",
+          "a:a2",
+          "r:r8",
+          "r:r2",
+          "n:n2",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "Send invoice step",
+        "sources": [
+          "a:a3",
+          "d:invoice_delivery",
+          "a:a11"
+        ]
+      },
+      {
+        "anchor": "Record payment step",
+        "sources": [
+          "g:g1",
+          "a:a4",
+          "d:payment_recording",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "Mark paid step",
+        "sources": [
+          "a:a5",
+          "r:r7",
+          "r:r10"
+        ]
+      },
+      {
+        "anchor": "Review statements step",
+        "sources": [
+          "a:a8",
+          "a:a10",
+          "n:n6",
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "Platform bullets",
+        "sources": [
+          "d:platform",
+          "d:offline"
+        ]
+      },
+      {
+        "anchor": "Tenancy bullet",
+        "sources": [
+          "d:tenancy"
+        ]
+      },
+      {
+        "anchor": "Scale bullet",
+        "sources": [
+          "d:data_scale"
+        ]
+      },
+      {
+        "anchor": "Money bullet",
+        "sources": [
+          "d:currencies",
+          "d:taxes",
+          "g:g4"
+        ]
+      },
+      {
+        "anchor": "Data lifecycle bullet",
+        "sources": [
+          "d:deletion",
+          "r:r12",
+          "d:x1",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "Notifications bullet",
+        "sources": [
+          "d:notifications"
+        ]
+      },
+      {
+        "anchor": "Import/export bullet",
+        "sources": [
+          "d:data_import",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "Out of scope payments",
+        "sources": [
+          "g:g1",
+          "d:payments_in_app"
+        ]
+      },
+      {
+        "anchor": "Out of scope portal",
+        "sources": [
+          "g:g2"
+        ]
+      },
+      {
+        "anchor": "Out of scope accounting features",
+        "sources": [
+          "g:g3"
+        ]
+      },
+      {
+        "anchor": "Out of scope tax",
+        "sources": [
+          "g:g4"
+        ]
+      },
+      {
+        "anchor": "Out of scope recurring",
+        "sources": [
+          "g:g5",
+          "d:recurring_invoices"
+        ]
+      },
+      {
+        "anchor": "Out of scope integrations",
+        "sources": [
+          "d:integrations",
+          "d:accounting_sync"
+        ]
+      }
+    ],
+    "data_model": [
+      {
+        "anchor": "All monetary values stored as integer cents",
+        "sources": [
+          "d:currencies",
+          "d:x3",
+          "d:payments_in_app",
+          "r:r3",
+          "d:taxes",
+          "g:g4",
+          "d:deletion",
+          "r:r12",
+          "d:x1"
+        ]
+      },
+      {
+        "anchor": "Audit fields",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "version optimistic lock",
+        "sources": [
+          "d:concurrency"
+        ]
+      },
+      {
+        "anchor": "User entity",
+        "sources": [
+          "d:user_accounts",
+          "d:tenancy",
+          "d:external_access",
+          "g:g2",
+          "d:identity_provider",
+          "d:roles",
+          "p:p1",
+          "p:p2",
+          "d:invite_flow",
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Delegation entity",
+        "sources": [
+          "d:x7",
+          "r:r5",
+          "r:r6"
+        ]
+      },
+      {
+        "anchor": "Client entity",
+        "sources": [
+          "n:n1",
+          "p:p3",
+          "d:invoice_delivery",
+          "r:r6",
+          "d:x7",
+          "d:x4",
+          "d:x1",
+          "r:r12",
+          "d:data_import"
+        ]
+      },
+      {
+        "anchor": "Invoice fields",
+        "sources": [
+          "n:n2",
+          "r:r1",
+          "d:invoice_numbering",
+          "d:x8",
+          "r:r8",
+          "d:invoice_statuses",
+          "d:x5",
+          "d:invoice_delivery",
+          "a:a3",
+          "d:payment_terms",
+          "d:invoice_discounts",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Invoice derived fields",
+        "sources": [
+          "n:n2",
+          "n:n3",
+          "r:r2",
+          "d:invoice_discounts",
+          "n:n4",
+          "d:credit_notes",
+          "r:r3",
+          "d:partial_payments"
+        ]
+      },
+      {
+        "anchor": "Invoice status derivation",
+        "sources": [
+          "d:invoice_statuses",
+          "r:r7",
+          "r:r10",
+          "r:r11",
+          "a:a3",
+          "d:credit_notes",
+          "a:a9",
+          "r:r12",
+          "d:x6"
+        ]
+      },
+      {
+        "anchor": "Invoice editability",
+        "sources": [
+          "r:r4",
+          "d:invoice_edit_after_send",
+          "r:r9",
+          "d:x6",
+          "r:r12",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "Line Item entity",
+        "sources": [
+          "n:n3",
+          "a:a2",
+          "n:n5",
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "Payment entity",
+        "sources": [
+          "n:n4",
+          "d:payments_in_app",
+          "d:payment_recording",
+          "g:g1",
+          "a:a4",
+          "r:r3",
+          "d:partial_payments",
+          "d:x2",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Credit Note entity",
+        "sources": [
+          "d:credit_notes",
+          "d:credit_note_numbering",
+          "r:r1",
+          "r:r3"
+        ]
+      },
+      {
+        "anchor": "Service entity",
+        "sources": [
+          "n:n5",
+          "a:a7",
+          "g:g5",
+          "d:recurring_invoices",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Statement entity",
+        "sources": [
+          "n:n6",
+          "a:a10",
+          "r:r12"
+        ]
+      },
+      {
+        "anchor": "Firm Settings entity",
+        "sources": [
+          "d:tenancy",
+          "d:customization",
+          "d:branding",
+          "d:attachments",
+          "d:payment_terms",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Import contract",
+        "sources": [
+          "d:data_import",
+          "n:n1",
+          "n:n5",
+          "d:x3",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Data export",
+        "sources": [
+          "d:data_export",
+          "d:integrations",
+          "g:g3"
+        ]
+      }
+    ],
+    "actors_permissions": [
+      {
+        "anchor": "Actors — Bookkeeper",
+        "sources": [
+          "p1",
+          "d:external_access",
+          "g2",
+          "p2",
+          "p3"
+        ]
+      },
+      {
+        "anchor": "Sign-in and tenancy",
+        "sources": [
+          "d:identity_provider",
+          "d:invite_flow",
+          "d:roles",
+          "d:tenancy"
+        ]
+      },
+      {
+        "anchor": "Change a Client's monthly rate / Void",
+        "sources": [
+          "r5",
+          "r6",
+          "d:x7"
+        ]
+      },
+      {
+        "anchor": "Archive a Client",
+        "sources": [
+          "d:x1"
+        ]
+      },
+      {
+        "anchor": "Set a Service default rate",
+        "sources": [
+          "a7"
+        ]
+      },
+      {
+        "anchor": "Create an Invoice",
+        "sources": [
+          "a1"
+        ]
+      },
+      {
+        "anchor": "Add a Line Item",
+        "sources": [
+          "a2"
+        ]
+      },
+      {
+        "anchor": "Edit an unsent / unpaid Invoice",
+        "sources": [
+          "d:invoice_edit_after_send",
+          "r4",
+          "r9"
+        ]
+      },
+      {
+        "anchor": "Send an Invoice",
+        "sources": [
+          "a3",
+          "r2"
+        ]
+      },
+      {
+        "anchor": "Receive an Invoice by email",
+        "sources": [
+          "a11",
+          "d:external_access",
+          "d:invoice_delivery",
+          "g2"
+        ]
+      },
+      {
+        "anchor": "Record a Payment",
+        "sources": [
+          "a4",
+          "r3"
+        ]
+      },
+      {
+        "anchor": "Mark an Invoice paid",
+        "sources": [
+          "a5",
+          "r7",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "Send an overdue reminder",
+        "sources": [
+          "d:overdue_reminders",
+          "r11"
+        ]
+      },
+      {
+        "anchor": "Void an Invoice",
+        "sources": [
+          "a9",
+          "r5",
+          "r12",
+          "d:x7"
+        ]
+      },
+      {
+        "anchor": "Issue a credit note",
+        "sources": [
+          "d:credit_notes"
+        ]
+      },
+      {
+        "anchor": "Generate a Statement",
+        "sources": [
+          "a10"
+        ]
+      },
+      {
+        "anchor": "Review a Statement",
+        "sources": [
+          "a8"
+        ]
+      },
+      {
+        "anchor": "View dashboard totals",
+        "sources": [
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "Attach or download files",
+        "sources": [
+          "d:attachments"
+        ]
+      },
+      {
+        "anchor": "Export lists as CSV",
+        "sources": [
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "Apply a bulk action",
+        "sources": [
+          "d:record_bulk_edit",
+          "d:deletion",
+          "r12"
+        ]
+      },
+      {
+        "anchor": "Undo the last field edit",
+        "sources": [
+          "r4",
+          "r9",
+          "default"
+        ]
+      },
+      {
+        "anchor": "View audit fields",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Import initial data",
+        "sources": [
+          "d:data_import"
+        ]
+      },
+      {
+        "anchor": "Invite or manage user accounts",
+        "sources": [
+          "d:invite_flow",
+          "d:roles"
+        ]
+      },
+      {
+        "anchor": "Grant temporary delegated rights",
+        "sources": [
+          "d:x7"
+        ]
+      },
+      {
+        "anchor": "Edit firm branding and invoice template",
+        "sources": [
+          "d:branding",
+          "d:customization"
+        ]
+      },
+      {
+        "anchor": "No approval step",
+        "sources": [
+          "d:approval_workflow"
+        ]
+      },
+      {
+        "anchor": "No restore in v1",
+        "sources": [
+          "d:x1",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Concurrency control",
+        "sources": [
+          "d:concurrency",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "Client sees nothing",
+        "sources": [
+          "p3",
+          "d:external_access",
+          "g2"
+        ]
+      },
+      {
+        "anchor": "Both logged-in roles see full dataset",
+        "sources": [
+          "d:tenancy",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "Owner-exclusive visibility",
+        "sources": [
+          "r5",
+          "r6",
+          "a7",
+          "d:invite_flow",
+          "d:x7",
+          "d:credit_notes",
+          "d:branding"
+        ]
+      },
+      {
+        "anchor": "Delegated Bookkeeper scope",
+        "sources": [
+          "d:x7",
+          "r5",
+          "r6"
+        ]
+      },
+      {
+        "anchor": "Audit fields visible",
+        "sources": [
+          "d:audit_trail"
+        ]
+      }
+    ],
+    "glossary": [
+      {
+        "anchor": "Bookkeeper",
+        "sources": [
+          "p1"
+        ]
+      },
+      {
+        "anchor": "Firm Owner",
+        "sources": [
+          "p2"
+        ]
+      },
+      {
+        "anchor": "Client (actor)",
+        "sources": [
+          "p3",
+          "d:external_access",
+          "g2"
+        ]
+      },
+      {
+        "anchor": "Client (record)",
+        "sources": [
+          "n1"
+        ]
+      },
+      {
+        "anchor": "Invoice",
+        "sources": [
+          "n2",
+          "r1",
+          "r8"
+        ]
+      },
+      {
+        "anchor": "Line Item",
+        "sources": [
+          "n3"
+        ]
+      },
+      {
+        "anchor": "Payment",
+        "sources": [
+          "n4",
+          "d:payments_in_app"
+        ]
+      },
+      {
+        "anchor": "Service",
+        "sources": [
+          "n5"
+        ]
+      },
+      {
+        "anchor": "Statement",
+        "sources": [
+          "n6"
+        ]
+      },
+      {
+        "anchor": "Credit Note",
+        "sources": [
+          "d:credit_notes",
+          "d:credit_note_numbering"
+        ]
+      },
+      {
+        "anchor": "Delegation",
+        "sources": [
+          "d:x7",
+          "r5",
+          "r6"
+        ]
+      },
+      {
+        "anchor": "Void",
+        "sources": [
+          "a9",
+          "r12",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "Draft status",
+        "sources": [
+          "d:invoice_statuses",
+          "r2"
+        ]
+      },
+      {
+        "anchor": "Sent status",
+        "sources": [
+          "d:invoice_statuses",
+          "r9"
+        ]
+      },
+      {
+        "anchor": "Partially paid status",
+        "sources": [
+          "d:invoice_statuses",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "Paid status",
+        "sources": [
+          "d:invoice_statuses",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "Overdue status",
+        "sources": [
+          "d:invoice_statuses",
+          "r11"
+        ]
+      },
+      {
+        "anchor": "Void status",
+        "sources": [
+          "d:invoice_statuses",
+          "r12"
+        ]
+      },
+      {
+        "anchor": "Archived Client",
+        "sources": [
+          "d:x1",
+          "d:deletion"
+        ]
+      },
+      {
+        "anchor": "Balance due",
+        "sources": [
+          "n6",
+          "d:credit_notes"
+        ]
+      },
+      {
+        "anchor": "Billing day",
+        "sources": [
+          "n1",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "Net terms",
+        "sources": [
+          "d:payment_terms",
+          "default"
+        ]
+      }
+    ],
+    "state_machines": [
+      {
+        "anchor": "Invoice",
+        "sources": [
+          "a3",
+          "r2",
+          "x5",
+          "a9",
+          "r5",
+          "r12",
+          "x8",
+          "a11",
+          "a4",
+          "r10",
+          "r3",
+          "a5",
+          "r7",
+          "r11",
+          "r4",
+          "x6"
+        ]
+      },
+      {
+        "anchor": "Client",
+        "sources": [
+          "a6",
+          "x1",
+          "never_delete"
+        ]
+      },
+      {
+        "anchor": "Statement",
+        "sources": [
+          "a10",
+          "a8"
+        ]
+      }
+    ],
+    "rules_invariants": [
+      {
+        "anchor": "money integer cents, balances toward zero",
+        "sources": [
+          "d:currencies",
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "R-r1 — Unique sequential invoice numbers",
+        "sources": [
+          "r:r1",
+          "d:invoice_numbering",
+          "d:x8",
+          "n:n2",
+          "a:a1"
+        ]
+      },
+      {
+        "anchor": "R-r2 — No send without a chargeable line item",
+        "sources": [
+          "r:r2",
+          "n:n2",
+          "a:a3",
+          "a:a2",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "R-r3 — Payments never exceed the outstanding balance",
+        "sources": [
+          "r:r3",
+          "d:credit_notes",
+          "n:n4",
+          "a:a4"
+        ]
+      },
+      {
+        "anchor": "R-r4 — Paid invoices are immutable",
+        "sources": [
+          "r:r4",
+          "d:invoice_edit_after_send",
+          "n:n2",
+          "a:a9"
+        ]
+      },
+      {
+        "anchor": "R-r5 — Voiding is restricted",
+        "sources": [
+          "r:r5",
+          "d:x7",
+          "a:a9",
+          "p:p2",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "R-r6 — Rate changes are restricted",
+        "sources": [
+          "r:r6",
+          "d:x7",
+          "n:n1",
+          "a:a7",
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "R-r7 — Paid means payments equal the amount",
+        "sources": [
+          "r:r7",
+          "d:credit_notes",
+          "n:n2",
+          "a:a5",
+          "a:a4",
+          "r:r10"
+        ]
+      },
+      {
+        "anchor": "R-r8 — One client per invoice",
+        "sources": [
+          "r:r8",
+          "n:n2",
+          "a:a1",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "R-r9 — Sent invoices never revert to draft",
+        "sources": [
+          "r:r9",
+          "d:x6",
+          "n:n2",
+          "a:a3"
+        ]
+      },
+      {
+        "anchor": "R-r10 — Partial payments produce a partially-paid state",
+        "sources": [
+          "r:r10",
+          "d:partial_payments",
+          "n:n2",
+          "a:a4",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "R-r11 — Overdue flagging",
+        "sources": [
+          "r:r11",
+          "n:n2",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "R-r12 — Voiding never deletes",
+        "sources": [
+          "r:r12",
+          "d:deletion",
+          "d:x8",
+          "n:n2",
+          "a:a9"
+        ]
+      },
+      {
+        "anchor": "R-d1 — Line-item amount formula and sign",
+        "sources": [
+          "n:n3",
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "R-d2 — Invoice amount is the sum of its line items",
+        "sources": [
+          "n:n2",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "R-d3 — Balance formula",
+        "sources": [
+          "n:n6",
+          "d:credit_notes",
+          "r:r3"
+        ]
+      },
+      {
+        "anchor": "R-d4 — Billing-day roll-off",
+        "sources": [
+          "n:n1",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "R-d5 — Idempotent send and payment",
+        "sources": [
+          "d:x2",
+          "a:a4"
+        ]
+      },
+      {
+        "anchor": "R-d6 — Delivery-failure handling",
+        "sources": [
+          "d:x5",
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "R-d7 — No state reversal except void-and-reissue",
+        "sources": [
+          "d:x6",
+          "r:r4",
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "R-d8 — Undo is scoped to draft field edits",
+        "sources": [
+          "r:r4",
+          "r:r9",
+          "default"
+        ]
+      },
+      {
+        "anchor": "R-d9 — Bulk actions cannot hard-delete",
+        "sources": [
+          "d:record_bulk_edit",
+          "d:deletion",
+          "r:r12"
+        ]
+      },
+      {
+        "anchor": "R-d10 — Archiving a client preserves history",
+        "sources": [
+          "d:x1",
+          "d:deletion",
+          "default"
+        ]
+      },
+      {
+        "anchor": "R-d11 — Credit notes use their own number sequence",
+        "sources": [
+          "d:credit_note_numbering",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "R-d12 — Guarded concurrent edits",
+        "sources": [
+          "d:concurrency"
+        ]
+      },
+      {
+        "anchor": "R-d13 — No tax, single currency",
+        "sources": [
+          "d:taxes",
+          "g:g4",
+          "d:currencies"
+        ]
+      },
+      {
+        "anchor": "R-d14 — Sent invoices carry firm branding",
+        "sources": [
+          "d:branding",
+          "d:customization",
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "R-d15 — Import is one-time",
+        "sources": [
+          "d:data_import"
+        ]
+      }
+    ],
+    "journeys": [
+      {
+        "anchor": "All notifications are email; Client only receives emails",
+        "sources": [
+          "d:notifications",
+          "d:external_access",
+          "g:g2"
+        ]
+      },
+      {
+        "anchor": "Journey A — First-time setup and adding a client",
+        "sources": [
+          "p:p2",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "Owner invites Bookkeeper by email",
+        "sources": [
+          "d:identity_provider",
+          "d:invite_flow",
+          "d:notifications"
+        ]
+      },
+      {
+        "anchor": "Owner sets Service rates",
+        "sources": [
+          "a:a7",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "One-time import available while no invoices",
+        "sources": [
+          "d:data_import"
+        ]
+      },
+      {
+        "anchor": "Bookkeeper adds a Client",
+        "sources": [
+          "a:a6",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "Rate stays read-only without delegation",
+        "sources": [
+          "r:r6",
+          "d:x7"
+        ]
+      },
+      {
+        "anchor": "Create draft invoice, sequential number, one client",
+        "sources": [
+          "a:a1",
+          "r:r8",
+          "r:r1",
+          "d:invoice_numbering",
+          "n:n2"
+        ]
+      },
+      {
+        "anchor": "Billing day fallback to last day of month",
+        "sources": [
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "Add line item, reject zero/negative",
+        "sources": [
+          "a:a2",
+          "n:n3",
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "Cannot send without a line item amount",
+        "sources": [
+          "r:r2"
+        ]
+      },
+      {
+        "anchor": "Send emails PDF and sets due date by net terms",
+        "sources": [
+          "a:a3",
+          "a:a11",
+          "d:invoice_delivery",
+          "d:payment_terms"
+        ]
+      },
+      {
+        "anchor": "Delivery outcome behaviour",
+        "sources": [
+          "d:x5"
+        ]
+      },
+      {
+        "anchor": "Duplicate send ignored",
+        "sources": [
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "Client takes no in-app action",
+        "sources": [
+          "g:g2",
+          "d:external_access"
+        ]
+      },
+      {
+        "anchor": "Sent cannot revert to draft",
+        "sources": [
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "Client pays outside the app",
+        "sources": [
+          "g:g1",
+          "d:payments_in_app"
+        ]
+      },
+      {
+        "anchor": "Record a Payment",
+        "sources": [
+          "a:a4",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "Reject payment above outstanding balance",
+        "sources": [
+          "r:r3"
+        ]
+      },
+      {
+        "anchor": "Partial vs full status",
+        "sources": [
+          "r:r10",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "Mark paid only when payments equal amount",
+        "sources": [
+          "a:a5",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "Duplicate payment ignored",
+        "sources": [
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "Paid invoice becomes read-only",
+        "sources": [
+          "r:r4"
+        ]
+      },
+      {
+        "anchor": "Overdue flag on passed due date",
+        "sources": [
+          "r:r11"
+        ]
+      },
+      {
+        "anchor": "Manual reminder, no schedule",
+        "sources": [
+          "d:overdue_reminders",
+          "g:g5"
+        ]
+      },
+      {
+        "anchor": "No late fee",
+        "sources": [
+          "d:late_fees"
+        ]
+      },
+      {
+        "anchor": "Payment clears overdue when fully paid",
+        "sources": [
+          "a:a4",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "Dashboard shows overdue",
+        "sources": [
+          "d:reporting",
+          "d:notifications"
+        ]
+      },
+      {
+        "anchor": "Corrections require void and reissue",
+        "sources": [
+          "r:r4",
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "Owner or delegated Bookkeeper voids",
+        "sources": [
+          "a:a9",
+          "r:r5",
+          "d:x7"
+        ]
+      },
+      {
+        "anchor": "Void retains record and number gap",
+        "sources": [
+          "r:r12",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "Credit note in own CN- sequence",
+        "sources": [
+          "d:credit_notes",
+          "d:credit_note_numbering",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "Reissue with next sequential number",
+        "sources": [
+          "a:a1",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "Client receives reissued PDF",
+        "sources": [
+          "r:r12",
+          "a:a11"
+        ]
+      },
+      {
+        "anchor": "Generate Statement with balance formula",
+        "sources": [
+          "a:a10",
+          "n:n6",
+          "d:credit_notes"
+        ]
+      },
+      {
+        "anchor": "Owner reviews Statement and dashboard",
+        "sources": [
+          "a:a8",
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "CSV export, no sync",
+        "sources": [
+          "d:data_export",
+          "d:accounting_sync",
+          "d:integrations"
+        ]
+      },
+      {
+        "anchor": "Audit fields visible",
+        "sources": [
+          "d:audit_trail"
+        ]
+      }
+    ],
+    "acceptance_scenarios": [
+      {
+        "anchor": "S1 — Add a client",
+        "sources": [
+          "a:a6",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "S2 — Owner sets a Service rate",
+        "sources": [
+          "a:a7",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "S3 — Owner changes a client's monthly rate",
+        "sources": [
+          "r:r6",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "S4 — Bookkeeper cannot change a rate without delegation",
+        "sources": [
+          "r:r6",
+          "d:x7",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "S5 — Delegated Bookkeeper may change a rate, until it expires",
+        "sources": [
+          "r:r6",
+          "d:x7"
+        ]
+      },
+      {
+        "anchor": "S6 — Archiving a client keeps history",
+        "sources": [
+          "d:x1",
+          "d:deletion",
+          "r:r12"
+        ]
+      },
+      {
+        "anchor": "S7 — Restore is not offered",
+        "sources": [
+          "d:x1",
+          "default"
+        ]
+      },
+      {
+        "anchor": "S8 — Create an invoice with a sequential number",
+        "sources": [
+          "a:a1",
+          "r:r1",
+          "r:r8",
+          "d:invoice_numbering",
+          "n:n2"
+        ]
+      },
+      {
+        "anchor": "S9 — Billing day that does not exist",
+        "sources": [
+          "d:x4",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "S10 — Add a chargeable line item",
+        "sources": [
+          "a:a2",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "S11 — Zero or negative line amount is rejected",
+        "sources": [
+          "d:x3",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "S12 — Cannot send a draft without a chargeable line item",
+        "sources": [
+          "r:r2",
+          "a:a3"
+        ]
+      },
+      {
+        "anchor": "S13 — Send an invoice by email",
+        "sources": [
+          "a:a3",
+          "a:a11",
+          "d:invoice_delivery",
+          "d:payment_terms"
+        ]
+      },
+      {
+        "anchor": "S14 — Email delivery fails",
+        "sources": [
+          "d:x5"
+        ]
+      },
+      {
+        "anchor": "S15 — Duplicate send is ignored",
+        "sources": [
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "S16 — A sent invoice cannot revert to draft",
+        "sources": [
+          "r:r9"
+        ]
+      },
+      {
+        "anchor": "S17 — Editing is allowed while unpaid, refused once paid",
+        "sources": [
+          "r:r4",
+          "d:invoice_edit_after_send"
+        ]
+      },
+      {
+        "anchor": "S18 — Record a partial payment",
+        "sources": [
+          "a:a4",
+          "r:r10",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "S19 — Record the remaining payment and mark paid",
+        "sources": [
+          "a:a4",
+          "a:a5",
+          "r:r7"
+        ]
+      },
+      {
+        "anchor": "S20 — Payment above the outstanding balance is rejected",
+        "sources": [
+          "r:r3",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "S21 — Credit note caps the balance payments may reach",
+        "sources": [
+          "r:r3",
+          "d:credit_notes"
+        ]
+      },
+      {
+        "anchor": "S22 — Credit note settles but does not mark Paid",
+        "sources": [
+          "r:r7",
+          "d:credit_notes"
+        ]
+      },
+      {
+        "anchor": "S23 — Duplicate payment recording is ignored",
+        "sources": [
+          "d:x2",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "S24 — A sent invoice becomes overdue",
+        "sources": [
+          "r:r11"
+        ]
+      },
+      {
+        "anchor": "S25 — Send an overdue reminder",
+        "sources": [
+          "d:overdue_reminders"
+        ]
+      },
+      {
+        "anchor": "S26 — Owner voids an invoice created in error",
+        "sources": [
+          "a:a9",
+          "r:r5",
+          "r:r12",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "S27 — Bookkeeper cannot void without delegation",
+        "sources": [
+          "r:r5",
+          "d:x7",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "S28 — Delegated Bookkeeper may void, until it expires",
+        "sources": [
+          "r:r5",
+          "d:x7"
+        ]
+      },
+      {
+        "anchor": "S29 — Fix a paid invoice by void-and-reissue",
+        "sources": [
+          "r:r4",
+          "r:r1",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "S30 — Voiding never reuses the number",
+        "sources": [
+          "r:r1",
+          "d:x8"
+        ]
+      },
+      {
+        "anchor": "S31 — Credit notes use their own sequence",
+        "sources": [
+          "d:credit_note_numbering",
+          "r:r1"
+        ]
+      },
+      {
+        "anchor": "S32 — Generate a statement",
+        "sources": [
+          "a:a10",
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "S33 — Owner reviews a statement",
+        "sources": [
+          "a:a8",
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "S34 — Dashboard totals",
+        "sources": [
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "S35 — Client has no login",
+        "sources": [
+          "d:external_access",
+          "g:g2",
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "S36 — Only the Owner invites staff",
+        "sources": [
+          "d:invite_flow",
+          "d:roles",
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "S37 — Undo is scoped",
+        "sources": [
+          "r:r4",
+          "r:r9",
+          "default"
+        ]
+      },
+      {
+        "anchor": "S38 — Bulk actions cannot hard-delete",
+        "sources": [
+          "d:record_bulk_edit",
+          "d:deletion",
+          "r:r12"
+        ]
+      },
+      {
+        "anchor": "S39 — Guarded concurrent edit",
+        "sources": [
+          "d:concurrency"
+        ]
+      },
+      {
+        "anchor": "S40 — One-time import then disabled",
+        "sources": [
+          "d:data_import"
+        ]
+      },
+      {
+        "anchor": "S41 — Export lists as CSV",
+        "sources": [
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "S42 — Owner sets invoice branding",
+        "sources": [
+          "d:branding",
+          "d:customization",
+          "p:p2"
+        ]
+      }
+    ],
+    "non_goals_defaults": [
+      {
+        "anchor": "No online payment processing",
+        "sources": [
+          "g:g1",
+          "d:payments_in_app",
+          "a:a4",
+          "d:payment_recording",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "No client login or self-service portal",
+        "sources": [
+          "g:g2",
+          "d:external_access",
+          "a:a3",
+          "a:a11",
+          "d:invoice_delivery"
+        ]
+      },
+      {
+        "anchor": "No payroll, expense tracking, or general accounting",
+        "sources": [
+          "g:g3",
+          "d:data_export",
+          "d:accounting_sync"
+        ]
+      },
+      {
+        "anchor": "No automatic tax calculation or filing",
+        "sources": [
+          "g:g4",
+          "d:taxes",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "No automated recurring billing",
+        "sources": [
+          "g:g5",
+          "d:recurring_invoices",
+          "d:recurring_scheduled",
+          "a:a1",
+          "n:n1",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "No third-party integrations",
+        "sources": [
+          "d:integrations",
+          "d:accounting_sync",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "No multi-currency and no multi-organisation",
+        "sources": [
+          "d:currencies",
+          "d:tenancy",
+          "d:invoicing_model"
+        ]
+      },
+      {
+        "anchor": "No automatic overdue reminders or late fees",
+        "sources": [
+          "d:overdue_reminders",
+          "d:late_fees",
+          "r:r11"
+        ]
+      },
+      {
+        "anchor": "No estimates, quotes, or time tracking",
+        "sources": [
+          "d:estimates",
+          "d:time_tracking",
+          "a:a2",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "No deposits or up-front retainers",
+        "sources": [
+          "d:deposits",
+          "a:a4",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "No hard deletion",
+        "sources": [
+          "d:deletion",
+          "r:r12",
+          "a:a9",
+          "d:x1",
+          "d:x8"
+        ]
+      }
+    ]
+  },
+  "critic_passed": false,
+  "stale": false,
+  "sheet_moved": false,
+  "latest_sheet_version": 5,
+  "open_decisions": 0,
+  "ledger_conflicts": [],
+  "generated_at": "2026-08-26T11:04:36.081Z"
+}

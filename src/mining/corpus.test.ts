@@ -31,9 +31,14 @@ import {
   type CorpusEntry,
   type FetchPinnedResult,
   type RepoFetcher,
+  documentationHeuristic,
+  proseMix,
+  DEFAULT_PROSE_THRESHOLD,
+  OUTPUT_TOKENS_PER_CALL,
 } from "./corpus.js";
 import type { Digest, RepoFile } from "./condense.js";
 import type { Lexicon, LexiconEntry } from "./lexicon.js";
+import { PRICE_PER_MTOK } from "./label.js";
 import { UsageError } from "../cli/flags.js";
 
 // ---------- fixtures ----------
@@ -466,9 +471,15 @@ describe("estimateIngestion", () => {
     expect(est.feature_questions).toBe(2);
     expect(est.llm_calls).toBe(2);
     expect(est.input_tokens).toBe(200);
-    expect(est.output_tokens).toBe(4000); // 2 calls × 2000
-    // 200/1e6 × $15 + 4000/1e6 × $75
-    expect(est.est_cost_usd).toBeCloseTo(0.303, 6);
+    // Derived from the constant, not hardcoded: this asserts "output = calls × the per-call figure", which
+    // is the arithmetic under test. The figure itself is a MEASURED value that has already been corrected
+    // once (2,000 → 5,000 after a live run showed ~5,035/call), so pinning it here would break the wrong test.
+    expect(est.output_tokens).toBe(2 * OUTPUT_TOKENS_PER_CALL);
+    // Derived from the price table, not hardcoded: the assertion is about the arithmetic
+    // (input_tokens × input rate + output_tokens × output rate), and hardcoding a dollar figure made this
+    // fail the moment a published price changed.
+    const price = PRICE_PER_MTOK["claude-opus-4-8"]!;
+    expect(est.est_cost_usd).toBeCloseTo((200 / 1e6) * price.input + ((2 * OUTPUT_TOKENS_PER_CALL) / 1e6) * price.output, 9);
   });
 
   it("batches by category: one call when both features share a category", () => {
@@ -537,5 +548,58 @@ describe("CLI", () => {
     expect(text).toContain("MIT");
     expect(text).toContain("BLOCKED offline");
     expect(text).toMatch(/estimated labelling cost: \$\d/);
+  });
+});
+
+describe("documentationHeuristic — application vs documentation about one", () => {
+  const app = [
+    ...Array.from({ length: 40 }, (_, i) => ({ path: `src/service${i}.ts` })),
+    ...Array.from({ length: 8 }, (_, i) => ({ path: `docs/guide${i}.md` })),
+  ];
+  const docs = [
+    ...Array.from({ length: 90 }, (_, i) => ({ path: `docs/payment/guide${i}.md` })),
+    { path: "docusaurus.config.js" },
+    { path: "sidebars.js" },
+  ];
+
+  it("counts the file mix", () => {
+    expect(proseMix(app)).toEqual({ prose_files: 8, code_files: 40, prose_share: 8 / 48 });
+    expect(proseMix(docs).prose_share).toBeCloseTo(90 / 92, 6);
+  });
+
+  it("passes an application and flags a documentation repo with its numbers", () => {
+    expect(documentationHeuristic(app)).toBeNull();
+    const reason = documentationHeuristic(docs);
+    expect(reason).toContain("97.8% of files are prose");
+    expect(reason).toContain("documentation about an application");
+  });
+
+  it("flags a repo with nothing to label at all", () => {
+    expect(documentationHeuristic([{ path: "LICENSE" }, { path: "logo.png" }])).toContain("nothing to label");
+    expect(documentationHeuristic([])).toContain("nothing to label");
+  });
+
+  it("puts the default threshold inside the measured gap, not on its edge", () => {
+    // Measured over the real 54-clone cache: docs repos 79-100% prose, apps 14-42%. Nothing between 55-76%.
+    expect(DEFAULT_PROSE_THRESHOLD).toBeGreaterThan(0.45);
+    expect(DEFAULT_PROSE_THRESHOLD).toBeLessThan(0.76);
+    // a repo at the real-app end passes, a repo at the docs end is flagged, at the default threshold
+    const atApp = [...Array.from({ length: 58 }, (_, i) => ({ path: `a${i}.ts` })), ...Array.from({ length: 42 }, (_, i) => ({ path: `d${i}.md` }))];
+    const atDocs = [...Array.from({ length: 21 }, (_, i) => ({ path: `a${i}.ts` })), ...Array.from({ length: 79 }, (_, i) => ({ path: `d${i}.md` }))];
+    expect(documentationHeuristic(atApp)).toBeNull();
+    expect(documentationHeuristic(atDocs)).not.toBeNull();
+  });
+
+  it("honours an explicit threshold", () => {
+    const mixed = [...Array.from({ length: 50 }, (_, i) => ({ path: `a${i}.ts` })), ...Array.from({ length: 50 }, (_, i) => ({ path: `d${i}.md` }))];
+    expect(documentationHeuristic(mixed, 0.6)).toBeNull();
+    expect(documentationHeuristic(mixed, 0.4)).not.toBeNull();
+  });
+
+  it("catches what the NAME heuristic cannot — the reason this exists", () => {
+    // `shopware/docs` is caught by name; a docs repo NOT named like one is not, and by locus count it is
+    // indistinguishable from an application. This is the gap the file mix closes.
+    expect(mirrorHeuristic("developer-portal")).toBeNull();
+    expect(documentationHeuristic(docs)).not.toBeNull();
   });
 });

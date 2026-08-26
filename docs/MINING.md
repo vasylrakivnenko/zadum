@@ -156,6 +156,12 @@ The reasons a cell is unobserved are preserved rather than flattened, because th
 | `run_disagreement` | repeated runs contradicted each other — a measurement failure, not a property |
 | `no_mapped_feature` | the lexicon has no column for this node: **we are blind here** |
 
+As of lexicon `2026.08.25-2` that last row is empty: all **135** catalog nodes have at least two features
+mapping to at least two distinct options, which is the minimum for a cell to reach `observed` at all (one
+feature can only ever produce weak evidence, and a conflict needs two). It was 102 of 135 before that pass.
+`src/mining/label.test.ts` asserts `nodes_covered === 135`, so a new catalog node added without a lexicon
+feature fails CI rather than silently going unobserved.
+
 ## A licensed negative never selects another option
 
 `no_login_at_all` marked `absent` is evidence *against* `user_accounts=none`. It is **not** evidence *for*
@@ -261,6 +267,68 @@ edge — the audit trail from a probability back to the artifacts that produced 
 match is **rejected**, not silently pooled, unless an explicit `MigrationMap` says the two are compatible;
 rejected rows are returned and reported, never dropped on the floor. `digestHash` pins each row to the exact
 bytes the labeller saw.
+
+## Prompt caching — the digest is the cacheable prefix
+
+The labeller asks about 211 features in batches of 45, so **5-6 calls per document, each re-sending the whole
+artifact digest.** Two defects made that as expensive as possible:
+
+1. The digest travelled in the user message with no `cache_control`, so it was billed at full price every time.
+2. `renderLabelPrompt` put the per-batch FEATURE LIST *before* the constant artifact. Prompt caching is a
+   **prefix** match, so the varying part came first and no prefix could ever cache, marked or not.
+
+Both fixed: `renderLabelPrefix(digest)` (header · loci · artifact) is the stable prefix carrying
+`cache_control`, `renderLabelQuestion(features, docType)` is the varying suffix, and `LLMRequest.userPrefix`
+carries the split through both real clients. Measured on the same document, before and after, at an identical
+86,966 total prompt tokens:
+
+    batch 1/6   cache_w 12887  cache_r      0
+    batch 2/6   cache_w     0  cache_r  12887
+    …
+    batch 6/6   cache_w     0  cache_r  12887      →  74% hit rate · prompt cost −63% · total −29%
+
+Across the 150-repo run the measured figure is **$0.75/repo at a 75% hit rate**. Output tokens are now ~77% of
+the bill, so the model's OUTPUT price is the lever that matters, not its input price.
+
+Two things worth knowing before tuning this:
+- **`cache_control` must not go inside `output_config.format`.** Foundry rejects an unknown field there with
+  `Extra inputs are not permitted`; the cache marker belongs on a message content block.
+- **The cacheable block must clear ~1024 tokens.** A tiny digest silently fails to cache, which looks
+  identical to caching being broken.
+
+## Choosing the labelling model by measurement (`scripts/model_bakeoff.ts`)
+
+Label quality is the foundation everything downstream inherits, and labelling is the largest line item, so the
+model choice is settled against the gold set rather than by reputation:
+
+    npx tsx scripts/model_bakeoff.ts --models claude-opus-4-8,claude-sonnet-4-6,Kimi-K2.5 --yes-spend
+
+First run, 4 gold artifacts / 42 human-adjudicated cells:
+
+| model | present precision | absent precision | absent verdicts per doc |
+|---|---|---|---|
+| **claude-opus-4-8** | **100%** | **100%** | 11 · 2 · 6 · 13 |
+| claude-sonnet-4-6 | — | — | 30 · 5 · 29 |
+
+Sonnet emits **2-5x more `absent` verdicts** on the same documents. Since a wrong `absent` is the poisonous
+error — it becomes a prior saying "apps like this don't do X" and suppresses a question — the ~40% saving was
+declined and the corpus was labelled with Opus. Read the precision figures with their denominators: 42
+adjudicated cells is thin, and the gold set needs to reach its target of 30 artifacts before these numbers
+carry real weight.
+
+## Cost, and a correction worth remembering
+
+Labelling cost is dominated by input tokens: one document's digest is re-sent once per feature batch, so cost
+scales with `digest_tokens × ceil(features / batch_size)`. At a 20k-token digest cap and 211 features
+(≈5 batches of 45), a repository costs about **$0.78** to label once on Opus 4.8. `--dry-run` computes this
+from the real digests before spending anything, and every run reports the true token counts afterwards.
+
+`PRICE_PER_MTOK` in `label.ts` carried **$15/$75 per Mtok for the Opus family** until 2026-08-25 — the
+pre-Opus-4.6 rate, and **3× the current $5/$25**. Nothing failed; every budget in the repo was simply three
+times too pessimistic, and a 200-repo run was quoted at $466 when it actually costs ~$156. A stale price is
+invisible until someone makes a spending decision on it. Re-check the table against the pricing page before
+quoting a figure, and note that Anthropic first-party rates also apply to Claude on Microsoft Foundry (which
+is what this repo's live runs use) — Bedrock and Vertex are partner-operated and priced separately.
 
 ## Licence and privacy
 

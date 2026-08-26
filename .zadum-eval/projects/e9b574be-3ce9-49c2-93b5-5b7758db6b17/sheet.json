@@ -1,0 +1,1262 @@
+{
+  "project_id": "e9b574be-3ce9-49c2-93b5-5b7758db6b17",
+  "version": 3,
+  "one_liner": "internal dashboard based on our excel files with financials",
+  "name": "",
+  "archetypes": [
+    "internal-dashboard",
+    "crud-saas"
+  ],
+  "actors": [
+    {
+      "id": "p1",
+      "name": "Owner",
+      "description": "Business owner who reviews overall financial health and profitability.",
+      "source": "draft"
+    },
+    {
+      "id": "p2",
+      "name": "Bookkeeper",
+      "description": "Maintains the underlying figures, uploads and reconciles the Excel files.",
+      "source": "draft"
+    },
+    {
+      "id": "p3",
+      "name": "Manager",
+      "description": "Department or project lead who checks budgets versus actuals for their area.",
+      "source": "draft"
+    },
+    {
+      "id": "p4",
+      "name": "Accountant",
+      "description": "External advisor who reviews numbers at month- and year-end.",
+      "source": "draft"
+    }
+  ],
+  "nouns": [
+    {
+      "id": "n1",
+      "name": "Monthly Summary",
+      "description": "A roll-up of income, expenses and profit for a given month.",
+      "fields_hint": [
+        "Month",
+        "Total income",
+        "Total expenses",
+        "Net profit"
+      ],
+      "example": "March 2024: income $84,200, expenses $61,500, net profit $22,700",
+      "source": "draft"
+    },
+    {
+      "id": "n2",
+      "name": "Revenue Line",
+      "description": "A single source of income within a period.",
+      "fields_hint": [
+        "Source name",
+        "Category",
+        "Amount",
+        "Month"
+      ],
+      "example": "Consulting fees — Acme Corp, $12,000, March 2024",
+      "source": "draft"
+    },
+    {
+      "id": "n3",
+      "name": "Expense Line",
+      "description": "A single cost item within a period.",
+      "fields_hint": [
+        "Vendor",
+        "Category",
+        "Amount",
+        "Date"
+      ],
+      "example": "Office rent — Regus, $4,500, Mar 1 2024",
+      "source": "draft"
+    },
+    {
+      "id": "n4",
+      "name": "Cost Category",
+      "description": "A grouping label used to classify expenses and revenue.",
+      "fields_hint": [
+        "Category name",
+        "Type (income/expense)",
+        "Budget"
+      ],
+      "example": "Payroll (expense), budget $30,000/mo",
+      "source": "draft"
+    },
+    {
+      "id": "n5",
+      "name": "Budget",
+      "description": "A planned amount for a category or department over a period.",
+      "fields_hint": [
+        "Category",
+        "Period",
+        "Planned amount",
+        "Actual amount"
+      ],
+      "example": "Marketing budget Q1: planned $15,000, actual $16,800",
+      "source": "draft"
+    },
+    {
+      "id": "n6",
+      "name": "Cash Balance",
+      "description": "Money on hand across accounts at a point in time.",
+      "fields_hint": [
+        "Account name",
+        "Balance",
+        "As-of date"
+      ],
+      "example": "Operating account: $138,400 as of Mar 31 2024",
+      "source": "draft"
+    },
+    {
+      "id": "n7",
+      "name": "Excel Upload",
+      "description": "A source spreadsheet imported to refresh the dashboard.",
+      "fields_hint": [
+        "File name",
+        "Uploaded by",
+        "Upload date",
+        "Period covered"
+      ],
+      "example": "financials_march2024.xlsx uploaded by Bookkeeper on Apr 2",
+      "source": "draft"
+    },
+    {
+      "id": "n8",
+      "name": "Department",
+      "description": "A part of the business that revenue and costs are attributed to.",
+      "fields_hint": [
+        "Name",
+        "Lead",
+        "Assigned budget"
+      ],
+      "example": "Sales, led by Manager, budget $50,000/quarter",
+      "source": "draft"
+    },
+    {
+      "id": "n9",
+      "name": "KPI",
+      "description": "A tracked headline figure shown on the dashboard.",
+      "fields_hint": [
+        "Name",
+        "Current value",
+        "Target",
+        "Trend"
+      ],
+      "example": "Gross margin: 27%, target 30%, trending up",
+      "source": "draft"
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "actor": "p2",
+      "verb": "uploads",
+      "object": "n7",
+      "example": "Bookkeeper uploads financials_march2024.xlsx",
+      "source": "draft"
+    },
+    {
+      "id": "a2",
+      "actor": "p2",
+      "verb": "reconciles",
+      "object": "n6",
+      "example": "Bookkeeper matches account balance to bank statement",
+      "source": "draft"
+    },
+    {
+      "id": "a3",
+      "actor": "p2",
+      "verb": "edits",
+      "object": "n3",
+      "example": "Corrects rent vendor name to Regus",
+      "source": "draft"
+    },
+    {
+      "id": "a4",
+      "actor": "p2",
+      "verb": "categorizes",
+      "object": "n4",
+      "example": "Tags a $500 charge as Software",
+      "source": "draft"
+    },
+    {
+      "id": "a5",
+      "actor": "p1",
+      "verb": "views",
+      "object": "n1",
+      "example": "Owner opens March 2024 net profit",
+      "source": "draft"
+    },
+    {
+      "id": "a6",
+      "actor": "p1",
+      "verb": "reviews",
+      "object": "n9",
+      "example": "Owner checks gross margin against target",
+      "source": "draft"
+    },
+    {
+      "id": "a7",
+      "actor": "p3",
+      "verb": "compares",
+      "object": "n5",
+      "example": "Manager checks Marketing planned vs actual",
+      "source": "draft"
+    },
+    {
+      "id": "a8",
+      "actor": "p3",
+      "verb": "views",
+      "object": "n8",
+      "example": "Manager opens Sales department figures",
+      "source": "draft"
+    },
+    {
+      "id": "a9",
+      "actor": "p4",
+      "verb": "exports",
+      "object": "n1",
+      "example": "Accountant exports Q1 summary for filing",
+      "source": "draft"
+    },
+    {
+      "id": "a10",
+      "actor": "p4",
+      "verb": "reviews",
+      "object": "n2",
+      "example": "Accountant verifies consulting income entries",
+      "source": "draft"
+    },
+    {
+      "id": "a11",
+      "actor": "p1",
+      "verb": "sets",
+      "object": "n5",
+      "example": "Owner sets Q2 marketing budget to $18,000",
+      "source": "draft"
+    },
+    {
+      "id": "a12",
+      "actor": "p2",
+      "verb": "adds",
+      "object": "n2",
+      "example": "Adds $8,000 retainer from Beta Ltd",
+      "source": "draft"
+    }
+  ],
+  "rules": [
+    {
+      "id": "r1",
+      "text": "Only the Owner and Accountant may view whole-company profit and cash balances; Managers see only their own department.",
+      "kind": "access",
+      "example": "Sales manager cannot open payroll totals",
+      "source": "draft"
+    },
+    {
+      "id": "r2",
+      "text": "A month cannot show a Monthly Summary until its Excel Upload for that period has been imported.",
+      "kind": "state",
+      "example": "March summary hidden until financials_march2024.xlsx is uploaded",
+      "source": "draft"
+    },
+    {
+      "id": "r3",
+      "text": "Total income minus total expenses must equal the net profit shown for every month.",
+      "kind": "integrity",
+      "example": "$84,200 − $61,500 = $22,700 matches displayed profit",
+      "source": "draft"
+    },
+    {
+      "id": "r4",
+      "text": "Every Revenue Line and Expense Line must belong to exactly one Cost Category.",
+      "kind": "integrity",
+      "example": "An uncategorized $500 charge is flagged before summary is final",
+      "source": "draft"
+    },
+    {
+      "id": "r5",
+      "text": "Only the Bookkeeper may upload or edit source figures; Owner and Manager view only.",
+      "kind": "access",
+      "example": "Owner cannot change an expense amount directly",
+      "source": "draft"
+    },
+    {
+      "id": "r6",
+      "text": "Uploading a new file for a period replaces that period's figures rather than adding to them.",
+      "kind": "state",
+      "example": "Re-uploading March overwrites, not duplicates, March lines",
+      "source": "draft"
+    },
+    {
+      "id": "r7",
+      "text": "All amounts are held in one currency (USD) across the dashboard.",
+      "kind": "integrity",
+      "example": "A EUR invoice must be converted before entry",
+      "source": "draft"
+    },
+    {
+      "id": "r8",
+      "text": "The dashboard reflects internal figures only and is never shared outside the company.",
+      "kind": "scope",
+      "example": "No client-facing view exists",
+      "source": "draft"
+    },
+    {
+      "id": "r9",
+      "text": "(integrity) Every change to figures — uploads, edits, reconciliations, categorizations — must be recorded in an unalterable log showing who changed what and when, retained for the accounting year.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r10",
+      "text": "(integrity) A Revenue Line or Expense Line cannot be saved without its required fields (amount, category, and period/date) completed.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r11",
+      "text": "(state) Each Excel Upload's imported figures are versioned so a prior period's numbers can be restored if a re-upload is wrong.",
+      "kind": "state",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r12",
+      "text": "(integrity) Every Budget must reference a valid Cost Category or Department, and every Department's figures must trace to existing Revenue and Expense Lines — no orphaned links.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r13",
+      "text": "(integrity) Duplicate Revenue or Expense Lines (same source/vendor, amount, and period) are flagged or rejected to prevent double-counting.",
+      "kind": "integrity",
+      "source": "rule_bank"
+    },
+    {
+      "id": "r14",
+      "text": "(scope) Users interact with financials only through the dashboard; no one accesses or edits the underlying Excel files or database directly.",
+      "kind": "scope",
+      "source": "rule_bank"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "g1",
+      "text": "Does not send or generate invoices to customers.",
+      "source": "draft"
+    },
+    {
+      "id": "g2",
+      "text": "Does not connect directly to bank accounts to pull live transactions.",
+      "source": "draft"
+    },
+    {
+      "id": "g3",
+      "text": "Does not file taxes or produce official accounting statements.",
+      "source": "draft"
+    },
+    {
+      "id": "g4",
+      "text": "Does not let external clients log in or view any figures.",
+      "source": "draft"
+    },
+    {
+      "id": "g5",
+      "text": "Does not process payments or payroll.",
+      "source": "draft"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "user_accounts",
+      "topic": "who logs in",
+      "question": "Who needs an account to use the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nobody logs in — one person uses it on their own device"
+        },
+        {
+          "id": "single_user",
+          "label": "Exactly one person logs in (the owner)"
+        },
+        {
+          "id": "multi_user",
+          "label": "Several people log in, possibly with different powers"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "multi_user",
+      "confidence": 0.95,
+      "rationale": "stated in the description: Owner, Bookkeeper, Manager and Accountant all use it with different powers."
+    },
+    {
+      "id": "roles",
+      "topic": "who can do what",
+      "question": "Do different people have different powers?",
+      "options": [
+        {
+          "id": "single",
+          "label": "Everyone who logs in can do everything"
+        },
+        {
+          "id": "owner_staff",
+          "label": "An owner/admin plus staff with fewer powers"
+        },
+        {
+          "id": "custom",
+          "label": "Admins define their own roles and permissions"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "owner_staff",
+      "confidence": 0.95,
+      "rationale": "stated in the description: r1/r5 define an owner/admin plus staff (bookkeeper edits, others view) with differing powers."
+    },
+    {
+      "id": "tenancy",
+      "topic": "one business or many",
+      "question": "Is this for one business, or will many separate businesses use it with their data kept apart?",
+      "options": [
+        {
+          "id": "single_org",
+          "label": "One business (ours)"
+        },
+        {
+          "id": "multi_org",
+          "label": "Many separate businesses, each seeing only its own data"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "single_org",
+      "confidence": 0.95,
+      "rationale": "stated in the description: r8: reflects one business's internal figures only."
+    },
+    {
+      "id": "invite_flow",
+      "topic": "adding people",
+      "question": "How do additional people get access?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No additional people"
+        },
+        {
+          "id": "invite_by_admin",
+          "label": "An admin invites them"
+        },
+        {
+          "id": "self_signup",
+          "label": "Anyone can sign up themselves"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    },
+    {
+      "id": "identity_provider",
+      "topic": "signing in",
+      "question": "How do people sign in?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No sign-in"
+        },
+        {
+          "id": "email_password",
+          "label": "Email + password"
+        },
+        {
+          "id": "magic_link",
+          "label": "Email link, no password"
+        },
+        {
+          "id": "google_microsoft",
+          "label": "Google/Microsoft sign-in"
+        },
+        {
+          "id": "enterprise_sso",
+          "label": "Company single sign-on (SAML/OIDC)"
+        }
+      ],
+      "status": "open",
+      "consequence": 2,
+      "source": "plan"
+    },
+    {
+      "id": "concurrency",
+      "topic": "simultaneous edits",
+      "question": "What happens when two people edit the same thing at once?",
+      "options": [
+        {
+          "id": "last_write_wins",
+          "label": "Rare; the last save wins"
+        },
+        {
+          "id": "guarded",
+          "label": "Common; the app must prevent or merge conflicting edits"
+        }
+      ],
+      "status": "open",
+      "consequence": 2,
+      "source": "plan"
+    },
+    {
+      "id": "audit_trail",
+      "topic": "history",
+      "question": "Do you need a record of who changed what and when?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Just created/updated by whom and when"
+        },
+        {
+          "id": "full",
+          "label": "A full, viewable history of every change"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "notifications",
+      "topic": "reaching people",
+      "question": "How does the app reach people when something happens?",
+      "options": [
+        {
+          "id": "none",
+          "label": "It doesn't — people check the app"
+        },
+        {
+          "id": "email",
+          "label": "Email"
+        },
+        {
+          "id": "email_sms",
+          "label": "Email and SMS"
+        },
+        {
+          "id": "in_app",
+          "label": "Only inside the app (bell/inbox)"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    },
+    {
+      "id": "offline",
+      "topic": "connectivity",
+      "question": "Must it work without internet?",
+      "options": [
+        {
+          "id": "online_only",
+          "label": "Online only"
+        },
+        {
+          "id": "offline_tolerant",
+          "label": "Keeps working offline and syncs later"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "platform",
+      "topic": "where it runs",
+      "question": "Where is it used?",
+      "options": [
+        {
+          "id": "web",
+          "label": "In a browser, on desktop and phone"
+        },
+        {
+          "id": "web_mobile_first",
+          "label": "In a browser, mostly on phones"
+        },
+        {
+          "id": "native_mobile",
+          "label": "As an installed phone app"
+        },
+        {
+          "id": "desktop_app",
+          "label": "As an installed desktop app"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "data_import",
+      "topic": "starting data",
+      "question": "Do you start with existing data?",
+      "options": [
+        {
+          "id": "fresh_start",
+          "label": "Start empty"
+        },
+        {
+          "id": "import_spreadsheet",
+          "label": "Import from a spreadsheet/CSV once"
+        },
+        {
+          "id": "migrate_from_tool",
+          "label": "Migrate from another tool"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "import_spreadsheet",
+      "confidence": 0.95,
+      "rationale": "stated in the description: a1/n7/r6: figures come from imported Excel files."
+    },
+    {
+      "id": "data_export",
+      "topic": "getting data out",
+      "question": "Do people need to get their data out?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "csv_export",
+          "label": "Download lists as CSV/Excel"
+        },
+        {
+          "id": "full_export_api",
+          "label": "Full export and/or an API"
+        }
+      ],
+      "status": "open",
+      "consequence": 2,
+      "source": "plan"
+    },
+    {
+      "id": "deletion",
+      "topic": "deleting",
+      "question": "When something is deleted, what really happens?",
+      "options": [
+        {
+          "id": "hard_delete",
+          "label": "It's gone"
+        },
+        {
+          "id": "soft_delete",
+          "label": "It's archived and can be restored"
+        },
+        {
+          "id": "never_delete",
+          "label": "Records are never deleted, only voided/cancelled"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    },
+    {
+      "id": "data_scale",
+      "topic": "volume",
+      "question": "How much data will there be?",
+      "options": [
+        {
+          "id": "small",
+          "label": "Hundreds of records"
+        },
+        {
+          "id": "medium",
+          "label": "Tens of thousands"
+        },
+        {
+          "id": "large",
+          "label": "Millions"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    },
+    {
+      "id": "integrations",
+      "topic": "other tools",
+      "question": "Does it need to connect to other tools?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "a_few_key",
+          "label": "A few key ones (e.g., accounting, payments, calendar)"
+        },
+        {
+          "id": "many_via_api",
+          "label": "Many — it needs a public API / webhooks"
+        }
+      ],
+      "status": "open",
+      "consequence": 1,
+      "source": "plan"
+    },
+    {
+      "id": "payments_in_app",
+      "topic": "money",
+      "question": "Does money move through the app?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No payments involved"
+        },
+        {
+          "id": "record_only",
+          "label": "It records payments that happen elsewhere"
+        },
+        {
+          "id": "collect_online",
+          "label": "It collects card/bank payments via a provider"
+        },
+        {
+          "id": "payouts_too",
+          "label": "It collects payments and pays out to others (marketplace-style)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1,
+      "source": "plan",
+      "chosen": "none",
+      "confidence": 0.95,
+      "rationale": "stated in the description: g5: no payments or payroll processed."
+    },
+    {
+      "id": "localization",
+      "topic": "languages & regions",
+      "question": "Languages and regions?",
+      "options": [
+        {
+          "id": "single_locale",
+          "label": "One language, one country"
+        },
+        {
+          "id": "multi_language",
+          "label": "Several languages"
+        },
+        {
+          "id": "multi_region",
+          "label": "Several countries (taxes, formats, currencies)"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 1,
+      "source": "plan",
+      "chosen": "single_locale",
+      "confidence": 0.95,
+      "rationale": "stated in the description: r7: all amounts in one currency (USD)."
+    },
+    {
+      "id": "attachments",
+      "topic": "files",
+      "question": "Can files/photos be attached to things?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "basic",
+          "label": "Yes — upload and download"
+        },
+        {
+          "id": "rich",
+          "label": "Yes — with previews, versions, and sharing"
+        }
+      ],
+      "status": "open",
+      "consequence": 2,
+      "source": "plan"
+    },
+    {
+      "id": "approval_workflow",
+      "topic": "sign-off",
+      "question": "Do some actions need someone else's approval first?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "single_approver",
+          "label": "One approver"
+        },
+        {
+          "id": "multi_step",
+          "label": "Multi-step approval chains"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "recurring_scheduled",
+      "topic": "automation",
+      "question": "Must anything happen automatically on a schedule?",
+      "options": [
+        {
+          "id": "none",
+          "label": "No"
+        },
+        {
+          "id": "reminders_only",
+          "label": "Only reminders/notifications"
+        },
+        {
+          "id": "recurring_records",
+          "label": "Records get created automatically (recurring invoices, appointments, reports)"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    },
+    {
+      "id": "compliance_sensitivity",
+      "topic": "sensitive data",
+      "question": "Does it hold data with special legal handling (health, payment cards, minors)?",
+      "options": [
+        {
+          "id": "ordinary",
+          "label": "Ordinary business data"
+        },
+        {
+          "id": "personal_sensitive",
+          "label": "Personal data needing consent/retention care (GDPR-like)"
+        },
+        {
+          "id": "regulated",
+          "label": "Regulated data (health, cards, finance)"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "retention",
+      "topic": "keeping data",
+      "question": "How long is data kept?",
+      "options": [
+        {
+          "id": "forever",
+          "label": "Until someone deletes it"
+        },
+        {
+          "id": "policy_based",
+          "label": "Auto-removed after a set period"
+        },
+        {
+          "id": "user_controlled",
+          "label": "Each business sets its own policy"
+        }
+      ],
+      "status": "open",
+      "consequence": 2,
+      "source": "plan"
+    },
+    {
+      "id": "customization",
+      "topic": "per-business customization",
+      "question": "Can each business customize the app?",
+      "options": [
+        {
+          "id": "fixed",
+          "label": "No — everyone gets the same thing"
+        },
+        {
+          "id": "branding_templates",
+          "label": "Branding and templates (logo, colors, wording)"
+        },
+        {
+          "id": "custom_fields",
+          "label": "Custom fields and workflows"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    },
+    {
+      "id": "reporting",
+      "topic": "overviews",
+      "question": "What do people need to see across many records?",
+      "options": [
+        {
+          "id": "lists_only",
+          "label": "Sortable, filterable lists"
+        },
+        {
+          "id": "basic_dashboard",
+          "label": "A dashboard with totals and counts"
+        },
+        {
+          "id": "custom_reports",
+          "label": "Custom reports people build themselves"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 5,
+      "source": "plan",
+      "chosen": "basic_dashboard",
+      "confidence": 0.95,
+      "rationale": "stated in the description: One-liner and archetype: an internal dashboard of totals, budgets and KPIs."
+    },
+    {
+      "id": "workspace_structure",
+      "topic": "how things are grouped",
+      "question": "Are records grouped into separate projects/workspaces, or is it one shared pool?",
+      "options": [
+        {
+          "id": "single_pool",
+          "label": "One shared pool — everything lives in one place with filters"
+        },
+        {
+          "id": "projects_with_members",
+          "label": "Separate projects/workspaces, each with its own members"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "plan",
+      "chosen": "single_pool",
+      "confidence": 0.95,
+      "rationale": "stated in the description: One company's data in one place, filtered by department; no separate workspaces."
+    },
+    {
+      "id": "record_ownership",
+      "topic": "who sees what",
+      "question": "Who can see a record?",
+      "options": [
+        {
+          "id": "everyone_in_workspace",
+          "label": "Everyone in the team sees everything"
+        },
+        {
+          "id": "owner_plus_shared",
+          "label": "Records are private to their owner unless shared or assigned"
+        },
+        {
+          "id": "team_scoped",
+          "label": "Visible within the owner's team/department; admins see all"
+        }
+      ],
+      "status": "open",
+      "consequence": 2.5,
+      "source": "plan"
+    },
+    {
+      "id": "record_edit_rights",
+      "topic": "who can do what",
+      "question": "Who can change a record?",
+      "options": [
+        {
+          "id": "anyone_who_sees",
+          "label": "Anyone who can see it can edit it"
+        },
+        {
+          "id": "owner_assignee_admin",
+          "label": "Only its owner/assignee and admins; others just view"
+        },
+        {
+          "id": "per_record_roles",
+          "label": "Set per record: view / comment / edit"
+        }
+      ],
+      "status": "defaulted",
+      "consequence": 2,
+      "source": "plan",
+      "chosen": "owner_assignee_admin",
+      "confidence": 0.95,
+      "rationale": "stated in the description: r5: only the Bookkeeper edits source figures; Owner/Manager view only."
+    },
+    {
+      "id": "record_custom_fields",
+      "topic": "fields",
+      "question": "Are the fields on a record fixed, or can admins add their own?",
+      "options": [
+        {
+          "id": "fixed_fields",
+          "label": "Fixed — the same fields for everyone"
+        },
+        {
+          "id": "admin_custom_fields",
+          "label": "Admins add custom fields (text, number, date, dropdown) to each record type"
+        },
+        {
+          "id": "custom_record_types",
+          "label": "Admins define whole new record types with their own fields"
+        }
+      ],
+      "status": "open",
+      "consequence": 2.5,
+      "source": "plan"
+    },
+    {
+      "id": "record_relationships",
+      "topic": "links between records",
+      "question": "Are records linked to each other?",
+      "options": [
+        {
+          "id": "standalone",
+          "label": "No — each record stands alone"
+        },
+        {
+          "id": "linked_types",
+          "label": "Yes — records of different types reference each other (contact → company → deal)"
+        },
+        {
+          "id": "hierarchy",
+          "label": "Yes — including parent/child trees (projects → tasks → sub-tasks)"
+        }
+      ],
+      "status": "open",
+      "consequence": 2,
+      "source": "plan"
+    },
+    {
+      "id": "record_duplicates",
+      "topic": "data quality",
+      "question": "Can two records be the same thing (same email, same serial number)?",
+      "options": [
+        {
+          "id": "allowed",
+          "label": "Allowed — nothing stops duplicates"
+        },
+        {
+          "id": "warn",
+          "label": "The app warns about likely duplicates and offers to merge"
+        },
+        {
+          "id": "unique_key_enforced",
+          "label": "A key field must be unique; duplicates are rejected"
+        }
+      ],
+      "status": "open",
+      "consequence": 1.5,
+      "source": "plan"
+    },
+    {
+      "id": "record_search",
+      "topic": "finding things",
+      "question": "How do people find a record?",
+      "options": [
+        {
+          "id": "filters_in_lists",
+          "label": "Filter and sort within each list"
+        },
+        {
+          "id": "global_search",
+          "label": "One search box across all record types"
+        },
+        {
+          "id": "full_text_everything",
+          "label": "Search that also looks inside comments and attachments"
+        }
+      ],
+      "status": "open",
+      "consequence": 1.5,
+      "source": "plan"
+    },
+    {
+      "id": "x1",
+      "topic": "deletion-with-dependents",
+      "question": "What happens when a Cost Category that still has Revenue/Expense Lines attached is deleted?",
+      "options": [
+        {
+          "id": "block",
+          "label": "Block deletion until lines are recategorized"
+        },
+        {
+          "id": "reassign",
+          "label": "Force reassignment to another category first"
+        },
+        {
+          "id": "orphan_flag",
+          "label": "Allow delete and flag orphaned lines as uncategorized"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "x2",
+      "topic": "concurrent-edits",
+      "question": "What happens if the Bookkeeper is editing a line while a new Excel upload replaces that same period?",
+      "options": [
+        {
+          "id": "upload_wins",
+          "label": "Upload overwrites; manual edits are lost"
+        },
+        {
+          "id": "block_during_upload",
+          "label": "Lock the period during upload; edits blocked"
+        },
+        {
+          "id": "warn_reconcile",
+          "label": "Warn and require manual reconcile of conflicting edits"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "x3",
+      "topic": "duplicate-submission",
+      "question": "How is a re-upload of the same period's file handled (e.g. same file uploaded twice)?",
+      "options": [
+        {
+          "id": "replace_silent",
+          "label": "Silently replace the period each time"
+        },
+        {
+          "id": "confirm_replace",
+          "label": "Detect same period and require confirm before overwrite"
+        },
+        {
+          "id": "version_history",
+          "label": "Keep each upload as a version and let user pick active"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "x4",
+      "topic": "zero-negative-rounding",
+      "question": "How are negative amounts, zeros, and rounding handled in totals and KPIs?",
+      "options": [
+        {
+          "id": "round_penny",
+          "label": "Round to cent; allow negatives (refunds/credits)"
+        },
+        {
+          "id": "reject_negative",
+          "label": "Reject negative amounts on import"
+        },
+        {
+          "id": "truncate_display",
+          "label": "Round only for display, keep full precision internally"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    },
+    {
+      "id": "x5",
+      "topic": "time-boundaries",
+      "question": "How is the period a line belongs to determined when dates cross month boundaries or timezones?",
+      "options": [
+        {
+          "id": "file_period",
+          "label": "Use the period declared on the Excel Upload"
+        },
+        {
+          "id": "row_date",
+          "label": "Derive from each row's date field"
+        },
+        {
+          "id": "manual_assign",
+          "label": "Bookkeeper assigns period per upload"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "x6",
+      "topic": "partial-failure",
+      "question": "What happens when an Excel upload partially fails (some rows invalid/uncategorized)?",
+      "options": [
+        {
+          "id": "all_or_nothing",
+          "label": "Reject the whole file until fixed"
+        },
+        {
+          "id": "import_valid_flag",
+          "label": "Import valid rows, flag the rest for review"
+        },
+        {
+          "id": "staging_review",
+          "label": "Stage all rows for review before committing"
+        }
+      ],
+      "status": "open",
+      "consequence": 4,
+      "source": "plan"
+    },
+    {
+      "id": "x7",
+      "topic": "permission-escalation",
+      "question": "How is a Manager blocked from whole-company profit/cash while still seeing their department, including delegated access?",
+      "options": [
+        {
+          "id": "hard_filter",
+          "label": "Server-side filter by department; no override"
+        },
+        {
+          "id": "owner_grant",
+          "label": "Owner can grant temporary broader view"
+        },
+        {
+          "id": "redacted_totals",
+          "label": "Show company rows but redact restricted figures"
+        }
+      ],
+      "status": "open",
+      "consequence": 5,
+      "source": "plan"
+    },
+    {
+      "id": "x8",
+      "topic": "lifecycle-backwards",
+      "question": "Can a completed Excel upload be undone/reverted to the prior period figures?",
+      "options": [
+        {
+          "id": "forbidden",
+          "label": "No — only a new upload replaces it"
+        },
+        {
+          "id": "revert_previous",
+          "label": "Yes — revert to the previously active version"
+        },
+        {
+          "id": "versioned_restore",
+          "label": "Full version history with restore of any prior import"
+        }
+      ],
+      "status": "open",
+      "consequence": 3,
+      "source": "plan"
+    }
+  ]
+}

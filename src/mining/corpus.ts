@@ -343,7 +343,13 @@ export function parseGithubRef(sourceUrl: string | undefined): string | null {
 // ---------- ingestion ----------
 
 /** Matches `label.ts`'s `--max-digest-tokens` default, so a corpus row is the same size the labeller expects. */
-export const DEFAULT_DIGEST_TOKENS = 20_000;
+/**
+ * Digest cap in REAL tokens. Raised from 20,000 when `CHARS_PER_TOKEN` was corrected from 4 (the prose rule of
+ * thumb) to a measured 2.03 for code digests — so the CHARACTER budget is unchanged (20,000 x 4.0 = 80,000
+ * chars; 38,000 x 2.1 = 79,800) and only the units are now honest. Changing the nominal number without this
+ * would silently have halved every digest.
+ */
+export const DEFAULT_DIGEST_TOKENS = 38_000;
 export const DEFAULT_CONCURRENCY = 3;
 
 export interface IngestOptions {
@@ -569,6 +575,77 @@ export function mirrorHeuristic(name: string): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Is this an APPLICATION, or DOCUMENTATION about one?
+// ---------------------------------------------------------------------------
+
+/**
+ * The name heuristic above is necessary but nowhere near sufficient, and this is the measurement that shows why.
+ *
+ * `condense.ts` classifies files into witness loci by PATH. A documentation repository about an e-commerce
+ * platform therefore looks exactly like an e-commerce application to it: `shopware/docs` yields all fourteen
+ * loci — `db_schema`, `routes`, `payment_code`, `auth_code`, `config_env`, the lot — because it contains
+ * `docs/.../payment/*.md`, `docs/.../routes/*.md` and so on. Measured on the real clone cache:
+ *
+ *     shopware/docs        14 loci · 8 "structural" · indistinguishable from a real app by locus count alone
+ *     saleor/saleor-docs   11 loci · 6 structural
+ *     mastodon/documentation 10 loci · 5 structural
+ *
+ * Labelling one of those produces `present` verdicts quoting prose ABOUT how to build a payment plugin, filed
+ * as evidence that this product HAS payments implemented that way. It is not a wrong quote — the quote is
+ * real — which is what makes it dangerous: nothing downstream can tell that the row describes a manual rather
+ * than an application, and no report would flag it.
+ *
+ * The discriminator that does work is the file mix, and it separates cleanly (measured over 54 clones):
+ *
+ *     documentation repos   79 % – 100 % prose   (lemmy-docs 100, shopware/docs 98.5, erpnext_documentation 79)
+ *     real applications     14 % –  42 % prose   (spree 14.6, superset 23.4, twenty 42.1)
+ *
+ * Nothing sits between 55 % and 76 %, so the default threshold is 0.65 — comfortably inside the gap rather
+ * than tuned to its edge. It is path-only and therefore free, deterministic and unit-testable, like every
+ * other decision in the condenser.
+ *
+ * Honest limit: a genuinely mixed repository (a docs site with a real app inside it, e.g. `sharetribe/flex-docs`
+ * at 51 % prose) is NOT flagged. That is the intended failure direction — this gate exists to keep obvious
+ * manuals out of the matrix, not to adjudicate hard cases, and a false negative costs one noisy row while a
+ * false positive silently discards a real application.
+ */
+const PROSE_EXT = /\.(md|mdx|markdown|rst|txt|adoc|asciidoc)$/i;
+const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py|rb|php|go|java|kt|cs|ex|exs|rs|swift|scala|vue|svelte|sql|prisma|erb|twig|haml|slim)$/i;
+
+export const DEFAULT_PROSE_THRESHOLD = 0.65;
+
+export interface ProseMix {
+  prose_files: number;
+  code_files: number;
+  /** prose / (prose + code); 1 when a repo has neither, which reads as "nothing to label" */
+  prose_share: number;
+}
+
+/** Pure over a file listing — no IO, so it is testable on synthetic paths like `pruneFiles`. */
+export function proseMix(files: readonly { path: string }[]): ProseMix {
+  let prose = 0;
+  let code = 0;
+  for (const f of files) {
+    if (PROSE_EXT.test(f.path)) prose += 1;
+    else if (CODE_EXT.test(f.path)) code += 1;
+  }
+  const total = prose + code;
+  return { prose_files: prose, code_files: code, prose_share: total > 0 ? prose / total : 1 };
+}
+
+/**
+ * "Documentation rather than application", or null when it looks like an app. Returns the REASON string so a
+ * skipped repository is reported with its numbers rather than silently dropped — the same discipline
+ * `selectCorpus` uses for its drops.
+ */
+export function documentationHeuristic(files: readonly { path: string }[], threshold = DEFAULT_PROSE_THRESHOLD): string | null {
+  const mix = proseMix(files);
+  if (mix.prose_files + mix.code_files === 0) return "no prose or code files at all — nothing to label";
+  if (mix.prose_share <= threshold) return null;
+  return `${(mix.prose_share * 100).toFixed(1)}% of files are prose (${mix.prose_files} prose / ${mix.code_files} code) — documentation about an application, not an application`;
+}
+
 /**
  * Round-robin across archetypes, so a limit spreads instead of eating the first archetype whole. Deterministic:
  * archetypes in sorted order, entries within an archetype in sorted id order, no randomness at all. An
@@ -679,7 +756,16 @@ export function selectCorpus(manifest: readonly CorpusEntry[], opts: SelectOptio
 // ---------- dry-run cost estimate (pure) ----------
 
 /** What `label.ts`'s dry run assumes one structured answer costs in output tokens. Same number, same place. */
-export const OUTPUT_TOKENS_PER_CALL = 2_000;
+/**
+ * Output tokens per labelling call. **Measured, not assumed**: a live 3-repo run on 2026-08-25 produced
+ * 90,642 output tokens across 18 calls = ~5,035 per call, against the 2,000 this constant used to hold — so
+ * every estimate was ~2x low on the output side (the smoke run estimated $2.32 and cost $4.94).
+ *
+ * Why it is this large: one call answers up to 45 features, and each answer carries a verdict, a verbatim
+ * quote of up to 200 characters, and a `loci_checked` list. Output scales with the number of features asked,
+ * not with the artifact — so this is a per-call constant rather than a per-token ratio.
+ */
+export const OUTPUT_TOKENS_PER_CALL = 5_000;
 
 export interface EstimateOptions {
   lexicon: Lexicon;

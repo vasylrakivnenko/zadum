@@ -1,0 +1,252 @@
+{
+  "scenario": "excel-financials",
+  "tag": "contrarian",
+  "selector_config": {},
+  "contrarian": true,
+  "project_id": "03df341b-9e7c-4a7f-8014-5eeb130bb1de",
+  "model": "claude-opus-4-8",
+  "judge_model": "claude-opus-4-8",
+  "elapsed_s": 975,
+  "cards_asked": [
+    {
+      "node": "x4",
+      "chosen": "last_write_wins",
+      "scripted": false
+    }
+  ],
+  "stop_reason": "converged",
+  "overrides_applied": [
+    "approval_workflow=single_approver",
+    "recurring_scheduled=recurring_records"
+  ],
+  "sheet": {
+    "version": 7,
+    "decisions": 31,
+    "rules": 13,
+    "actors": 4,
+    "nouns": 8,
+    "actions": 12
+  },
+  "gates": {
+    "spec_checks": [
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a2 (\"Bookkeeper updates Revenue Line\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a3 (\"Bookkeeper updates Expense Line\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a9 (\"Owner sets Budget\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a12 (\"Owner compares KPI\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "partially_implemented_decision",
+        "severity": "medium",
+        "message": "the user answered \"Must anything happen automatically on a schedule?\" with \"Records get created automatically (recurring invoices, appointments, …\", and the spec covers it only loosely (best match 0.32): it never mentions \"appointments\". The nearest thing the spec says is \"Given a new calendar month begins, when the scheduled job runs, then a draft Monthly Fina…\".",
+        "fix_hint": "Check by hand whether the answer is really built. This band holds both real gaps and answers the spec implements in different words, so it is reported rather than enforced."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Monthly Financials (n1)",
+        "message": "table cell in row \"net_profit\" holds 102 characters of prose: \"`net_profit = total_income − total_expenses`; may be negative and is stored/shown as a negative number\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Budget (n4)",
+        "message": "table cell in row \"period\" holds a second sentence: \"Text (e.g. Q1 2024 or YYYY-MM)\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Department (n5)",
+        "message": "table cell in row \"cost_center_code\" holds a second sentence: \"Unique cost-center code (e.g. CC-200)\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Cash Balance (n6)",
+        "message": "table cell in row \"account\" holds a second sentence: \"Account name (e.g. Operating Account)\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "KPI (n7)",
+        "message": "table cell in row \"name\" holds a second sentence: \"Metric name (e.g. Gross Margin)\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      }
+    ],
+    "spec_ir": [
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Monthly Financials",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Revenue Line",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Expense Line",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Department",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      }
+    ],
+    "ledger_findings": [],
+    "roundtrip_recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 0.9166666666666666,
+      "rules": 0.8461538461538461,
+      "non_goals": 1,
+      "overall": 0.926829268292683
+    },
+    "roundtrip_extra": 47,
+    "blocking_reasons": [
+      "the critic returned fail (score 5)"
+    ],
+    "critic": {
+      "violations": [
+        {
+          "rule_id": "r8",
+          "severity": "high",
+          "where": "Spreadsheet Import → 'Identifiers / uniqueness': \"the business key is (`file_name`, `month_covered`, `upload_date`), which lets a confirmed identical-file re-import be retained as a distinct row without colliding on (`file_name`, `month_covered`)\"",
+          "why": "Sheet r8 states each Spreadsheet Import \"must carry a unique file name and month-covered identifier.\" The spec silently redefines uniqueness to include the surrogate id/upload_date so two imports may share the same file_name and month_covered — directly weakening the Sheet rule the spec claims to implement (R-8 even says \"Two imports may share the same file name and month covered\").",
+          "fix_hint": "Either enforce true (file_name, month_covered) uniqueness per r8 (and reject identical re-uploads), or amend the Sheet r8 before allowing duplicates."
+        },
+        {
+          "rule_id": "r5 × r8",
+          "severity": "high",
+          "where": "R-5 test (\"upload the same file name for the same month twice ... assert two Spreadsheet Import rows both persist\") vs R-8 (\"each Spreadsheet Import is uniquely identified by ... file_name, month_covered\")",
+          "why": "r5 (with x8) requires retaining BOTH import rows when the identical file is re-uploaded for the same month; r8 forbids two imports sharing file_name+month_covered. As literally stated in the Sheet, obeying r5 forces breaking r8 — neither is satisfiable for an identical re-upload. The spec masks this only by adding a surrogate key not present in r8.",
+          "fix_hint": "Resolve which rule governs identical re-uploads: keep uniqueness and store a single row (bumping a version), or drop the file_name+month uniqueness constraint in the Sheet."
+        },
+        {
+          "rule_id": "r5 × r8",
+          "severity": "high",
+          "where": "R-8 Test sketch: \"upload the same file name for the same month twice (after the R-D9 confirmation) → assert two Spreadsheet Import rows with distinct id both persist.\"",
+          "why": "R-8's own verification test requires creating two imports with the same file_name and month_covered, which is exactly what r8 (as worded in the Sheet) forbids. The test cannot be executed while r8's stated uniqueness holds, making r8 unverifiable.",
+          "fix_hint": "Make the test consistent with a single enforced uniqueness definition."
+        },
+        {
+          "rule_id": "r3",
+          "severity": "medium",
+          "where": "Monthly Financials data model status enum {draft, finalized, reviewed} and matrix row 'Finalize month' vs Monthly Financials lifecycle states {draft, ready_to_close, reviewed, reopened} where draft→ready_to_close is done by \"system\" automatically",
+          "why": "R-3's test ('attempt finalize → expect rejection; add expense line, finalize → success') presumes a human 'Finalize month' action to a 'finalized' state. The lifecycle has no 'finalized' state and performs the draft→ready_to_close transition automatically by the system with a guard — so the finalize test cannot be run against the declared state machine, and r3 is effectively unverifiable.",
+          "fix_hint": "Reconcile: define a single 'finalized' (or 'ready_to_close') state and one actor/trigger, and align R-3's test to it."
+        },
+        {
+          "rule_id": "data_model × lifecycle",
+          "severity": "medium",
+          "where": "Monthly Financials table status \"Enum: draft, finalized, reviewed\" vs Lifecycle states \"draft, ready_to_close, reviewed, reopened\"",
+          "why": "The data model and the state machine disagree about the same entity's states: 'finalized' exists only in the data model/matrix/scenarios, and 'ready_to_close' and 'reopened' exist only in the lifecycle. An implementer cannot build one enum from two conflicting lists.",
+          "fix_hint": "Use one authoritative set of states across data model, matrix, lifecycle and scenarios."
+        },
+        {
+          "rule_id": "data_model × lifecycle",
+          "severity": "medium",
+          "where": "Spreadsheet Import table status \"Enum: awaiting_confirmation, imported, rejected, superseded\" vs Lifecycle states \"uploaded, needs_confirmation, rejected, applied, superseded\"",
+          "why": "Two sections name different states for the same entity: 'awaiting_confirmation'/'imported' (data model) vs 'needs_confirmation'/'applied'/'uploaded' (lifecycle). The status field is unbuildable as specified.",
+          "fix_hint": "Align the Spreadsheet Import status enum between the data model and its state machine."
+        },
+        {
+          "rule_id": "actors_permissions × lifecycle",
+          "severity": "medium",
+          "where": "R-D2/Journey 5 (\"reopening returns it to `draft`\") and Journey 5 step 5 vs Monthly Financials lifecycle (\"reviewed → reopened\") and S24 (\"March enters `reopened`\")",
+          "why": "Sections disagree on the target state of reopening a reviewed month: some say it returns to `draft`, the lifecycle and S24 say it enters `reopened`. A guard/permission built on one contradicts the other.",
+          "fix_hint": "Pick a single reopen target state and use it consistently in lifecycle, derived invariants, scenarios and journeys."
+        },
+        {
+          "rule_id": "actors_permissions × lifecycle",
+          "severity": "low",
+          "where": "Matrix condition *2 and S7 (\"the Owner (the uploader) may confirm or cancel\") vs Spreadsheet Import lifecycle transition needs_confirmation→applied \"Who: Bookkeeper\"",
+          "why": "The matrix and scenarios allow the initiator (Owner or Bookkeeper) to confirm a duplicate upload, but the lifecycle transition names only 'Bookkeeper' as the actor, denying the Owner the capability granted elsewhere.",
+          "fix_hint": "List the uploader (Owner or Bookkeeper) as the actor on the confirmation transitions."
+        },
+        {
+          "rule_id": "data_model × rules",
+          "severity": "medium",
+          "where": "KPI 'Value source (default)': \"each KPI's `value` is read from a `Value` column in the uploaded spreadsheet ... KPIs are not computed by the app in v1\" vs R-D11: \"Each KPI's `value` is derived from the underlying Monthly Financials ... KPIs are never entered as free-standing figures\" (and S35 same)",
+          "why": "The data model says KPI values are imported from the spreadsheet and explicitly NOT computed, while R-D11/S35 say values are computed from figures and never entered. These directly contradict about the same field, including target (imported column vs 'set by the Owner').",
+          "fix_hint": "Decide whether KPI value/target are imported or computed and state it once."
+        }
+      ],
+      "omissions": [
+        {
+          "item": "n7 KPI",
+          "kind": "noun",
+          "why": "KPI is covered contradictorily: the data model imports value/target from spreadsheet columns and says KPIs are 'not computed', while R-D11/S35 compute them from figures and say they are 'never entered'. The noun's core behaviour is specified two incompatible ways."
+        }
+      ],
+      "score": 5,
+      "verdict": "fail"
+    }
+  },
+  "deliberate_decisions_missing_from_body": [],
+  "judgement": {
+    "verdict": "not_acceptable",
+    "score_out_of_10": 3,
+    "contradictions": [
+      "Spreadsheet Import uniqueness: the Design Sheet r8 requires each import \"must carry a unique file name and month-covered identifier,\" but the spec redefines it — \"the business key is (`file_name`, `month_covered`, `upload_date`), which lets a confirmed identical-file re-import be retained as a distinct row without colliding on (`file_name`, `month_covered`)\" and R-8 states \"Two imports may share the same file name and month covered.\" This is the spec's own flagged gating failure and remains unresolved.",
+      "Monthly Financials status enum vs lifecycle: the data model declares \"status | Enum: draft, finalized, reviewed,\" but the state machine defines states \"`draft`, `ready_to_close`, `reviewed`, `reopened`\" — there is no `finalized` state in the machine and no `ready_to_close`/`reopened` in the enum.",
+      "Finalize action mechanism: R-3 says a record transitions \"to `finalized`\" and the matrix gives Owner/Bookkeeper a \"Finalize month\" action, but the state machine's only comparable transition is \"`draft` | `ready_to_close` | system | Income and expense lines both become present\" performed automatically by the system, not by a human finalize action. Automatic vs manual, and target state name, both conflict.",
+      "Spreadsheet Import status enum vs lifecycle: the data model enum is \"awaiting_confirmation, imported, rejected, superseded,\" but the state machine uses \"`uploaded`, `needs_confirmation`, `rejected`, `applied`, `superseded`\" — 'imported' vs 'applied' and 'awaiting_confirmation' vs 'needs_confirmation' plus an extra 'uploaded' state.",
+      "KPI value source: the data model says \"each KPI's `value` is read from a `Value` column in the uploaded spreadsheet ... KPIs are not computed by the app in v1,\" but R-D11 says \"Each KPI's `value` is derived from the underlying Monthly Financials ... KPIs are never entered as free-standing figures.\" One says imported and not computed; the other says computed and never entered.",
+      "Reopen target state: R-D2 says reopening \"returns it to `draft` for editing\" and Journey 5 says \"returning it to `draft`,\" but the state machine and S24 say \"`reviewed` | `reopened`\" / \"March enters `reopened`\" — the reopened month lands in two different states depending on which section you read."
+    ],
+    "unbuildable_requirements": [
+      "R-10 requires \"every Budget must reference a valid existing `period`\" where period may be \"Q1 2024 or YYYY-MM,\" but there is no Period entity and nothing defines what makes a quarter period 'exist'; a builder cannot validate a quarter reference.",
+      "Currency rejection: \"a row carrying any other currency symbol or code causes the file to be rejected\" while the Amount header is defined as \"currency, USD, decimal.\" How a non-USD currency is encoded and detected in a spreadsheet cell is never specified, so the validation is unimplementable as written.",
+      "R-7 locks \"its Revenue Lines, Expense Lines, and Cash Balance,\" but Cash Balance has no lifecycle state machine, no locked state, and no FK linking it to a Monthly Financials record — only an `as_of_date`. There is no mechanism by which a Cash Balance becomes locked to a reviewed month.",
+      "R-5 says re-upload \"replaces that month's Revenue Lines, Expense Lines, and Cash Balance\" (singular Cash Balance), but Cash Balance carries multiple `account` values and multiple `as_of_date` values per month; which balances are replaced is undefined."
+    ],
+    "missing_for_a_builder": [
+      "No definition of what events trigger the email notifications referenced in Key journeys (\"Notifications are sent by email\") — no notification triggers are listed anywhere.",
+      "Handling of duplicate rows within a single import file: Revenue Line uniqueness is \"(category, month)\" and Expense Line \"(category, month, department_id)\" — the spec never says what happens when one uploaded file contains two rows that collide on that key.",
+      "KPI `period` is typed Month (YYYY-MM), yet S36 compares KPIs \"across quarters\" — how quarterly comparison is derived from monthly KPI records is unspecified.",
+      "Authentication/invite specifics: email+password is stated (45% confidence assumption) but password policy, invite-acceptance flow, and account deactivation are absent.",
+      "Operational meaning of the `finalized`/`ready_to_close` state: what a user can and cannot do in it, and how it relates to the Accountant's review, is left unclear given the enum/machine mismatch."
+    ],
+    "strongest_aspect": "The acceptance scenarios (S1–S49) and per-rule verification sketches give near-complete Given/When/Then coverage with traceability markers back to Sheet items, which would make test authoring straightforward once the underlying contradictions are fixed.",
+    "weakest_aspect": "The lifecycle state machines contradict the data-model status enums and the rule transitions (Monthly Financials and Spreadsheet Import both), so the single most load-bearing part of the design — object lifecycles — cannot be implemented consistently.",
+    "one_change_with_most_impact": "Reconcile the state machines with the data-model status enums and the finalize/reopen rules (one authoritative set of states and transitions per entity), which alone removes four of the six contradictions and makes the finalize and reopen behaviour buildable."
+  },
+  "spec_chars": 70622
+}

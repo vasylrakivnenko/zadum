@@ -639,7 +639,7 @@ if (isMain) {
     docTypes,
     limit: all ? 1000 : Number(flag("--limit", "8")),
     runs: Number(flag("--runs", "2")),
-    maxTokens: Number(flag("--max-digest-tokens", "16000")),
+    maxTokens: Number(flag("--max-digest-tokens", "30000")),
     batchSize: Number(flag("--batch-size", "45")),
     concurrency: Number(flag("--concurrency", "3")),
     repoCache: flag("--repo-cache", path.resolve(here, "../../.cache/repos")),

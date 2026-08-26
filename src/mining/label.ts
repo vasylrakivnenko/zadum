@@ -45,6 +45,7 @@ import {
   type LexiconEntry,
 } from "./lexicon.js";
 import type { Digest } from "./condense.js";
+import { OUTPUT_TOKENS_PER_CALL } from "./corpus.js";
 
 // ---------- output schema (ADR-011 conservative subset: flat objects, every field present, no optional/records) ----------
 
@@ -92,16 +93,46 @@ export function renderFeatureList(features: LexiconEntry[], docType: DocType): s
 }
 
 export const ARTIFACT_MARKER = "===== ARTIFACT =====\n";
+/** Opening bytes of the per-batch question block — the seam between the cacheable prefix and the varying ask. */
+export const FEATURES_MARKER = "FEATURES TO JUDGE (";
 
-export function renderLabelPrompt(digest: Digest, features: LexiconEntry[]): string {
+/**
+ * The STABLE half of the user turn: everything that depends only on the document. Identical bytes for every
+ * batch of the same digest, which is precisely what makes it cacheable (`LLMRequest.userPrefix`) — one 20k
+ * artifact is billed at full price once and read back at ~0.1x for the remaining 4-5 batches.
+ *
+ * Do not interpolate anything batch-dependent, a clock, or a counter in here. `label.test.ts` asserts
+ * byte-identity across two different batches of one digest, because a single differing byte turns the whole
+ * scheme into a series of cache WRITES (1.25x) and would cost more than not caching at all.
+ */
+export function renderLabelPrefix(digest: Digest): string {
   return [
     `DOCUMENT TYPE: ${digest.doc_type}`,
     `DOCUMENT ID: ${digest.doc_id}`,
     `ARCHETYPE: ${digest.archetype}`,
     `AVAILABLE LOCI (these parts of the artifact are included below and were inspected):\n${digest.available_loci.map((l) => `  - ${l}`).join("\n")}`,
-    `FEATURES TO JUDGE (${features.length}):\n${renderFeatureList(features, digest.doc_type)}`,
     `${ARTIFACT_MARKER}${digest.text}`,
   ].join("\n\n");
+}
+
+/** The VARYING half: which features this batch asks about. Changes every call, so it must come last. */
+export function renderLabelQuestion(features: LexiconEntry[], docType: DocType): string {
+  return `${FEATURES_MARKER}${features.length}):\n${renderFeatureList(features, docType)}`;
+}
+
+/**
+ * The whole user turn, prefix then question.
+ *
+ * ORDER CHANGED 2026-08-26, deliberately: the artifact used to come LAST, after the per-batch feature list.
+ * That made prompt caching impossible — caching is a prefix match, so a feature list that varies per batch
+ * sitting in front of the constant artifact invalidated the prefix on every one of the 5-6 calls a document
+ * costs. Artifact first, question last also happens to be the better prompt shape (the ask is adjacent to
+ * the answer). CAVEAT: prompt position can shift model behaviour, so label quality — the `present` rate and
+ * especially the quote-verbatim rate — should be spot-checked against a pre-change run rather than assumed
+ * unchanged. This function stays the concatenation so the mock and the tests have one format to pin.
+ */
+export function renderLabelPrompt(digest: Digest, features: LexiconEntry[]): string {
+  return `${renderLabelPrefix(digest)}\n\n${renderLabelQuestion(features, digest.doc_type)}`;
 }
 
 // ---------- what to ask about ----------
@@ -281,6 +312,9 @@ export async function labelDocument(llm: LLM, digest: Digest, lex: Lexicon, opts
   const batches = batchFeatures(asked, opts.batchSize ?? DEFAULT_BATCH_SIZE);
   const answers = new Map<string, LabelBatch["labels"][number]>();
   const errors: string[] = [];
+  // Rendered ONCE, outside the loop: every batch must send the same bytes or the provider's prefix cache
+  // never hits. Hoisting it is the cheapest possible guarantee of that.
+  const userPrefix = renderLabelPrefix(digest);
   let usage = NO_USAGE;
   let latency = 0;
   let model = llm.models.strong;
@@ -292,7 +326,8 @@ export async function labelDocument(llm: LLM, digest: Digest, lex: Lexicon, opts
         fn: "evidence_label",
         tier: "strong",
         system: LABEL_SYSTEM,
-        user: renderLabelPrompt(digest, batch),
+        userPrefix,
+        user: renderLabelQuestion(batch, digest.doc_type),
         schema: LabelBatchSchema,
         effort: "medium",
         maxTokens: opts.maxTokens ?? 8000,
@@ -303,7 +338,14 @@ export async function labelDocument(llm: LLM, digest: Digest, lex: Lexicon, opts
       model = res.model;
       const ids = new Set(batch.map((f) => f.id));
       for (const l of res.data.labels) if (ids.has(l.feature_id) && !answers.has(l.feature_id)) answers.set(l.feature_id, l);
-      log(`  batch ${i + 1}/${batches.length} (${batch.length} features): ${res.data.labels.length} labels, ${res.usage.input_tokens}+${res.usage.output_tokens} tok`);
+      // Cache columns are logged per batch, not just totalled: the expected signature is "batch 1 writes,
+      // batches 2+ read". A run where every batch shows `cache_r 0` means caching is NOT engaging (a prefix
+      // that is not byte-identical, or a prefix below the model's minimum cacheable size) and the run is
+      // paying the 1.25x write premium for nothing — which is invisible in a total.
+      log(
+        `  batch ${i + 1}/${batches.length} (${batch.length} features): ${res.data.labels.length} labels, ${res.usage.input_tokens}+${res.usage.output_tokens} tok, ` +
+          `cache_w ${res.usage.cache_creation_input_tokens} cache_r ${res.usage.cache_read_input_tokens}`,
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       errors.push(`batch ${i + 1}: ${msg}`);
@@ -344,6 +386,22 @@ export interface RowSummary {
   absent_raw: number;
   absent_licensing_rate: number;
   downgrades: Record<string, number>;
+  /**
+   * Share of this row's prompt tokens that were served from the provider's prompt cache — the number that
+   * decides whether the artifact-first prompt order is actually paying for itself. `null`, never 0, when no
+   * prompt tokens were counted at all (a mock run, an all-batches-failed row): a fabricated 0 would read as
+   * "caching is broken" when the truth is "nothing was measured".
+   */
+  cache_hit_rate: number | null;
+}
+
+/**
+ * cache_read / (cache_read + input + cache_creation) — i.e. over TOTAL prompt tokens, since `input_tokens` is
+ * only the uncached remainder. Steady state for a 5-batch document is ~0.8 (one write, four reads).
+ */
+export function cacheHitRate(usage: LLMUsage): number | null {
+  const total = usage.cache_read_input_tokens + usage.input_tokens + usage.cache_creation_input_tokens;
+  return total === 0 ? null : usage.cache_read_input_tokens / total;
 }
 
 export function summarizeRow(row: DocumentLabels): RowSummary {
@@ -361,25 +419,59 @@ export function summarizeRow(row: DocumentLabels): RowSummary {
     absent_raw: absentRaw,
     absent_licensing_rate: absentRaw ? absentKept / absentRaw : 0,
     downgrades,
+    cache_hit_rate: cacheHitRate(row.usage),
   };
 }
 
 /**
  * Estimated list prices, USD per million tokens. Estimates for budgeting only — the run also reports raw
  * token counts, which are the ground truth. Override with ZADUM_PRICE_IN / ZADUM_PRICE_OUT.
+ *
+ * CORRECTED 2026-08-25. This table said $15/$75 for the Opus family, which was the pre-Opus-4.6 rate and is
+ * **3x the current price** — it made every mining budget in this repo three times too pessimistic (a 110-repo
+ * labelling run quoted at $256 actually costs ~$85). The Opus tier is $5/$25 and Sonnet 5 is $2/$10. These
+ * are Anthropic first-party rates, which per Anthropic's pricing docs ALSO apply to Claude on Microsoft
+ * Foundry (billed through the Microsoft Marketplace at standard API rates) — so the same numbers are correct
+ * for this repo's `foundry-anthropic` provider, which is what the live runs actually use. Bedrock and Vertex
+ * are partner-operated with their own pricing and are NOT covered by this table.
+ *
+ * Re-check these against the pricing page before quoting a figure to anyone; a stale price here is invisible
+ * until someone makes a spending decision on it, which is exactly what happened.
  */
 export const PRICE_PER_MTOK: Record<string, { input: number; output: number }> = {
-  "claude-opus-4-8": { input: 15, output: 75 },
-  "claude-opus-5": { input: 15, output: 75 },
+  "claude-opus-4-8": { input: 5, output: 25 },
+  "claude-opus-4-7": { input: 5, output: 25 },
+  "claude-opus-4-6": { input: 5, output: 25 },
+  "claude-opus-5": { input: 5, output: 25 },
+  "claude-fable-5": { input: 10, output: 50 },
   "claude-sonnet-4-6": { input: 3, output: 15 },
-  "claude-sonnet-5": { input: 3, output: 15 },
+  "claude-sonnet-5": { input: 2, output: 10 },
+  "claude-haiku-4-5": { input: 1, output: 5 },
 };
 
+/**
+ * Cache write and read multipliers on the input rate. Anthropic prices a 5-minute ephemeral cache write at
+ * 1.25x the input rate and a read at 0.1x. Both are needed or the estimate is wrong in BOTH directions:
+ * ignoring writes understates the first call, ignoring reads overstates every later one.
+ */
+export const CACHE_WRITE_MULTIPLIER = 1.25;
+export const CACHE_READ_MULTIPLIER = 0.1;
+
+/**
+ * Cost from real token counts, INCLUDING the cache columns.
+ *
+ * This function was cache-blind until 2026-08-26, which stopped being harmless the moment the labeller
+ * started caching its artifact prefix: a measured run printed $0.59 against a true $0.70, because 12,887
+ * written and 64,435 read tokens were simply not counted. Under-reporting spend is the one direction an
+ * estimator must never fail in — a budget is a promise to someone.
+ */
 export function estimateCost(model: string, usage: LLMUsage, env: NodeJS.ProcessEnv = process.env): number {
   const fallback = PRICE_PER_MTOK[model] ?? { input: 0, output: 0 };
   const input = env.ZADUM_PRICE_IN ? Number(env.ZADUM_PRICE_IN) : fallback.input;
   const output = env.ZADUM_PRICE_OUT ? Number(env.ZADUM_PRICE_OUT) : fallback.output;
-  return (usage.input_tokens / 1e6) * input + (usage.output_tokens / 1e6) * output;
+  const cacheWrite = (usage.cache_creation_input_tokens / 1e6) * input * CACHE_WRITE_MULTIPLIER;
+  const cacheRead = (usage.cache_read_input_tokens / 1e6) * input * CACHE_READ_MULTIPLIER;
+  return (usage.input_tokens / 1e6) * input + (usage.output_tokens / 1e6) * output + cacheWrite + cacheRead;
 }
 
 export function totalUsage(rows: DocumentLabels[]): LLMUsage {
@@ -459,7 +551,7 @@ export function parseArgs(argv: string[]): Args {
     mock: flags.has("--mock"),
     dryRun: flags.has("--dry-run"),
     out: flags.value("--out", "mining-results"),
-    maxTokens: Number(flags.value("--max-digest-tokens", "20000")),
+    maxTokens: Number(flags.value("--max-digest-tokens", "38000")),
     batchSize: Number(flags.value("--batch-size", String(DEFAULT_BATCH_SIZE))),
     concurrency: Number(flags.value("--concurrency", "2")),
     repoCache: flags.value("--repo-cache", path.resolve(here, "../../.cache/repos")),
@@ -533,7 +625,7 @@ if (isMain) {
     const calls = digests.reduce((n, d) => n + batchFeatures(askableFeatures(lexicon, d), args.batchSize).length, 0);
     const inTok = digests.reduce((n, d) => n + d.approx_tokens * batchFeatures(askableFeatures(lexicon, d), args.batchSize).length, 0);
     console.log(`\ndry run: ${digests.length} documents · ${asked} feature-questions · ${calls} LLM calls · ~${inTok} input tokens`);
-    console.log(`estimated cost: $${estimateCost(args.model, { ...NO_USAGE, input_tokens: inTok, output_tokens: calls * 2000 }).toFixed(2)} (list-price estimate)`);
+    console.log(`estimated cost: $${estimateCost(args.model, { ...NO_USAGE, input_tokens: inTok, output_tokens: calls * OUTPUT_TOKENS_PER_CALL }).toFixed(2)} (list-price estimate)`);
     process.exit(0);
   }
 
@@ -552,12 +644,20 @@ if (isMain) {
     console.log(`[${i + 1}/${digests.length}] ${d.doc_id} (${d.approx_tokens} tok, ${d.available_loci.length} loci)`);
     const row = await labelDocument(llm, d, lexicon, { versions: { lexicon: lexicon.version, catalog: catalogVersion }, batchSize: args.batchSize, log: (s) => console.log(s) });
     const s = summarizeRow(row);
-    console.log(`     present ${s.present} · absent ${s.absent} · unobserved ${s.unobserved} · fill ${(s.fill_rate * 100).toFixed(0)}%`);
+    const hit = s.cache_hit_rate === null ? "n/a" : `${(s.cache_hit_rate * 100).toFixed(0)}%`;
+    console.log(`     present ${s.present} · absent ${s.absent} · unobserved ${s.unobserved} · fill ${(s.fill_rate * 100).toFixed(0)}% · cache hit ${hit}`);
     return row;
   });
 
   const usage = totalUsage(rows);
+  const hitRate = cacheHitRate(usage);
   console.log(`\n${rows.length} rows · ${usage.input_tokens} in / ${usage.output_tokens} out tokens · est. $${estimateCost(llm.models.strong, usage).toFixed(2)}`);
+  // NOTE: `estimateCost` prices `input_tokens` + `output_tokens` only, so with caching on it UNDERSTATES the
+  // bill (cache writes are 1.25x, reads 0.1x, and neither is in `input_tokens`). The raw counts below are the
+  // ground truth; do the cache arithmetic before quoting a figure to anyone.
+  console.log(
+    `cache: ${usage.cache_creation_input_tokens} written / ${usage.cache_read_input_tokens} read · hit rate ${hitRate === null ? "n/a (no prompt tokens counted)" : `${(hitRate * 100).toFixed(1)}%`}`,
+  );
 
   await fs.mkdir(args.out, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");

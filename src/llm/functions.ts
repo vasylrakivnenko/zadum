@@ -359,7 +359,28 @@ export interface Fns {
   simUser(input: { card: Card; persona: string; truth: string }): Promise<LLMResponse<SimAnswer>>;
   /** LLM-as-likelihood-function: how well does each world fit a piece of user evidence? (core/evidence.ts) */
   worldLikelihoods(input: { sheet: Sheet; worlds: { world_id: string; summary: string }[]; text: string }): Promise<LLMResponse<WorldLikelihoodsOut>>;
-  /** One verification scenario weaving the bundled decisions' assumed answers into a concrete story. */
+  /**
+ * BUDGETS — why the spec-reading functions carry 16,000 and the small ones do not.
+ *
+ * `maxTokens` is not just an output ceiling on a thinking model: **adaptive thinking is drawn from the same
+ * allowance as the answer.** A budget tuned on a non-thinking deployment is therefore too small on Opus, and
+ * it fails in the least obvious way — the model thinks, starts the JSON, and runs out mid-string. A live
+ * compile died exactly there: `critic` at 6,000 tokens returned
+ * `Unterminated string in JSON at position 350` on a 40k-character spec, which reads like a grammar bug and
+ * is not one. `anthropic_foundry.ts` now reports `stop_reason: "max_tokens"` as its own diagnosis.
+ *
+ * The rule is **output size, not effort level.** A first pass at this raised only the `effort: "high"`
+ * functions, and the very next live run died on `planner` — `effort: "medium"`, 6,000 tokens, 8,778 characters
+ * of JSON emitted before it ran out. Medium-effort calls think too. So every function that returns a LARGE
+ * structured object gets a large budget: `drafter` and `planner` (a whole draft Sheet / interaction plan),
+ * `critic` and `reverse` (findings over an entire spec), `compile_<section>` and
+ * `compile_state_machines_ir` (a spec section). 16,000 is also the SDK's guidance for non-streaming requests;
+ * beyond that, streaming is wanted to avoid HTTP timeouts.
+ *
+ * The genuinely small ones stay small on purpose — `card` writes one question, `sim_user` picks one option —
+ * because there a large ceiling buys nothing but latency.
+ */
+/** One verification scenario weaving the bundled decisions' assumed answers into a concrete story. */
   verifyScenario(input: { sheet: Sheet; bundle: { node_id: string; question: string; answer_label: string }[] }): Promise<LLMResponse<VerifyScenarioOut>>;
   augmentRules(input: { sheet: Sheet; patterns: { id: string; pattern: string; frequency_estimate: number; example_phrasing: string }[] }): Promise<LLMResponse<AugmentRulesOut>>;
 }
@@ -374,7 +395,7 @@ export function makeFns(llm: LLM): Fns {
         user: [`ALLOWED ARCHETYPES: ${archetypes.join(", ")}`, `ONE-LINER: ${one_liner}`, extra_context ? `ADDITIONAL CONTEXT FROM THE USER:\n${extra_context}` : ""].filter(Boolean).join("\n\n"),
         schema: DraftSchema,
         effort: "medium",
-        maxTokens: 6000,
+        maxTokens: 16000,
       }),
 
     plan: ({ sheet, nodes }) =>
@@ -385,7 +406,7 @@ export function makeFns(llm: LLM): Fns {
         user: `DESIGN SHEET:\n${sheetToText(sheet)}\n\nCATALOG NODES:\n${nodesToText(nodes)}`,
         schema: PlanSchema,
         effort: "medium",
-        maxTokens: 6000,
+        maxTokens: 16000,
       }),
 
     sampleWorlds: ({ sheet, nodes, fixed, count, batch, batches, contrarian }) =>
@@ -443,7 +464,7 @@ export function makeFns(llm: LLM): Fns {
         system: P.PATCHER_SYSTEM,
         user: `DESIGN SHEET:\n${sheetToText(sheet)}\n\nDECISIONS:\n${decisionsToText(decisions)}\n\nUSER SAYS:\n${text}`,
         schema: PatchOutSchema,
-        maxTokens: 3000,
+        maxTokens: 8000,
         temperature: 0,
       }),
 
@@ -463,7 +484,7 @@ export function makeFns(llm: LLM): Fns {
           .filter(Boolean)
           .join("\n\n"),
         schema: SpecFeedbackOutSchema,
-        maxTokens: 3000,
+        maxTokens: 8000,
         temperature: 0,
       }),
 
@@ -485,7 +506,7 @@ export function makeFns(llm: LLM): Fns {
           .join("\n\n"),
         schema: SectionOutSchema,
         effort: "high",
-        maxTokens: 8000,
+        maxTokens: 16000,
       }),
 
     compileStateMachines: ({ sheet, decisions, findings }) =>
@@ -502,7 +523,7 @@ export function makeFns(llm: LLM): Fns {
           .join("\n\n"),
         schema: StateMachinesIRSchema,
         effort: "high",
-        maxTokens: 8000,
+        maxTokens: 16000,
       }),
 
     critique: ({ spec, sheet }) =>
@@ -513,7 +534,7 @@ export function makeFns(llm: LLM): Fns {
         user: `DESIGN SHEET:\n${sheetToText(sheet, { withDecisions: true })}\n\nSPECIFICATION:\n${spec}`,
         schema: CriticOutSchema,
         effort: "high",
-        maxTokens: 6000,
+        maxTokens: 16000,
       }),
 
     reverse: ({ spec }) =>
@@ -524,7 +545,7 @@ export function makeFns(llm: LLM): Fns {
         user: `SPECIFICATION:\n${spec}`,
         schema: ReverseOutSchema,
         effort: "medium",
-        maxTokens: 6000,
+        maxTokens: 16000,
       }),
 
     story: ({ spec, sheet }) =>
@@ -535,7 +556,7 @@ export function makeFns(llm: LLM): Fns {
         user: `DESIGN SHEET:\n${sheetToText(sheet, { withIds: false })}\n\nSPECIFICATION:\n${spec}`,
         schema: StoryOutSchema,
         effort: "medium",
-        maxTokens: 3000,
+        maxTokens: 8000,
       }),
 
     worldLikelihoods: ({ sheet, worlds, text }) =>
@@ -590,7 +611,7 @@ export function makeFns(llm: LLM): Fns {
         user: [`DRAFT SHEET:\n${sheetToText(sheet)}`, `REFERENCE PATTERNS FROM SIMILAR REAL APPS:\n${renderPatternsForAugment(patterns)}`].join("\n\n"),
         schema: AugmentRulesOutSchema,
         effort: "medium",
-        maxTokens: 3000,
+        maxTokens: 8000,
       }),
   };
 }

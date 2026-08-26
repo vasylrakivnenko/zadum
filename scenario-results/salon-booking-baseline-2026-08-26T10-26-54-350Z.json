@@ -1,0 +1,230 @@
+{
+  "scenario": "salon-booking",
+  "tag": "baseline",
+  "selector_config": {},
+  "contrarian": false,
+  "project_id": "0ac5f792-afa4-47a1-929b-90a688055ebd",
+  "model": "claude-opus-4-8",
+  "judge_model": "claude-opus-4-8",
+  "elapsed_s": 1086,
+  "cards_asked": [
+    {
+      "node": "reporting",
+      "chosen": "basic_dashboard",
+      "scripted": false
+    }
+  ],
+  "stop_reason": "converged",
+  "overrides_applied": [],
+  "sheet": {
+    "version": 6,
+    "decisions": 50,
+    "rules": 13,
+    "actors": 4,
+    "nouns": 8,
+    "actions": 12
+  },
+  "gates": {
+    "spec_checks": [
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permission matrix",
+        "message": "Sheet action a3 (\"Client reschedules Appointment\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permission matrix",
+        "message": "Sheet action a4 (\"Client updates Client Record\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Salon Configuration",
+        "message": "table cell in row \"buffer_minutes\" holds 91 characters of prose: \"Fixed gap enforced after every appointment. Default 0 until the Salon Manager configures it\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Salon Configuration",
+        "message": "table cell in row \"cancellation_cutoff_minutes\" holds 106 characters of prose: \"Minutes before start within which a cancellation/reschedule is flagged or blocked. Default 1440 (24 hours)\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Salon Configuration",
+        "message": "table cell in row \"no_show_threshold\" holds a second sentence: \"Number of no-shows at which a client is restricted. Default 3\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Client Record (n5)",
+        "message": "table cell in row \"is_restricted\" holds 161 characters of prose: \"Stored flag. Set true automatically when no_show_count ≥ Salon Configuration.no_show_threshold; the Salon Manager may c…\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Appointment (n1)",
+        "message": "table cell in row \"price_charged\" holds 89 characters of prose: \"Positive; snapshot of Service.price at booking time so history survives later price edits\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Appointment (n1)",
+        "message": "table cell in row \"status\" holds 84 characters of prose: \"One of: pending, confirmed, cancelled, attended, no_show. New bookings start pending\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Reminder (n8)",
+        "message": "table cell in row \"status\" holds a second sentence: \"One of: pending, sent, delivered, failed. New reminders start pending\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      }
+    ],
+    "spec_ir": [
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Service",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Stylist Profile",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Client Record",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      }
+    ],
+    "ledger_findings": [],
+    "roundtrip_recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 1,
+      "rules": 0.8461538461538461,
+      "non_goals": 1,
+      "overall": 0.9523809523809523
+    },
+    "roundtrip_extra": 58,
+    "blocking_reasons": [
+      "the critic returned fail (score 6)"
+    ],
+    "critic": {
+      "violations": [
+        {
+          "rule_id": "booking_cancellation_policy",
+          "severity": "medium",
+          "where": "Actors & permissions › Permission matrix, row 'Cancel Appointment | ✓*¹' for Client; AS-9; Journey 2 step 3",
+          "why": "The Sheet decision booking_cancellation_policy is 'Only staff can cancel; customers must contact the business,' yet the spec grants Clients a self-service cancel outside the cut-off ('A Client may cancel or reschedule only an Appointment where they are the client, and only before the salon-configured cut-off'). The spec even cites the decision in AS-10 while contradicting it in AS-9.",
+          "fix_hint": "Either remove Client self-cancel (route all cancels through staff, Client only 'requests') or revise the decision on the Sheet first."
+        },
+        {
+          "rule_id": "booking_reschedule",
+          "severity": "medium",
+          "where": "Permission matrix row 'Reschedule Appointment | ✓*¹' for Client; AS-13 'Client reschedules own Appointment before the cut-off'",
+          "why": "Decision booking_reschedule is 'No — they contact the business,' but the spec lets a Client move their own Appointment: 'When the Client reschedules before the cut-off, Then the Appointment moves to the new time.' Directly contradicts the Sheet decision.",
+          "fix_hint": "Deny Client reschedule in the matrix and lifecycle, or amend the Sheet decision."
+        },
+        {
+          "rule_id": "r1 × r12",
+          "severity": "high",
+          "where": "Rules R-1 and R-12; R-12 text 'when the target slot is free at booking it is confirmed instantly, otherwise it stays pending until confirmed' vs R-1 'may be committed for a time slot only when the chosen Stylist … has no other non-cancelled Appointment overlapping'",
+          "why": "For a non-free slot the two rules disagree about the same state: R-12 says the Appointment persists as 'pending', while R-1 (and AS-5) says the booking is 'rejected as the slot is not free.' A non-free booking cannot both persist pending and be rejected — neither outcome satisfies both rules.",
+          "fix_hint": "Decide the single outcome for a taken slot (reject) and drop the 'otherwise it stays pending' clause, or define an approval/hold flow that actually persists pending appointments."
+        },
+        {
+          "rule_id": "actors_permissions × lifecycles",
+          "severity": "medium",
+          "where": "Permission matrix 'Confirm Appointment' (Client ✓*³, Receptionist ✓, Manager ✓) and AS-27 vs Appointment lifecycle table, which lists only 'pending → confirmed | system'",
+          "why": "The matrix and R-12 grant Client (from reminder) and staff a confirm capability, and AS-27 exercises a Client confirming a pending Appointment, but the Appointment state machine has no client- or staff-driven pending→confirmed transition — only the 'system' auto-confirm. A capability is granted in one section and absent from the lifecycle. Combined with the instant-confirm/reject flow, no reachable persistent 'pending' Appointment exists for the confirm action to operate on.",
+          "fix_hint": "Add explicit pending→confirmed transitions with Who = Client (via reminder) and staff, and reconcile with the instant-confirm rule."
+        },
+        {
+          "rule_id": "actors_permissions × lifecycles",
+          "severity": "low",
+          "where": "Permission matrix 'Mark Appointment attended / no-show' grants Receptionist ✓ and Salon Manager ✓ for attended, but Appointment lifecycle 'confirmed → attended | Stylist' names only the Stylist",
+          "why": "The matrix permits receptionist/manager to mark attended, while the lifecycle attributes the attended transition solely to the Stylist. The two sections disagree on who can drive the attended transition.",
+          "fix_hint": "List Receptionist/Manager on the confirmed→attended transition to match the matrix."
+        },
+        {
+          "rule_id": "booking_no_show",
+          "severity": "low",
+          "where": "Client Record lifecycle state 'restricted — Repeat no-show client restricted or required to prepay before booking'",
+          "why": "The restricted state describes a prepay requirement, but g1/booking_prepayment put all payments/deposits out of scope, so 'required to prepay' is unimplementable in v1. The prose imports a capability that does not exist.",
+          "fix_hint": "Describe restricted purely as a booking block/manager review; drop the prepay wording."
+        }
+      ],
+      "omissions": [
+        {
+          "item": "booking_waitlist (manual waitlist a Client joins)",
+          "kind": "action",
+          "why": "The spec names a 'Waitlist' in the glossary and non-goals ('a manual waitlist that a Client joins, from which staff contact them') but provides no Waitlist entity in the data model and no join-waitlist action or permission-matrix row, so the described behaviour cannot be implemented or tested."
+        },
+        {
+          "item": "booking_walk_ins 'holds, and blocked time'",
+          "kind": "noun",
+          "why": "The decision includes staff creating holds and blocked time by hand; the spec models only stylist Time Off and walk-in Appointments, leaving generic staff 'holds/blocked time' with no entity or action."
+        },
+        {
+          "item": "concurrency (prevent or merge conflicting edits)",
+          "kind": "rule",
+          "why": "The decision covers concurrent edits generally, but the spec only addresses booking-slot locking (R-16) and offers no conflict handling for concurrent edits to Services, Stylist Profiles, or Working Hours beyond an audit stamp."
+        }
+      ],
+      "score": 6,
+      "verdict": "fail"
+    }
+  },
+  "deliberate_decisions_missing_from_body": [],
+  "judgement": {
+    "verdict": "needs_work",
+    "score_out_of_10": 5,
+    "contradictions": [
+      "Client cancel/reschedule vs. the decision ledger. The permission matrix and notes let a Client cancel/reschedule their own Appointment before cut-off ('A Client may cancel or reschedule only an Appointment where they are the client, and only before the salon-configured cut-off'), and AS-9/AS-13 exercise this. But the decision ledger states d:booking_cancellation_policy = 'Only staff can cancel; customers must contact the business' and d:booking_reschedule = 'No — they contact the business.' The spec grants Clients a power its own source-of-truth decisions deny.",
+      "R-1/AS-5 vs. R-12 (the pre-flagged one). R-12: 'when the target slot is free at booking it is confirmed instantly, otherwise it stays pending until confirmed.' R-1: an Appointment 'may be committed for a time slot only when the chosen Stylist … has no other non-cancelled Appointment overlapping,' and AS-5: 'a second Client books Maria at 2:00pm, Then the booking is rejected as the slot is not free.' A non-free booking cannot both persist as 'pending' and be 'rejected.'",
+      "Reminder status enum vs. Reminder lifecycle states. The data model Reminder.status enum is 'pending, sent, delivered, failed' with 'New reminders start pending', but the lifecycle section states 'Each Reminder starts in `scheduled`' and lists states 'scheduled, sent, delivered, failed, cancelled' — introducing 'scheduled' and 'cancelled' that do not exist in the stored enum, and dropping 'pending'.",
+      "Restricted-client handling vs. payments being out of scope. The Client Record 'restricted' state says the client is 'restricted or required to prepay before booking' and decision d:booking_no_show = 'repeat offenders must prepay or are blocked', but g:g1/d:booking_prepayment put all payment/prepayment out of scope ('does not take payments or deposits online'). A 'prepay' remedy is impossible in this build.",
+      "Salon Working Hours storage vs. the data model. R-4, R-15 and AS-20 ('Salon Manager sets salon Working Hours') depend on salon-wide opening hours, but the only Working Hours entity requires 'stylist_profile_id UUID → Stylist Profile | yes', and Salon Configuration holds no hours fields. There is nowhere to store the salon's own hours the rules repeatedly reference.",
+      "Reminder sending authority. The permission matrix grants 'Send Reminder' only to Salon Manager (all others ✗), yet the Reminder lifecycle dispatches via 'system' automatically at send_time and AS-26 is titled 'Salon Manager/system sends a Reminder.' Whether reminders are a manual manager action or an automatic system job is stated both ways."
+    ],
+    "unbuildable_requirements": [
+      "Reminder.send_time is 'Scheduled send time' and journeys say a reminder is sent 'before each Appointment' / 'Ahead of the Appointment', but no lead-time quantity is given (e.g., 24h before). A builder cannot compute send_time.",
+      "R-16 'Slot lock during checkout' and the 'short lock'/'short checkout lock' are never quantified — no lock duration/timeout is specified, so concurrency behaviour cannot be implemented deterministically.",
+      "R-17 duplicate-collapse depends on a 'retry window' ('Submit an identical booking twice within the retry window') that is never defined in minutes/seconds.",
+      "The 'pending' Appointment state has no defined lifespan or expiry: R-12 says new bookings start pending, but with instant confirmation on free slots and rejection on non-free slots, it is unspecified how any Appointment legitimately remains pending, for how long, or what happens if never confirmed.",
+      "R-4/R-15 reference 'salon's opening Working Hours' with no entity to hold them (see contradictions); a builder cannot enforce 'within salon hours' without a defined store and editing surface.",
+      "Restricted-client enforcement is undefined: R-22/Client Record 'restricted' state set is_restricted true, but no booking rule (R-1..R-25) actually blocks a restricted client from self-booking, so the behavioural effect of restriction is unbuildable as written."
+    ],
+    "missing_for_a_builder": [
+      "Reminder lead time(s) and how many reminders are sent per appointment.",
+      "Slot-lock timeout and idempotency retry-window durations.",
+      "How salon opening hours are stored and edited (entity/fields), and how they interact with per-stylist Working Hours.",
+      "Definition of what 'restricted' actually prevents (self-booking only? staff-assisted still allowed?) and where that check fires in the booking flow.",
+      "DST/clock-change handling within the single local time zone for stored timestamps and recurring weekly Working Hours.",
+      "Whether the Cancellation entity needs a persisted status field to back the draft/completed lifecycle (no status column exists on the entity).",
+      "SMS/email delivery provider assumptions and failure/retry counts (R-23 says 'retried' but no retry limit or backoff).",
+      "Reconciliation of the contradictory Client cancel/reschedule authority against the ledger before build (which side is authoritative)."
+    ],
+    "strongest_aspect": "The permission model is unusually thorough and internally cross-checked: the matrix, conditional notes, data-visibility boundaries and negative-access acceptance scenarios (AS-16, AS-18, AS-23) line up cell-for-cell, giving a builder a clear, testable authorization surface.",
+    "weakest_aspect": "The Appointment confirmation/pending model is incoherent: R-12's 'otherwise it stays pending' directly contradicts R-1/AS-5's rejection of non-free slots, and the pending state has no defined purpose, expiry, or path that isn't already covered by instant-confirm — the core booking behaviour is ambiguous.",
+    "one_change_with_most_impact": "Rewrite R-12 to remove the 'otherwise it stays pending' clause and precisely define the pending state's meaning and exit conditions (e.g., all valid bookings confirm instantly and 'pending' is dropped, OR pending exists only for a defined reminder-confirmation flow with a stated expiry) — this resolves the flagged r1×r12 contradiction and clarifies the entire booking lifecycle."
+  },
+  "spec_chars": 74144
+}

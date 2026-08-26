@@ -80,11 +80,25 @@ export function withFastTierFromEnv(base: LLM, env: NodeJS.ProcessEnv = process.
 }
 
 /**
- * Provider selection. Explicit `ZADUM_PROVIDER` wins (anthropic | azure-openai | openai); otherwise Anthropic when
- * its credentials are present, else Azure OpenAI when AZURE_API_KEY is present, else Anthropic (it may still pick up
- * an `ant auth login` profile). Credentials are loaded from .env by src/env.ts.
+ * Provider selection. `ZADUM_MODEL` wins outright, then explicit `ZADUM_PROVIDER`
+ * (anthropic | azure-openai | openai); otherwise Anthropic when its credentials are present, else Azure
+ * OpenAI when AZURE_API_KEY is present, else Anthropic (it may still pick up an `ant auth login` profile).
+ * Credentials are loaded from .env by src/env.ts.
+ *
+ * **ZADUM_MODEL exists because the engine could not reach the best model on the account.** The mining tools
+ * call `makeModel(id)` and so can use anything in `src/llm/registry.ts` — including `claude-opus-4-8` on
+ * Azure AI Foundry. `llmFromEnv` had no `foundry-anthropic` branch at all, so the PRODUCT silently ran on
+ * gpt-4.1 whenever AZURE_API_KEY was present, while the offline tooling ran on Opus. That is the wrong way
+ * round: the drafter, the critic and the compiler are where model quality reaches the user.
+ *
+ * Naming a MODEL rather than adding a provider is deliberate — a provider alone does not say which
+ * deployment, and `makeModel` already resolves provider, endpoint and credentials from one id. It also
+ * composes with `ZADUM_FAST_MODEL`, so a session can put the strong tier on Opus and the fast tier on
+ * something cheap for Rule 5's <2s card latency.
  */
 export function llmFromEnv(env: NodeJS.ProcessEnv = process.env): LLM {
+  const modelId = env.ZADUM_MODEL?.trim();
+  if (modelId) return makeModel(modelId, credentialsFromEnv(env));
   const provider = (env.ZADUM_PROVIDER ?? "").toLowerCase();
   if (provider === "azure-openai" || provider === "openai") return openAICompatFromEnv(env);
   if (provider === "anthropic") return new AnthropicLLM(modelConfigFromEnv(env));

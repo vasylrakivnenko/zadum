@@ -1,0 +1,13 @@
+{
+  "id": "salon-booking",
+  "one_liner": "booking system for my hair salon so clients can book online instead of calling",
+  "edits": [],
+  "answers": {
+    "booking_who_books": "customers_no_account",
+    "booking_confirmation": "instant",
+    "payments_in_app": "none",
+    "notifications": "email_sms"
+  },
+  "overrides": {},
+  "notes": "A different archetype (booking) and a much more concrete one-liner than excel-financials, to test whether ADR-041's under-asking finding is a property of the pipeline or of that one vague input. Answers are plausible small-salon choices, not taken from a real session."
+}

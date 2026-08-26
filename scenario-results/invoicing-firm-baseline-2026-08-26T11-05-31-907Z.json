@@ -1,0 +1,280 @@
+{
+  "scenario": "invoicing-firm",
+  "tag": "baseline",
+  "selector_config": {},
+  "contrarian": false,
+  "project_id": "b805f67d-6d5c-4c75-8610-5ac0081a3f6f",
+  "model": "claude-opus-4-8",
+  "judge_model": "claude-opus-4-8",
+  "elapsed_s": 1008,
+  "cards_asked": [
+    {
+      "node": "reporting",
+      "chosen": "basic_dashboard",
+      "scripted": false
+    }
+  ],
+  "stop_reason": "converged",
+  "overrides_applied": [],
+  "sheet": {
+    "version": 5,
+    "decisions": 58,
+    "rules": 12,
+    "actors": 3,
+    "nouns": 6,
+    "actions": 11
+  },
+  "gates": {
+    "spec_checks": [
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a1 (\"Bookkeeper creates Invoice\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a10 (\"Bookkeeper generates Statement\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a11 (\"Client receives Invoice\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Client",
+        "message": "table cell in row \"`business_name`\" holds a second sentence: \"e.g. Acme Landscaping\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Client",
+        "message": "table cell in row \"`monthly_rate`\" holds 92 characters of prose: \"changeable only by Firm Owner or a Bookkeeper with an active `change_client_rate` delegation\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Invoice",
+        "message": "table cell in row \"`invoice_number`\" holds 101 characters of prose: \"strictly sequential per firm; unique; the only permitted gaps are numbers retained by voided invoices\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Invoice",
+        "message": "table cell in row \"`delivery_status`\" holds 130 characters of prose: \"on send, marked `delivered`; if the email fails the invoice stays `sent` but `delivery_status` becomes `delivery_failed…\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Line Item",
+        "message": "table cell in row \"`description`\" holds a second sentence: \"e.g. Monthly bookkeeping\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Line Item",
+        "message": "table cell in row \"`amount` (derived)\" holds 90 characters of prose: \"= round-to-cents(`quantity` × `rate`); a computed `amount` of zero or negative is rejected\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Payment",
+        "message": "table cell in row \"`amount`\" holds 126 characters of prose: \"stored positive; each save must satisfy `amount` ≤ current `balance_due`, so total payments plus credits never exceed `…\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Payment",
+        "message": "table cell in row \"`date_received`\" holds a second sentence: \"e.g. Mar 12\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Credit Note",
+        "message": "table cell in row \"`credit_note_number`\" holds 121 characters of prose: \"own `CN-` sequence, strictly sequential; kept separate from `invoice_number` so the invoice series stays gapless per R-…\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Credit Note",
+        "message": "table cell in row \"`amount`\" holds 97 characters of prose: \"stored positive; subtracted in `balance_due`; sum of applied credit notes may not exceed `amount`\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Service",
+        "message": "table cell in row \"`name`\" holds a second sentence: \"e.g. Monthly bookkeeping\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "prose_in_table_cell",
+        "severity": "medium",
+        "section": "Statement",
+        "message": "table cell in row \"`total_billed` (derived)\" holds 113 characters of prose: \"= sum of `Invoice.amount` for the client with `issue_date` within [`period_start`,`period_end`], excluding `void`\".",
+        "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+      },
+      {
+        "code": "untraced_decision",
+        "severity": "medium",
+        "message": "decision \"localization\" is defaulted as \"single_locale\" (Languages and regions?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"localization\" in any form (d:localization, localization, or localization:single_locale).",
+        "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:localization⟩) or re-open it."
+      },
+      {
+        "code": "untraced_decision",
+        "severity": "medium",
+        "message": "decision \"compliance_sensitivity\" is defaulted as \"ordinary\" (Does it hold data with special legal handling (health, payment cards, minors)?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"compliance_sensitivity\" in any form (d:compliance_sensitivity, compliance_sensitivity, or compliance_sensitivity:ordinary).",
+        "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:compliance_sensitivity⟩) or re-open it."
+      },
+      {
+        "code": "untraced_decision",
+        "severity": "medium",
+        "message": "decision \"late_fee_basis\" is defaulted as \"flat_fee\" (How is an automatic late fee calculated?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"late_fee_basis\" in any form (d:late_fee_basis, late_fee_basis, or late_fee_basis:flat_fee).",
+        "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:late_fee_basis⟩) or re-open it."
+      }
+    ],
+    "spec_ir": [],
+    "ledger_findings": [],
+    "roundtrip_recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 0.9090909090909091,
+      "rules": 0.9166666666666666,
+      "non_goals": 1,
+      "overall": 0.9459459459459459
+    },
+    "roundtrip_extra": 52,
+    "blocking_reasons": [
+      "the critic returned fail (score 6)"
+    ],
+    "critic": {
+      "violations": [
+        {
+          "rule_id": "credit_note_numbering",
+          "severity": "medium",
+          "where": "Data model → Credit Note: `credit_note_number` \"own `CN-` sequence, strictly sequential; kept separate from `invoice_number`\"; R-d11; S31",
+          "why": "The Sheet decision d:credit_note_numbering states credit notes \"share the invoice number sequence.\" The spec does the exact opposite — a separate CN- sequence — silently reversing the decision it cites.",
+          "fix_hint": "Either update the Sheet decision to a separate sequence, or number credit notes within the invoice sequence as the Sheet dictates."
+        },
+        {
+          "rule_id": "data_model × lifecycles",
+          "severity": "high",
+          "where": "Invoice lifecycle lists 7 states incl. `viewed`; Data model Invoice `status` enum = (draft,sent,partially_paid,paid,overdue,void) with no `viewed`",
+          "why": "The lifecycle section adds a `viewed` state and sent→viewed transition, but the Invoice status enum and status-derivation in the data model have no `viewed` state at all. The two sections disagree about the set of legal Invoice states.",
+          "fix_hint": "Reconcile: either add `viewed` to the enum/derivation or remove the `viewed` state from the lifecycle."
+        },
+        {
+          "rule_id": "actors_permissions × lifecycles",
+          "severity": "high",
+          "where": "Invoice lifecycle row `sent`→`viewed` | Who: Client | \"Client receives and opens the invoice\" vs permissions Client column all ✗ and note 2 \"performs no in-app action\" and non-goals \"no email open-tracking or 'viewed' signal\"",
+          "why": "The lifecycle has the Client (an actor with no account and no in-app action) drive a state transition, and relies on an open/viewed signal the permissions prose and non-goals both say does not exist. The scenario the lifecycle describes is forbidden by the permission matrix and explicitly denied elsewhere.",
+          "fix_hint": "Remove the Client-driven `viewed` transition; there is no viewed signal or Client action in v1."
+        },
+        {
+          "rule_id": "r3 × r7",
+          "severity": "high",
+          "where": "Invoice status derivation + R-r3 balance cap (amount − payments − credits) + R-r7 (paid iff payments==amount)",
+          "why": "With any credit note applied, R-r3 caps recordable payments at amount−credits, so payments can never equal amount, so R-r7's `paid` is unreachable. Meanwhile status derivation only defines sent (requires credited_amount==0), partially_paid (requires amount_paid>0), and paid (amount_paid==amount). A credited invoice with amount_paid=0 (e.g. $450 invoice, $200 credit) matches NO status and can never leave it — an unsatisfiable, statusless stuck record.",
+          "fix_hint": "Add an explicit 'settled/closed-by-credit' status and make status derivation exhaustive for any credited invoice."
+        },
+        {
+          "rule_id": "actors_permissions × lifecycles",
+          "severity": "medium",
+          "where": "Permissions matrix \"Review a Statement | Bookkeeper ✓\" vs Statement lifecycle `generated`→`reviewed` | Who: Firm Owner only (⟨a8⟩)",
+          "why": "The matrix grants the Bookkeeper the ability to review a Statement, but the Statement lifecycle allows only the Firm Owner to perform the review transition. The two sections disagree about who can review; the Sheet action a8 is Firm-Owner-only.",
+          "fix_hint": "Deny Bookkeeper review in the matrix or add a Bookkeeper review transition — but a8 restricts review to the Firm Owner."
+        },
+        {
+          "rule_id": "r5",
+          "severity": "medium",
+          "where": "R-r5 / permissions note 1 / Delegation entity — Bookkeeper with delegation may void",
+          "why": "Sheet r5 states \"Only the Firm Owner may void an invoice.\" The spec weakens this by granting a delegated Bookkeeper void rights. The Sheet's own x7 conflicts with r5's \"only,\" and the spec resolves toward x7, contradicting the literal inviolable rule.",
+          "fix_hint": "Reconcile r5 and x7 at the Sheet level before implementing delegated void."
+        },
+        {
+          "rule_id": "r6",
+          "severity": "medium",
+          "where": "R-r6 / permissions note 1 — Bookkeeper with delegation may change monthly rate",
+          "why": "Sheet r6 states \"Only the Firm Owner may change a client's monthly rate,\" but the spec permits a delegated Bookkeeper to do so, weakening the rule's \"only.\"",
+          "fix_hint": "Reconcile r6 and x7 at the Sheet level before implementing delegated rate change."
+        },
+        {
+          "rule_id": "data_model × rules",
+          "severity": "low",
+          "where": "R-d2 \"An Invoice's `amount` equals the sum of its Line Item `amount` values\" vs Invoice derived `amount` = `subtotal` − `discount_amount`",
+          "why": "R-d2 asserts amount is the plain sum of line items, but the Invoice model subtracts a whole-invoice discount. When a discount exists the two definitions disagree.",
+          "fix_hint": "Restate R-d2 as amount = subtotal − discount_amount."
+        }
+      ],
+      "omissions": [
+        {
+          "item": "n11 reference",
+          "kind": "noun",
+          "why": "Permissions note 2 cites ⟨src: n:n11⟩ which does not exist in the Sheet noun list (n1–n6); dangling/incorrect trace marker."
+        },
+        {
+          "item": "auto_reminder_schedule / late_fee_basis",
+          "kind": "rule",
+          "why": "Sheet decisions d:auto_reminder_schedule (two automatic nudges) and d:late_fee_basis (flat late fee) are contradicted by the spec's manual-only reminders and no-late-fee stance; they conflict with d:overdue_reminders/d:late_fees but the spec never explicitly resolves the contradiction."
+        }
+      ],
+      "score": 6,
+      "verdict": "fail"
+    }
+  },
+  "deliberate_decisions_missing_from_body": [],
+  "judgement": {
+    "verdict": "not_acceptable",
+    "score_out_of_10": 3,
+    "contradictions": [
+      "Invoice status set vs. lifecycle: the data-model enum is `enum(draft,sent,partially_paid,paid,overdue,void)` with no `viewed`, but the Invoice lifecycle declares 'moves through 7 states' including 'viewed — Client has received/opened the invoice' and a `sent`→`viewed` transition. The two sections disagree on the legal state set (flagged by the compile report and still present).",
+      "Client permissions vs. viewed transition: the matrix Client column is all ✗ with note 2 'The Client holds no account and performs no in-app action' and non-goals 'there is no email open-tracking or \"viewed\" signal', yet the lifecycle row `sent`→`viewed` | Who: Client | 'Client receives and opens the invoice' makes the Client drive a transition using a signal the spec says does not exist.",
+      "R-r3 vs R-r7 / status derivation: R-r3 caps payments at 'amount minus already-applied Payment amounts minus applied credit-note amounts', so once any credit note is applied payments can never reach `amount`, making R-r7's `paid` unreachable; and status derivation defines `sent` only when 'credited_amount = 0', so a $450 invoice with a $200 credit and $0 paid matches no status — a permanently stuck, statusless record (per S22 it is 'settled-by-credit-note', which is not a status the enum defines).",
+      "Invoice amount formula: the data model derives `amount` = `subtotal` − `discount_amount`, but R-d2 states 'An Invoice's amount equals the sum of its Line Item amount values.' When `discount_amount` > 0 these two definitions of `amount` disagree.",
+      "Net terms location: the data model says `due_date` = `issue_date` + `net_terms_days` where `net_terms_days` lives on Firm Settings only, but S13 and Journey B step 5 say 'its due date is set by the client's net payment terms' — the Client entity has no net-terms field, so the per-client terms referenced in the scenarios do not exist.",
+      "Credit-note numbering: the Credit Note entity and R-d11 state credit notes use 'their own CN- sequence… kept separate from invoice_number', but the decision ledger entry d:credit_note_numbering answers 'They share the invoice number sequence.' The build source contradicts the decision it cites.",
+      "Deletion vs retention: d:deletion answers 'Records are never deleted, only voided/cancelled' (and R-r12 enforces it), while d:retention answers 'Until someone deletes it.' The ledger contradicts itself on whether deletion exists.",
+      "Reminders: non-goals and d:overdue_reminders say reminders are manual with 'no scheduled reminders', but the ledger also contains d:auto_reminder_schedule = 'Two gentle nudges: a few days before and after the due date' and d:auto_reminder_schedule is referenced nowhere to disable it — the two reminder decisions conflict.",
+      "Late fees: d:late_fees answers 'No' while d:late_fee_basis answers 'A flat amount added once' — contradictory ledger entries for the same feature."
+    ],
+    "unbuildable_requirements": [
+      "The settled-by-credit-note condition (S22, status derivation) is described as an outcome but is not a value in the Invoice `status` enum, so a builder cannot store or query it.",
+      "'Attach or download files on an Invoice' is ✓ in the matrix and d:attachments = 'Yes', but the Invoice entity defines no attachment field(s), file size/type limits, or storage — a builder cannot implement it without inventing the schema.",
+      "'Undo the last field edit' (R-d8, S37) requires a prior-value history, but no entity stores previous field values or an edit log; the audit fields are who/when only, so undo is not implementable as specified.",
+      "'Send an overdue reminder' is a permitted action but no Reminder entity, template, or record of reminders sent is defined — the builder must guess whether reminders are logged.",
+      "`net_terms_days` is stated as firm-level with 'default 15' but scenarios reference per-client terms; the builder cannot tell whether net terms are one firm-wide value or per-client without guessing.",
+      "Idempotency for 'Send' is asserted (R-d5, d:x2) using an `idempotency_key` that only exists on the Payment entity; there is no send-idempotency key field or dedup window defined, so duplicate-send suppression is unspecified.",
+      "issue_date is 'set when sent' yet billing-day roll-off (R-d4/S9) sets 'the invoice date' at creation; the builder cannot tell which date field the billing_day drives or when it is assigned."
+    ],
+    "missing_for_a_builder": [
+      "A single authoritative Invoice state set and the exact derivation for every state including any credit-settled state — this is the central unresolved question.",
+      "Whether discounts are in scope at all (d:invoice_discounts is 48% confidence) and, if so, the authoritative `amount` formula reconciled between the data model and R-d2.",
+      "The Client entity's payment-terms field (or explicit statement that terms are firm-wide) so due_date derivation is unambiguous.",
+      "Schema for invoice file attachments (fields, limits, permissions) given the matrix grants the action.",
+      "An edit-history/undo storage model, since undo and audit are promised but only who/when audit fields are defined.",
+      "A Reminder record/template definition and whether reminder sends are logged.",
+      "Resolution of the contradictory ledger decisions (reminders manual vs. scheduled; late fees yes/no; retention vs. never-delete; credit-note numbering shared vs. separate) before any code is written."
+    ],
+    "strongest_aspect": "The rules-and-verification section (R-r1…R-d15) is unusually concrete, pairing each invariant with an executable verification sketch and specific dollar examples, which would make most individual rules directly testable once the underlying contradictions are removed.",
+    "weakest_aspect": "Core money/state logic is internally inconsistent: the interaction of credit notes, the `paid`/`sent` derivations, and the R-r3 balance cap produces invoices that can reach a legal-but-undefined state and get stuck, which is exactly the kind of defect that corrupts financial records.",
+    "one_change_with_most_impact": "Define one authoritative Invoice state model that explicitly accounts for credit notes (e.g., add a `settled`/`written_off` terminal state or make `paid` mean balance_due==0 with a separate payment-received flag), then propagate that single definition through the enum, status-derivation, lifecycle, permissions, and R-r7 — this resolves the three high-severity flagged contradictions and the stuck-record defect at once."
+  },
+  "spec_chars": 75155
+}

@@ -1,0 +1,221 @@
+{
+  "scenario": "excel-financials",
+  "tag": "baseline",
+  "selector_config": {},
+  "project_id": "d74f815f-241a-468a-a2c1-5f88f741ee38",
+  "model": "claude-opus-4-8",
+  "judge_model": "claude-opus-4-8",
+  "elapsed_s": 1007,
+  "cards_asked": [
+    {
+      "node": "x8",
+      "chosen": "assume_configured",
+      "scripted": false
+    }
+  ],
+  "stop_reason": "converged",
+  "overrides_applied": [
+    "approval_workflow=single_approver"
+  ],
+  "sheet": {
+    "version": 7,
+    "decisions": 36,
+    "rules": 14,
+    "actors": 4,
+    "nouns": 9,
+    "actions": 12
+  },
+  "gates": {
+    "spec_checks": [
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a7 (\"Owner closes Period\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a8 (\"Accountant reviews Revenue Figure\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a10 (\"Owner saves Dashboard View\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a11 (\"Bookkeeper creates Category\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "missing_matrix_row",
+        "severity": "medium",
+        "section": "Permissions matrix",
+        "message": "Sheet action a12 (\"Owner invites User\") has no row in the actors × permissions matrix.",
+        "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+      },
+      {
+        "code": "untraced_decision",
+        "severity": "medium",
+        "message": "decision \"customization\" is defaulted as \"fixed\" (Can each business customize the app?) but nothing outside the decision tables cites it — no ⟨src: …⟩ marker names \"customization\" in any form (d:customization, customization, or customization:fixed).",
+        "fix_hint": "This decision was settled but nothing in the spec depends on it — either implement it (state the behaviour it dictates on a rule, data-model field, matrix row or scenario, and mark that line ⟨src: d:customization⟩) or re-open it."
+      }
+    ],
+    "spec_ir": [
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Excel Upload",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Account Line",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Category",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Period",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "User",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      },
+      {
+        "code": "no_terminal",
+        "severity": "low",
+        "machine": "Dashboard View",
+        "message": "machine declares no terminal states.",
+        "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+      }
+    ],
+    "ledger_findings": [],
+    "roundtrip_recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 0.75,
+      "rules": 0.8571428571428571,
+      "non_goals": 1,
+      "overall": 0.8863636363636364
+    },
+    "roundtrip_extra": 50,
+    "blocking_reasons": [
+      "the critic returned fail (score 6.5)"
+    ],
+    "critic": {
+      "violations": [
+        {
+          "rule_id": "data_model × lifecycles",
+          "severity": "medium",
+          "where": "Account Line lifecycle (states imported/flagged/unmapped/mapped) vs Import Staging Row model & R-6",
+          "why": "The data model and R-6 state emphatically that unresolved/invalid rows are held as Import Staging Rows and 'no Account Line is created for it until it is mapped'; a 'category-less Account Line can never exist'. But the Account Line lifecycle starts in `imported` and transits through `flagged` and `unmapped` states (and `mapped → unmapped`), which models Account Lines existing before mapping and without a category — the opposite of R6's implementation.",
+          "fix_hint": "Delete the imported/flagged/unmapped states from the Account Line lifecycle; those belong to Import Staging Row. Account Line should begin at `mapped`."
+        },
+        {
+          "rule_id": "actors_permissions × lifecycles",
+          "severity": "medium",
+          "where": "Dashboard View lifecycle 'Who' column vs permissions matrix and S-21",
+          "why": "The permissions matrix grants Bookkeeper ✓*(4) for Open/Save Dashboard View, and S-21 says 'Given the Bookkeeper has saved a Dashboard View'. But the Dashboard View lifecycle lists only 'Owner' as the actor for draft→saved, saved→archived, and archived→saved, denying the Bookkeeper a capability the matrix and a scenario grant.",
+          "fix_hint": "Change the Dashboard View lifecycle 'Who' to 'view owner (Owner or Bookkeeper)' to match the matrix/scenario, or restrict the matrix."
+        },
+        {
+          "rule_id": "r9",
+          "severity": "medium",
+          "where": "Permissions matrix row 'Restore an archived record' (Bookkeeper ✓) applied to the User entity (which has archived_by/archived_at)",
+          "why": "R-9 restricts all user-account management to the Owner ('Bookkeepers, Managers, and Accountants cannot manage user accounts'). Yet the matrix grants Bookkeeper an unqualified '✓' to Restore an archived record, and User is a soft-deletable record. A Bookkeeper restoring an archived User account would be managing an account, contradicting R9.",
+          "fix_hint": "Scope the 'Restore an archived record' permission to exclude User records for the Bookkeeper, or make User restore Owner-only."
+        },
+        {
+          "rule_id": "r12 × r4",
+          "severity": "medium",
+          "where": "R-12 delete guard vs R-4 edit lock / Account Line 'Edit lock'",
+          "why": "R-12 lets a Category be archived only after its Account Lines are 'reassigned to another Category or removed'. R-4 (and the Account Line Edit lock) forbid editing OR archiving any Account Line whose period is `closed`. If a Category's only lines live in closed periods, R-12's mandatory escape (reassign/remove those lines) is exactly what R-4 prohibits, so the Category can never be archived without first reopening a closed period — R-12's escape hatch is R-4's prohibition.",
+          "fix_hint": "State that R-12's delete guard ignores lines in closed periods, or require the Owner to reopen before reassigning; make the interaction explicit."
+        },
+        {
+          "rule_id": "r12 × r4",
+          "severity": "low",
+          "where": "R-12 Verify: 'reassign or archive those lines, retry → succeeds'",
+          "why": "R-12's verification test instructs the tester to reassign or archive the referencing Account Lines, but if those lines belong to a closed Period R-4 forbids that step, so the test cannot be executed for such a Category.",
+          "fix_hint": "Qualify the test to open-period lines, or add a reopen step."
+        },
+        {
+          "rule_id": "actors_permissions × data_model",
+          "severity": "low",
+          "where": "Dashboard View ownership note / R-20 vs cited decision d:record_ownership ('admins see all')",
+          "why": "R-20 and the visibility prose say saved Dashboard Views are visible only to their owner and 'the Owner is not exempt', while the cited decision record_ownership states 'admins see all'. The spec contradicts the very decision it cites as source.",
+          "fix_hint": "Cite a different rationale (personal views) rather than d:record_ownership, or reconcile the 'admins see all' language."
+        }
+      ],
+      "omissions": [
+        {
+          "item": "a9 Bookkeeper reopens Period",
+          "kind": "action",
+          "why": "The Sheet action a9 has the Bookkeeper reopening a period, but the spec makes reopen Owner-only (justified by r4/approval_workflow). The action as literally stated in the Sheet is not implemented for the Bookkeeper; this is a deliberate narrowing that should be flagged."
+        },
+        {
+          "item": "record_duplicates (warn about likely duplicates and offer to merge)",
+          "kind": "rule",
+          "why": "The resolved-ish decision to warn about likely duplicates and offer to merge is not implemented; the spec only enforces hard uniqueness (email, period label) and case-insensitive category matching, with no duplicate-warning or merge feature."
+        }
+      ],
+      "score": 6.5,
+      "verdict": "fail"
+    }
+  },
+  "deliberate_decisions_missing_from_body": [],
+  "judgement": {
+    "verdict": "needs_work",
+    "score_out_of_10": 5,
+    "contradictions": [
+      "Account Line lifecycle vs R-6/data model: the lifecycle says 'Each Account Line starts in `imported` and moves through 5 states' including `flagged` ('Row failed validation') and `unmapped` ('Valid row not yet tied to a category'), yet R-6 states 'Unresolved spreadsheet rows are held as Import staging rows and are not Account Lines... a category-less Account Line can never exist.' The two model the same rows in incompatible ways.",
+      "Dashboard View permissions: the matrix grants 'Open Dashboard View' and 'Save Dashboard View' to Bookkeeper as '✓* (4)', and S-21 says 'Given the Bookkeeper has saved a Dashboard View', but the Dashboard View lifecycle lists only 'Owner' as the actor for draft→saved, saved→archived, and archived→saved.",
+      "Restore vs user management: the matrix gives Bookkeeper an unqualified '✓' for 'Restore an archived record' while R-9 states 'Bookkeepers, Managers, and Accountants cannot manage user accounts' — and User is a soft-deletable record (archived_by/archived_at), so a Bookkeeper could restore an archived User.",
+      "R-12 vs R-4: R-12 requires that before archiving a Category 'its lines must first be reassigned to another Category or removed', while R-4/Edit lock say 'Account Lines whose period is closed cannot be edited or archived'. A Category whose only lines are in closed periods can never satisfy R-12's escape without reopening a period, and R-12's Verify step ('reassign or archive those lines, retry → succeeds') cannot be executed for such a Category.",
+      "Period status enum vs Period lifecycle: the data model defines Period `status enum(open, closed)`, but the lifecycle declares 'Each Period starts in `empty`' with three states empty/open/closed — `empty` has no home in the persisted enum."
+    ],
+    "unbuildable_requirements": [
+      "'Discard' of an irreparable staging row is required (R-15, S-13, Journey 1 step 7) but no row in the permissions matrix defines who may discard a staging row or under what period status, so a builder must guess the actor and guard.",
+      "Re-upload behaviour (R-8, d:x1, 36% confidence) says prior figures are replaced but never states what happens to manual corrections (Account Lines with is_correction=true) from the superseded version — are they discarded, re-applied, or orphaned? Unbuildable without a decision.",
+      "Rollback (superseded→active) is specified as a state transition but the mechanics — whether the active version's Account Lines are archived, deleted, or coexist via source_upload_id — are undefined, so the aggregation queries (which filter archived_at IS NULL, not by active version) would double-count.",
+      "AuditEntry.action is a fixed enum(upload, map_line, correct_line, close_period, reopen_period) yet R-10/R-18 imply category archive, user invite/deactivate, and restore are mutations; the builder cannot record events the enum has no value for.",
+      "User lifecycle uses states invited/active/deactivated with Owner 'deactivates'/'reactivates', while the soft-delete convention uses archived_at/archived_by for all entities including User — it is unspecified whether deactivation and archival are the same operation or two separate mechanisms on the User record."
+    ],
+    "missing_for_a_builder": [
+      "What happens to a Manager's allowed_areas (and their view) when a Category listed there is archived?",
+      "Whether a Period can be closed while it still has unmapped/invalid staging rows, or only after full resolution (lifecycle implies open requires all mapped, but the close guard is blank).",
+      "Exact CSV export format/columns for figures (S-37, S-38) — no schema given.",
+      "Behaviour of the 'duplicate warn and merge' decision (d:record_duplicates, 72%) — referenced in the ledger but not carried into any requirement.",
+      "Password/reset, invite-link expiry, and first-sign-in flow details beyond 'sets password and signs in'.",
+      "Whether re-uploading resets or preserves existing mappings for rows that still match (Journey 6 step 4 sends rows through staging again, implying prior mapping work is lost — not confirmed)."
+    ],
+    "strongest_aspect": "The data model, figure formulas (signed-amount aggregation, net_profit = revenue − expenses), and the acceptance scenarios are detailed, testable, and largely internally consistent, with strong trace markers back to Sheet items.",
+    "weakest_aspect": "The lifecycle/state-machine section contradicts the very invariants (R-6, R-4/R-12, Dashboard View ownership, Period status enum) the rest of the document treats as inviolable — the section that should reconcile behaviour instead introduces the most damaging conflicts.",
+    "one_change_with_most_impact": "Rewrite the Account Line lifecycle so pre-mapping states (imported/flagged/unmapped) live on the Import Staging Row and the Account Line begins life only at mapping (mapped↔locked), aligning the state machines with R-6, R-4, R-12, the Dashboard View owner rule, and the Period status enum in one pass."
+  },
+  "spec_chars": 70699
+}

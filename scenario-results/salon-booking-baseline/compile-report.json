@@ -1,0 +1,2303 @@
+{
+  "sheet_version": 6,
+  "critic": {
+    "violations": [
+      {
+        "rule_id": "booking_cancellation_policy",
+        "severity": "medium",
+        "where": "Actors & permissions › Permission matrix, row 'Cancel Appointment | ✓*¹' for Client; AS-9; Journey 2 step 3",
+        "why": "The Sheet decision booking_cancellation_policy is 'Only staff can cancel; customers must contact the business,' yet the spec grants Clients a self-service cancel outside the cut-off ('A Client may cancel or reschedule only an Appointment where they are the client, and only before the salon-configured cut-off'). The spec even cites the decision in AS-10 while contradicting it in AS-9.",
+        "fix_hint": "Either remove Client self-cancel (route all cancels through staff, Client only 'requests') or revise the decision on the Sheet first."
+      },
+      {
+        "rule_id": "booking_reschedule",
+        "severity": "medium",
+        "where": "Permission matrix row 'Reschedule Appointment | ✓*¹' for Client; AS-13 'Client reschedules own Appointment before the cut-off'",
+        "why": "Decision booking_reschedule is 'No — they contact the business,' but the spec lets a Client move their own Appointment: 'When the Client reschedules before the cut-off, Then the Appointment moves to the new time.' Directly contradicts the Sheet decision.",
+        "fix_hint": "Deny Client reschedule in the matrix and lifecycle, or amend the Sheet decision."
+      },
+      {
+        "rule_id": "r1 × r12",
+        "severity": "high",
+        "where": "Rules R-1 and R-12; R-12 text 'when the target slot is free at booking it is confirmed instantly, otherwise it stays pending until confirmed' vs R-1 'may be committed for a time slot only when the chosen Stylist … has no other non-cancelled Appointment overlapping'",
+        "why": "For a non-free slot the two rules disagree about the same state: R-12 says the Appointment persists as 'pending', while R-1 (and AS-5) says the booking is 'rejected as the slot is not free.' A non-free booking cannot both persist pending and be rejected — neither outcome satisfies both rules.",
+        "fix_hint": "Decide the single outcome for a taken slot (reject) and drop the 'otherwise it stays pending' clause, or define an approval/hold flow that actually persists pending appointments."
+      },
+      {
+        "rule_id": "actors_permissions × lifecycles",
+        "severity": "medium",
+        "where": "Permission matrix 'Confirm Appointment' (Client ✓*³, Receptionist ✓, Manager ✓) and AS-27 vs Appointment lifecycle table, which lists only 'pending → confirmed | system'",
+        "why": "The matrix and R-12 grant Client (from reminder) and staff a confirm capability, and AS-27 exercises a Client confirming a pending Appointment, but the Appointment state machine has no client- or staff-driven pending→confirmed transition — only the 'system' auto-confirm. A capability is granted in one section and absent from the lifecycle. Combined with the instant-confirm/reject flow, no reachable persistent 'pending' Appointment exists for the confirm action to operate on.",
+        "fix_hint": "Add explicit pending→confirmed transitions with Who = Client (via reminder) and staff, and reconcile with the instant-confirm rule."
+      },
+      {
+        "rule_id": "actors_permissions × lifecycles",
+        "severity": "low",
+        "where": "Permission matrix 'Mark Appointment attended / no-show' grants Receptionist ✓ and Salon Manager ✓ for attended, but Appointment lifecycle 'confirmed → attended | Stylist' names only the Stylist",
+        "why": "The matrix permits receptionist/manager to mark attended, while the lifecycle attributes the attended transition solely to the Stylist. The two sections disagree on who can drive the attended transition.",
+        "fix_hint": "List Receptionist/Manager on the confirmed→attended transition to match the matrix."
+      },
+      {
+        "rule_id": "booking_no_show",
+        "severity": "low",
+        "where": "Client Record lifecycle state 'restricted — Repeat no-show client restricted or required to prepay before booking'",
+        "why": "The restricted state describes a prepay requirement, but g1/booking_prepayment put all payments/deposits out of scope, so 'required to prepay' is unimplementable in v1. The prose imports a capability that does not exist.",
+        "fix_hint": "Describe restricted purely as a booking block/manager review; drop the prepay wording."
+      }
+    ],
+    "omissions": [
+      {
+        "item": "booking_waitlist (manual waitlist a Client joins)",
+        "kind": "action",
+        "why": "The spec names a 'Waitlist' in the glossary and non-goals ('a manual waitlist that a Client joins, from which staff contact them') but provides no Waitlist entity in the data model and no join-waitlist action or permission-matrix row, so the described behaviour cannot be implemented or tested."
+      },
+      {
+        "item": "booking_walk_ins 'holds, and blocked time'",
+        "kind": "noun",
+        "why": "The decision includes staff creating holds and blocked time by hand; the spec models only stylist Time Off and walk-in Appointments, leaving generic staff 'holds/blocked time' with no entity or action."
+      },
+      {
+        "item": "concurrency (prevent or merge conflicting edits)",
+        "kind": "rule",
+        "why": "The decision covers concurrent edits generally, but the spec only addresses booking-slot locking (R-16) and offers no conflict handling for concurrent edits to Services, Stylist Profiles, or Working Hours beyond an audit stamp."
+      }
+    ],
+    "score": 6,
+    "verdict": "fail"
+  },
+  "critic_rounds": 2,
+  "ir_findings": [
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Service",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Stylist Profile",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Client Record",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled."
+    }
+  ],
+  "spec_findings": [
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permission matrix",
+      "message": "Sheet action a3 (\"Client reschedules Appointment\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "missing_matrix_row",
+      "severity": "medium",
+      "section": "Permission matrix",
+      "message": "Sheet action a4 (\"Client updates Client Record\") has no row in the actors × permissions matrix.",
+      "fix_hint": "The matrix is the permission contract; an action missing from it has undefined permissions — add a row with a verdict for every actor."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Salon Configuration",
+      "message": "table cell in row \"buffer_minutes\" holds 91 characters of prose: \"Fixed gap enforced after every appointment. Default 0 until the Salon Manager configures it\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Salon Configuration",
+      "message": "table cell in row \"cancellation_cutoff_minutes\" holds 106 characters of prose: \"Minutes before start within which a cancellation/reschedule is flagged or blocked. Default 1440 (24 hours)\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Salon Configuration",
+      "message": "table cell in row \"no_show_threshold\" holds a second sentence: \"Number of no-shows at which a client is restricted. Default 3\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Client Record (n5)",
+      "message": "table cell in row \"is_restricted\" holds 161 characters of prose: \"Stored flag. Set true automatically when no_show_count ≥ Salon Configuration.no_show_threshold; the Salon Manager may c…\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Appointment (n1)",
+      "message": "table cell in row \"price_charged\" holds 89 characters of prose: \"Positive; snapshot of Service.price at booking time so history survives later price edits\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Appointment (n1)",
+      "message": "table cell in row \"status\" holds 84 characters of prose: \"One of: pending, confirmed, cancelled, attended, no_show. New bookings start pending\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "prose_in_table_cell",
+      "severity": "medium",
+      "section": "Reminder (n8)",
+      "message": "table cell in row \"status\" holds a second sentence: \"One of: pending, sent, delivered, failed. New reminders start pending\".",
+      "fix_hint": "A matrix cell is a verdict (✓ / ✗ / a single value); move the explanation to a footnote under the table."
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Service",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Stylist Profile",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    },
+    {
+      "code": "no_terminal",
+      "severity": "low",
+      "machine": "Client Record",
+      "message": "machine declares no terminal states.",
+      "fix_hint": "Mark the state(s) where the lifecycle ends as terminal, so builders know when the entity is settled.",
+      "section": "Lifecycles (state machines)"
+    }
+  ],
+  "blocking": [
+    "the critic returned fail (score 6)"
+  ],
+  "deliverable": false,
+  "scope_creep": [
+    {
+      "kind": "noun",
+      "item": "Account",
+      "severity": "high"
+    },
+    {
+      "kind": "noun",
+      "item": "Salon Configuration",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "An Appointment must never fall within any Time Off block of the assigned Stylist (overridable by staff per R-19).",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "An Appointment's Service must be present in the assigned Stylist Profile's set of offered Services; never overridable by any role.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A cancel or reschedule requested within SalonConfiguration.cancellation_cutoff_minutes of the Appointment start is blocked for Clients and flagged for staff (default 1440 minutes).",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "No two non-cancelled Appointments for the same Stylist may overlap, where each Appointment occupies its Service duration plus SalonConfiguration.buffer_minutes (overridable by staff per R-19).",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A slot is offered as bookable only if it fits fully within salon Working Hours AND within the Stylist's Working Hours AND outside every Time Off block.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "While one Client is completing a booking, the target slot is held/locked so a second Client cannot commit the same Stylist slot concurrently.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A cancelled Appointment may be reinstated only when its original slot is still open under R-14; otherwise the restore fails and it stays cancelled.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Receptionist and Salon Manager accounts may override R-1, R-2, R-4, R-10, R-14, and R-15 at book, cancel, or reschedule time, each recorded with a warning; R-3, R-5, R-6, and R-7 are never overridable by any role.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "SalonConfiguration.buffer_minutes is the fixed gap enforced after every Appointment, defaulting to 0 until the Salon Manager configures it.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "An Appointment blocks exactly its Service duration_minutes plus buffer, with no rounding to a fixed grid.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "ClientRecord.is_restricted is set true when no_show_count reaches SalonConfiguration.no_show_threshold (default 3); the Salon Manager may lift it without altering no_show_count.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "If a Reminder fails to send, the Appointment stands; the Reminder is retried and flagged as failed, and no Appointment status changes as a result.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Every Account email must be unique, compared case-insensitively and trimmed of surrounding whitespace.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Deleting any record sets archived_at and hides it from normal lists; no record is physically removed in v1, and only the Salon Manager may archive or restore Services and Stylist Profiles.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Approve booking request is denied to all roles because a free slot is confirmed instantly with no approval step.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Comment / add private notes is denied to all roles; the Client Record holds contact details and visit history only.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "View audit trail is denied to all roles; v1 stores only created/updated-by-whom-and-when stamps and exposes no viewable change history.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Client may confirm only their own Appointment, and only from the reminder message.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Stylist may mark attended or no-show only on Appointments where they are the assigned stylist.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "A Stylist may set Time Off and Working Hours only for themselves; the Salon Manager may set them for any stylist.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Every slot holds exactly one 1:1 Appointment; no group or multi-person party bookings.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Prices and money are stored as a single-currency positive decimal; there are no negative or signed money fields in v1.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "All times are stored in a single salon-local time zone; no per-user zone is stored.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "At most one Working Hours row per (stylist_profile_id, day_of_week).",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Working Hours end_time must be after start_time; Time Off end_date must be greater than or equal to start_date.",
+      "severity": "high"
+    },
+    {
+      "kind": "rule",
+      "item": "Client Record email is unique across Client Records (case-insensitive, trimmed).",
+      "severity": "high"
+    },
+    {
+      "kind": "action",
+      "item": "Client|Confirm|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Client|View|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Receptionist|Book|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Receptionist|Reschedule|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Receptionist|Restore cancelled|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Receptionist|Confirm|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Receptionist|Mark attended or no-show|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Receptionist|Update|Client Record",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Receptionist|Reassign Appointments from a removed|Stylist Profile",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Stylist|Mark attended or no-show|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Stylist|Set|Working Hours",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|Set|Time Off",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|Archive or restore|Service",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|Archive or restore|Stylist Profile",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|Export data as CSV|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|Import spreadsheet one-time|Client Record",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|View dashboard totals|Appointment",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|Invite|Account",
+      "severity": "medium"
+    },
+    {
+      "kind": "action",
+      "item": "Salon Manager|Lift restriction on|Client Record",
+      "severity": "medium"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not create recurring or repeating booking series.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not sync with external Google, Outlook, or Apple calendars in either direction.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not support more than one salon or branch (single location only).",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not connect to accounting, payment, or third-party tools, and exposes no public API or webhooks.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not automatically offer a freed slot to the next person in line; only a manual waitlist.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not provide a full, viewable audit trail of every change.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not let people build custom reports or drill into the numbers; only a fixed dashboard of today's totals.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not allow files or photos to be attached to any record.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not support custom fields, per-service intake questions, or private staff notes.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not present multiple languages, currencies, or time zones.",
+      "severity": "low"
+    },
+    {
+      "kind": "non_goal",
+      "item": "Does not publish public marketing pages or allow open self-signup for staff.",
+      "severity": "low"
+    }
+  ],
+  "roundtrip": {
+    "recall": {
+      "actors": 1,
+      "nouns": 1,
+      "actions": 1,
+      "rules": 0.8461538461538461,
+      "non_goals": 1,
+      "overall": 0.9523809523809523
+    },
+    "missing": [
+      {
+        "kind": "rule",
+        "item": "A stylist can only be booked for services they offer."
+      },
+      {
+        "kind": "rule",
+        "item": "Cancellations and reschedules made too close to the appointment start (within a salon-configured cut-off) may be blocked or flagged, not just any time before start."
+      }
+    ],
+    "extra": [
+      {
+        "kind": "noun",
+        "item": "Account"
+      },
+      {
+        "kind": "noun",
+        "item": "Salon Configuration"
+      },
+      {
+        "kind": "action",
+        "item": "Client|Confirm|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Client|View|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Receptionist|Book|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Receptionist|Reschedule|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Receptionist|Restore cancelled|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Receptionist|Confirm|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Receptionist|Mark attended or no-show|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Receptionist|Update|Client Record"
+      },
+      {
+        "kind": "action",
+        "item": "Receptionist|Reassign Appointments from a removed|Stylist Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Stylist|Mark attended or no-show|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Stylist|Set|Working Hours"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|Set|Time Off"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|Archive or restore|Service"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|Archive or restore|Stylist Profile"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|Export data as CSV|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|Import spreadsheet one-time|Client Record"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|View dashboard totals|Appointment"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|Invite|Account"
+      },
+      {
+        "kind": "action",
+        "item": "Salon Manager|Lift restriction on|Client Record"
+      },
+      {
+        "kind": "rule",
+        "item": "An Appointment must never fall within any Time Off block of the assigned Stylist (overridable by staff per R-19)."
+      },
+      {
+        "kind": "rule",
+        "item": "An Appointment's Service must be present in the assigned Stylist Profile's set of offered Services; never overridable by any role."
+      },
+      {
+        "kind": "rule",
+        "item": "A cancel or reschedule requested within SalonConfiguration.cancellation_cutoff_minutes of the Appointment start is blocked for Clients and flagged for staff (default 1440 minutes)."
+      },
+      {
+        "kind": "rule",
+        "item": "No two non-cancelled Appointments for the same Stylist may overlap, where each Appointment occupies its Service duration plus SalonConfiguration.buffer_minutes (overridable by staff per R-19)."
+      },
+      {
+        "kind": "rule",
+        "item": "A slot is offered as bookable only if it fits fully within salon Working Hours AND within the Stylist's Working Hours AND outside every Time Off block."
+      },
+      {
+        "kind": "rule",
+        "item": "While one Client is completing a booking, the target slot is held/locked so a second Client cannot commit the same Stylist slot concurrently."
+      },
+      {
+        "kind": "rule",
+        "item": "A cancelled Appointment may be reinstated only when its original slot is still open under R-14; otherwise the restore fails and it stays cancelled."
+      },
+      {
+        "kind": "rule",
+        "item": "Receptionist and Salon Manager accounts may override R-1, R-2, R-4, R-10, R-14, and R-15 at book, cancel, or reschedule time, each recorded with a warning; R-3, R-5, R-6, and R-7 are never overridable by any role."
+      },
+      {
+        "kind": "rule",
+        "item": "SalonConfiguration.buffer_minutes is the fixed gap enforced after every Appointment, defaulting to 0 until the Salon Manager configures it."
+      },
+      {
+        "kind": "rule",
+        "item": "An Appointment blocks exactly its Service duration_minutes plus buffer, with no rounding to a fixed grid."
+      },
+      {
+        "kind": "rule",
+        "item": "ClientRecord.is_restricted is set true when no_show_count reaches SalonConfiguration.no_show_threshold (default 3); the Salon Manager may lift it without altering no_show_count."
+      },
+      {
+        "kind": "rule",
+        "item": "If a Reminder fails to send, the Appointment stands; the Reminder is retried and flagged as failed, and no Appointment status changes as a result."
+      },
+      {
+        "kind": "rule",
+        "item": "Every Account email must be unique, compared case-insensitively and trimmed of surrounding whitespace."
+      },
+      {
+        "kind": "rule",
+        "item": "Deleting any record sets archived_at and hides it from normal lists; no record is physically removed in v1, and only the Salon Manager may archive or restore Services and Stylist Profiles."
+      },
+      {
+        "kind": "rule",
+        "item": "Approve booking request is denied to all roles because a free slot is confirmed instantly with no approval step."
+      },
+      {
+        "kind": "rule",
+        "item": "Comment / add private notes is denied to all roles; the Client Record holds contact details and visit history only."
+      },
+      {
+        "kind": "rule",
+        "item": "View audit trail is denied to all roles; v1 stores only created/updated-by-whom-and-when stamps and exposes no viewable change history."
+      },
+      {
+        "kind": "rule",
+        "item": "A Client may confirm only their own Appointment, and only from the reminder message."
+      },
+      {
+        "kind": "rule",
+        "item": "A Stylist may mark attended or no-show only on Appointments where they are the assigned stylist."
+      },
+      {
+        "kind": "rule",
+        "item": "A Stylist may set Time Off and Working Hours only for themselves; the Salon Manager may set them for any stylist."
+      },
+      {
+        "kind": "rule",
+        "item": "Every slot holds exactly one 1:1 Appointment; no group or multi-person party bookings."
+      },
+      {
+        "kind": "rule",
+        "item": "Prices and money are stored as a single-currency positive decimal; there are no negative or signed money fields in v1."
+      },
+      {
+        "kind": "rule",
+        "item": "All times are stored in a single salon-local time zone; no per-user zone is stored."
+      },
+      {
+        "kind": "rule",
+        "item": "At most one Working Hours row per (stylist_profile_id, day_of_week)."
+      },
+      {
+        "kind": "rule",
+        "item": "Working Hours end_time must be after start_time; Time Off end_date must be greater than or equal to start_date."
+      },
+      {
+        "kind": "rule",
+        "item": "Client Record email is unique across Client Records (case-insensitive, trimmed)."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not create recurring or repeating booking series."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not sync with external Google, Outlook, or Apple calendars in either direction."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not support more than one salon or branch (single location only)."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not connect to accounting, payment, or third-party tools, and exposes no public API or webhooks."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not automatically offer a freed slot to the next person in line; only a manual waitlist."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not provide a full, viewable audit trail of every change."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not let people build custom reports or drill into the numbers; only a fixed dashboard of today's totals."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not allow files or photos to be attached to any record."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not support custom fields, per-service intake questions, or private staff notes."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not present multiple languages, currencies, or time zones."
+      },
+      {
+        "kind": "non_goal",
+        "item": "Does not publish public marketing pages or allow open self-signup for staff."
+      }
+    ]
+  },
+  "traces": {
+    "overview": [
+      {
+        "anchor": "Salon Book is an online booking system",
+        "sources": [
+          "d:booking_locations",
+          "p:p1",
+          "p:p2",
+          "p:p3",
+          "p:p4",
+          "d:identity_provider",
+          "d:external_access",
+          "d:invite_flow"
+        ]
+      },
+      {
+        "anchor": "browses the salon's Service menu",
+        "sources": [
+          "n:n2",
+          "d:booking_service_catalog"
+        ]
+      },
+      {
+        "anchor": "chooses an open time slot",
+        "sources": [
+          "a:a1",
+          "r:r3",
+          "d:booking_availability_rules",
+          "n:n4",
+          "n:n6",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "confirmed instantly when the slot is free",
+        "sources": [
+          "d:booking_confirmation",
+          "r:r1",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "Receptionists also add walk-in",
+        "sources": [
+          "a:a5",
+          "a:a7",
+          "d:booking_walk_ins"
+        ]
+      },
+      {
+        "anchor": "sends the Client a reminder",
+        "sources": [
+          "n:n8",
+          "a:a12",
+          "d:booking_reminders",
+          "r:r13"
+        ]
+      },
+      {
+        "anchor": "dashboard of today's totals",
+        "sources": [
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "runs in a web browser, mobile-first",
+        "sources": [
+          "d:platform"
+        ]
+      },
+      {
+        "anchor": "single salon at one physical location",
+        "sources": [
+          "d:booking_locations",
+          "d:localization",
+          "d:booking_time_zones"
+        ]
+      },
+      {
+        "anchor": "tens of thousands of records",
+        "sources": [
+          "d:data_scale"
+        ]
+      },
+      {
+        "anchor": "no integration with external tools or calendars",
+        "sources": [
+          "d:integrations",
+          "d:booking_calendar_sync"
+        ]
+      },
+      {
+        "anchor": "Several people log in with different powers",
+        "sources": [
+          "d:user_accounts",
+          "d:roles",
+          "d:external_access"
+        ]
+      },
+      {
+        "anchor": "added by an admin invitation",
+        "sources": [
+          "d:invite_flow"
+        ]
+      },
+      {
+        "anchor": "archived and can be restored",
+        "sources": [
+          "d:deletion",
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "Personal Client data is treated as sensitive",
+        "sources": [
+          "d:compliance_sensitivity",
+          "d:retention"
+        ]
+      },
+      {
+        "anchor": "apply its own branding",
+        "sources": [
+          "d:customization"
+        ]
+      },
+      {
+        "anchor": "does not take payments or deposits",
+        "sources": [
+          "g:g1",
+          "d:booking_prepayment"
+        ]
+      },
+      {
+        "anchor": "does not sell retail products",
+        "sources": [
+          "g:g2",
+          "g:g3",
+          "g:g4"
+        ]
+      },
+      {
+        "anchor": "does not handle group or multi-person party bookings",
+        "sources": [
+          "g:g5",
+          "d:booking_slot_capacity"
+        ]
+      },
+      {
+        "anchor": "Recurring booking series are also excluded",
+        "sources": [
+          "d:booking_recurring"
+        ]
+      }
+    ],
+    "data_model": [
+      {
+        "anchor": "All times stored in single salon-local zone",
+        "sources": [
+          "d:booking_time_zones",
+          "d:pricing",
+          "d:localization"
+        ]
+      },
+      {
+        "anchor": "Common fields / soft delete",
+        "sources": [
+          "d:deletion",
+          "d:audit_trail",
+          "d:retention"
+        ]
+      },
+      {
+        "anchor": "Account entity",
+        "sources": [
+          "d:user_accounts",
+          "d:roles",
+          "d:identity_provider",
+          "d:invite_flow",
+          "p:p1",
+          "p:p2",
+          "p:p3",
+          "p:p4",
+          "n:n3",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "Salon Configuration buffer/cutoff/no-show defaults",
+        "sources": [
+          "d:booking_buffers",
+          "r10",
+          "d:booking_no_show",
+          "d:customization",
+          "d:booking_locations",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Service entity and delete behaviour",
+        "sources": [
+          "n:n2",
+          "d:booking_pricing_variation",
+          "x8",
+          "r9"
+        ]
+      },
+      {
+        "anchor": "Stylist Profile services_offered and reassignment",
+        "sources": [
+          "n:n3",
+          "r3",
+          "n:n4",
+          "n:n6",
+          "x1",
+          "r9"
+        ]
+      },
+      {
+        "anchor": "Working Hours",
+        "sources": [
+          "n:n4",
+          "d:booking_availability_rules",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Time Off",
+        "sources": [
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "Client Record derived and restriction flag",
+        "sources": [
+          "n:n5",
+          "d:booking_customer_records",
+          "r13",
+          "d:booking_no_show",
+          "d:booking_intake_form",
+          "d:compliance_sensitivity",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Appointment fields and status enum",
+        "sources": [
+          "n:n1",
+          "n:n2",
+          "r8",
+          "r12",
+          "r13",
+          "x8",
+          "d:booking_buffers",
+          "d:booking_pricing_variation",
+          "x3",
+          "d:booking_slot_capacity"
+        ]
+      },
+      {
+        "anchor": "Appointment overlap interval and double-book override",
+        "sources": [
+          "r1",
+          "d:booking_buffers",
+          "x6"
+        ]
+      },
+      {
+        "anchor": "Cancellation entity and override",
+        "sources": [
+          "n:n7",
+          "r11",
+          "r6",
+          "r10",
+          "x6"
+        ]
+      },
+      {
+        "anchor": "Reminder entity pending status and failure handling",
+        "sources": [
+          "n:n8",
+          "d:booking_reminders",
+          "x7"
+        ]
+      },
+      {
+        "anchor": "Import contract for Client Records",
+        "sources": [
+          "d:data_import",
+          "n:n5",
+          "default"
+        ]
+      },
+      {
+        "anchor": "Export CSV no API",
+        "sources": [
+          "d:data_export",
+          "d:integrations"
+        ]
+      }
+    ],
+    "actors_permissions": [
+      {
+        "anchor": "single location, four roles scope",
+        "sources": [
+          "d:booking_locations",
+          "d:roles"
+        ]
+      },
+      {
+        "anchor": "note 1 client cancel/reschedule own before cutoff",
+        "sources": [
+          "a2",
+          "a3",
+          "r5",
+          "r6",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "note 2 restore if slot free",
+        "sources": [
+          "x5"
+        ]
+      },
+      {
+        "anchor": "note 3 confirm from reminder",
+        "sources": [
+          "r12",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "note 4 mark attended/no-show own",
+        "sources": [
+          "r13",
+          "a8"
+        ]
+      },
+      {
+        "anchor": "note 5 client view own",
+        "sources": [
+          "r5"
+        ]
+      },
+      {
+        "anchor": "note 6 stylist view own",
+        "sources": [
+          "a8",
+          "r5"
+        ]
+      },
+      {
+        "anchor": "note 7 client update own record",
+        "sources": [
+          "a4",
+          "r5"
+        ]
+      },
+      {
+        "anchor": "note 8 time off and working hours own vs manager",
+        "sources": [
+          "a7",
+          "a11",
+          "d:booking_staff_schedule_control"
+        ]
+      },
+      {
+        "anchor": "note 9 staff override scope",
+        "sources": [
+          "x6",
+          "r1",
+          "r2",
+          "r4",
+          "r6",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "approve denied instant confirmation",
+        "sources": [
+          "d:booking_confirmation"
+        ]
+      },
+      {
+        "anchor": "comment/notes denied",
+        "sources": [
+          "d:booking_customer_records",
+          "d:attachments"
+        ]
+      },
+      {
+        "anchor": "view audit trail denied basic stamps",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "book appointment provenance",
+        "sources": [
+          "a1",
+          "a5"
+        ]
+      },
+      {
+        "anchor": "cancel appointment provenance",
+        "sources": [
+          "a2",
+          "a6"
+        ]
+      },
+      {
+        "anchor": "reschedule provenance",
+        "sources": [
+          "a3"
+        ]
+      },
+      {
+        "anchor": "staff config actions provenance",
+        "sources": [
+          "a7",
+          "a11",
+          "a9",
+          "a10",
+          "a12"
+        ]
+      },
+      {
+        "anchor": "reassign from removed stylist",
+        "sources": [
+          "x1",
+          "r9"
+        ]
+      },
+      {
+        "anchor": "client visibility boundary",
+        "sources": [
+          "r5",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "stylist visibility boundary",
+        "sources": [
+          "a8",
+          "d:booking_staff_schedule_control"
+        ]
+      },
+      {
+        "anchor": "receptionist visibility boundary",
+        "sources": [
+          "a5",
+          "a6",
+          "r7"
+        ]
+      },
+      {
+        "anchor": "manager visibility boundary",
+        "sources": [
+          "d:booking_locations",
+          "d:roles"
+        ]
+      },
+      {
+        "anchor": "boundaries match matrix cell for cell",
+        "sources": [
+          "r5",
+          "r7"
+        ]
+      }
+    ],
+    "glossary": [
+      {
+        "anchor": "Client",
+        "sources": [
+          "p1",
+          "d:booking_who_books",
+          "d:identity_provider"
+        ]
+      },
+      {
+        "anchor": "Stylist",
+        "sources": [
+          "p2",
+          "d:booking_staff_schedule_control"
+        ]
+      },
+      {
+        "anchor": "Salon Manager",
+        "sources": [
+          "p3",
+          "d:roles"
+        ]
+      },
+      {
+        "anchor": "Receptionist",
+        "sources": [
+          "p4",
+          "d:booking_walk_ins"
+        ]
+      },
+      {
+        "anchor": "Appointment",
+        "sources": [
+          "n1",
+          "d:booking_slot_capacity",
+          "d:booking_resource_model"
+        ]
+      },
+      {
+        "anchor": "Service",
+        "sources": [
+          "n2",
+          "d:booking_service_catalog",
+          "d:booking_pricing_variation"
+        ]
+      },
+      {
+        "anchor": "Stylist Profile",
+        "sources": [
+          "n3"
+        ]
+      },
+      {
+        "anchor": "Working Hours",
+        "sources": [
+          "n4",
+          "d:booking_availability_rules"
+        ]
+      },
+      {
+        "anchor": "Client Record",
+        "sources": [
+          "n5",
+          "d:booking_customer_records"
+        ]
+      },
+      {
+        "anchor": "Time Off",
+        "sources": [
+          "n6"
+        ]
+      },
+      {
+        "anchor": "Cancellation",
+        "sources": [
+          "n7",
+          "r11"
+        ]
+      },
+      {
+        "anchor": "Reminder",
+        "sources": [
+          "n8",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "Buffer",
+        "sources": [
+          "d:booking_buffers",
+          "default"
+        ]
+      },
+      {
+        "anchor": "No-show",
+        "sources": [
+          "r13",
+          "d:booking_no_show"
+        ]
+      },
+      {
+        "anchor": "Waitlist",
+        "sources": [
+          "d:booking_waitlist"
+        ]
+      }
+    ],
+    "state_machines": [
+      {
+        "anchor": "Appointment",
+        "sources": [
+          "a1",
+          "a5",
+          "r1",
+          "r2",
+          "r4",
+          "r12",
+          "x4",
+          "booking_confirmation",
+          "a6",
+          "booking_cancellation_policy",
+          "a3",
+          "r10",
+          "booking_reschedule",
+          "x6",
+          "a2",
+          "r6",
+          "r11",
+          "r13",
+          "a8",
+          "booking_no_show",
+          "x5"
+        ]
+      },
+      {
+        "anchor": "Cancellation",
+        "sources": [
+          "a2",
+          "a6",
+          "r11",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "Reminder",
+        "sources": [
+          "a12",
+          "n8",
+          "booking_reminders",
+          "a2",
+          "a6",
+          "x7"
+        ]
+      },
+      {
+        "anchor": "Service",
+        "sources": [
+          "a9",
+          "r7",
+          "r9",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Stylist Profile",
+        "sources": [
+          "a10",
+          "r7",
+          "r9",
+          "x1",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Client Record",
+        "sources": [
+          "r13",
+          "booking_no_show",
+          "deletion"
+        ]
+      },
+      {
+        "anchor": "Time Off",
+        "sources": [
+          "a7",
+          "n6",
+          "booking_staff_schedule_control"
+        ]
+      }
+    ],
+    "rules_invariants": [
+      {
+        "anchor": "R-1 — Stylist must be working and free",
+        "sources": [
+          "r1",
+          "a:a1",
+          "a:a5",
+          "d:x6"
+        ]
+      },
+      {
+        "anchor": "R-2 — No booking during Time Off",
+        "sources": [
+          "r2",
+          "n:n6",
+          "d:x6"
+        ]
+      },
+      {
+        "anchor": "R-3 — Stylist booked only for offered Services",
+        "sources": [
+          "r3",
+          "n:n3",
+          "n:n2"
+        ]
+      },
+      {
+        "anchor": "R-4 — No past or out-of-hours booking",
+        "sources": [
+          "r4",
+          "n:n4",
+          "d:x6"
+        ]
+      },
+      {
+        "anchor": "R-8 — Exactly one client, stylist, and service",
+        "sources": [
+          "r8",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "R-9 — Removing a Service or Stylist must not orphan Appointments",
+        "sources": [
+          "r9",
+          "d:x1",
+          "n:n2",
+          "n:n3",
+          "a:a9",
+          "a:a10"
+        ]
+      },
+      {
+        "anchor": "R-11 — Cancellation must record actor and reason",
+        "sources": [
+          "r11",
+          "n:n7",
+          "a:a2",
+          "a:a6"
+        ]
+      },
+      {
+        "anchor": "R-6 — Cancellations only before start",
+        "sources": [
+          "r6",
+          "r13",
+          "a:a2",
+          "a:a6"
+        ]
+      },
+      {
+        "anchor": "R-10 — Cut-off on late cancel and reschedule",
+        "sources": [
+          "r10",
+          "default",
+          "a:a2",
+          "a:a3",
+          "d:x6"
+        ]
+      },
+      {
+        "anchor": "R-12 — New Appointments are pending until confirmed",
+        "sources": [
+          "r12",
+          "d:booking_confirmation",
+          "d:booking_reminders",
+          "a:a1",
+          "a:a5"
+        ]
+      },
+      {
+        "anchor": "R-13 — Attended and no-show marking",
+        "sources": [
+          "r13",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "R-5 — Clients act only on their own Appointments",
+        "sources": [
+          "r5",
+          "a:a2",
+          "a:a3",
+          "a:a4",
+          "a:a8"
+        ]
+      },
+      {
+        "anchor": "R-7 — Only staff edit catalog and schedules",
+        "sources": [
+          "r7",
+          "a:a9",
+          "a:a10",
+          "a:a11"
+        ]
+      },
+      {
+        "anchor": "R-14 — No overlapping Appointments per Stylist",
+        "sources": [
+          "d:booking_slot_capacity",
+          "d:booking_buffers",
+          "r1",
+          "d:x6",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "R-15 — Availability is a strict intersection",
+        "sources": [
+          "d:x4",
+          "n:n4",
+          "n:n6",
+          "r1",
+          "r2",
+          "r4"
+        ]
+      },
+      {
+        "anchor": "R-16 — Slot lock during checkout",
+        "sources": [
+          "d:x2",
+          "a:a1"
+        ]
+      },
+      {
+        "anchor": "R-17 — Duplicate submissions collapse to one",
+        "sources": [
+          "d:x3",
+          "a:a1",
+          "a:a5"
+        ]
+      },
+      {
+        "anchor": "R-18 — Restore only into an open slot",
+        "sources": [
+          "d:x5",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "R-19 — Staff override scope",
+        "sources": [
+          "d:x6",
+          "r1",
+          "r2",
+          "r4",
+          "r10",
+          "r6",
+          "a:a5",
+          "a:a6"
+        ]
+      },
+      {
+        "anchor": "R-20 — Buffer default",
+        "sources": [
+          "d:booking_buffers",
+          "default"
+        ]
+      },
+      {
+        "anchor": "R-21 — Exact-duration blocking",
+        "sources": [
+          "d:x8",
+          "n:n2"
+        ]
+      },
+      {
+        "anchor": "R-22 — No-show restriction is a manager-liftable flag",
+        "sources": [
+          "d:booking_no_show",
+          "r13",
+          "default",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "R-23 — Reminder failure does not void the booking",
+        "sources": [
+          "d:x7",
+          "n:n8",
+          "a:a12"
+        ]
+      },
+      {
+        "anchor": "R-24 — Unique account email",
+        "sources": [
+          "d:identity_provider"
+        ]
+      },
+      {
+        "anchor": "R-25 — Soft delete only",
+        "sources": [
+          "d:deletion",
+          "r7",
+          "a:a9",
+          "a:a10"
+        ]
+      }
+    ],
+    "journeys": [
+      {
+        "anchor": "Journeys intro — local time zone",
+        "sources": [
+          "d:booking_time_zones"
+        ]
+      },
+      {
+        "anchor": "J1 sign in and Service menu",
+        "sources": [
+          "d:identity_provider",
+          "n2",
+          "d:booking_service_catalog",
+          "p1",
+          "d:platform"
+        ]
+      },
+      {
+        "anchor": "J1 pick service then stylist who offers it",
+        "sources": [
+          "a1",
+          "r3",
+          "n3"
+        ]
+      },
+      {
+        "anchor": "J1 open slots strict intersection with buffer",
+        "sources": [
+          "d:x4",
+          "n4",
+          "n6",
+          "d:x8",
+          "d:booking_buffers"
+        ]
+      },
+      {
+        "anchor": "J1 no past or out-of-hours slots",
+        "sources": [
+          "r4"
+        ]
+      },
+      {
+        "anchor": "J1 slot lock during checkout",
+        "sources": [
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "J1 instant confirm and duplicate collapse",
+        "sources": [
+          "d:booking_confirmation",
+          "r1",
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "J1 confirmation screen email and SMS",
+        "sources": [
+          "n1",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "J2 reminder email and SMS",
+        "sources": [
+          "a12",
+          "n8",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "J2 confirm own from reminder",
+        "sources": [
+          "r12",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "J2 reschedule or cancel before cut-off",
+        "sources": [
+          "a2",
+          "a3",
+          "r5",
+          "r6",
+          "r10"
+        ]
+      },
+      {
+        "anchor": "J2 cancellation records who and reason",
+        "sources": [
+          "r11",
+          "n7"
+        ]
+      },
+      {
+        "anchor": "J2 inside cut-off blocked",
+        "sources": [
+          "r10",
+          "r6",
+          "d:booking_cancellation_policy"
+        ]
+      },
+      {
+        "anchor": "J2 reminder-failed booking stands",
+        "sources": [
+          "d:x7",
+          "n8"
+        ]
+      },
+      {
+        "anchor": "J3 receptionist books walk-in",
+        "sources": [
+          "a5",
+          "d:booking_walk_ins",
+          "p4"
+        ]
+      },
+      {
+        "anchor": "J3 same intersection availability",
+        "sources": [
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "J3 staff override with warning, r6 never",
+        "sources": [
+          "d:x6",
+          "r1",
+          "r2",
+          "r4",
+          "r10",
+          "r6"
+        ]
+      },
+      {
+        "anchor": "J3 appointment created and confirmation",
+        "sources": [
+          "n1",
+          "n5",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "J3 mark attended or no-show",
+        "sources": [
+          "r13",
+          "a6"
+        ]
+      },
+      {
+        "anchor": "J3 no-show count and restriction threshold",
+        "sources": [
+          "r13",
+          "d:booking_no_show"
+        ]
+      },
+      {
+        "anchor": "J3 restore only if slot open",
+        "sources": [
+          "d:x5"
+        ]
+      },
+      {
+        "anchor": "J4 stylist views own day",
+        "sources": [
+          "a8",
+          "n1"
+        ]
+      },
+      {
+        "anchor": "J4 stylist views only own appointments",
+        "sources": [
+          "r5",
+          "a8"
+        ]
+      },
+      {
+        "anchor": "J4 stylist sets own time off",
+        "sources": [
+          "a7",
+          "n6",
+          "r2",
+          "d:booking_staff_schedule_control"
+        ]
+      },
+      {
+        "anchor": "J4 existing appointments in time off flagged",
+        "sources": [
+          "default",
+          "r2"
+        ]
+      },
+      {
+        "anchor": "J4 stylist marks attended/no-show",
+        "sources": [
+          "r13",
+          "a8"
+        ]
+      },
+      {
+        "anchor": "J5 manager adds service",
+        "sources": [
+          "a9",
+          "n2"
+        ]
+      },
+      {
+        "anchor": "J5 edit stylist profile services offered",
+        "sources": [
+          "a10",
+          "n3",
+          "r3"
+        ]
+      },
+      {
+        "anchor": "J5 set salon working hours",
+        "sources": [
+          "a11",
+          "n4"
+        ]
+      },
+      {
+        "anchor": "J5 archive stylist forces reassignment",
+        "sources": [
+          "d:x1",
+          "r9",
+          "n1"
+        ]
+      },
+      {
+        "anchor": "J5 reassigned clients notified",
+        "sources": [
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "J5 dashboard totals",
+        "sources": [
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "J5 export and one-time import",
+        "sources": [
+          "d:data_export",
+          "d:data_import"
+        ]
+      }
+    ],
+    "acceptance_scenarios": [
+      {
+        "anchor": "AS-1 Client books an open slot",
+        "sources": [
+          "a:a1",
+          "r:r1",
+          "r:r3",
+          "d:x4",
+          "d:booking_confirmation",
+          "r:r12",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "AS-2 Booking rejected for unoffered Service",
+        "sources": [
+          "r:r3",
+          "a:a1",
+          "a:a5",
+          "n:n3"
+        ]
+      },
+      {
+        "anchor": "AS-3 Past or out-of-hours booking rejected",
+        "sources": [
+          "r:r4",
+          "a:a1",
+          "n:n4"
+        ]
+      },
+      {
+        "anchor": "AS-4 Booking rejected during Time Off",
+        "sources": [
+          "r:r2",
+          "a:a1",
+          "n:n6"
+        ]
+      },
+      {
+        "anchor": "AS-5 Booking rejected when stylist already booked",
+        "sources": [
+          "r:r1",
+          "a:a1"
+        ]
+      },
+      {
+        "anchor": "AS-6 Slot sized to duration plus buffer",
+        "sources": [
+          "d:x8",
+          "n:n2",
+          "d:booking_buffers"
+        ]
+      },
+      {
+        "anchor": "AS-7 Receptionist books walk-in",
+        "sources": [
+          "a:a5",
+          "d:booking_walk_ins",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "AS-8 Exactly one client, stylist, service",
+        "sources": [
+          "r:r8",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "AS-9 Client cancels before cut-off",
+        "sources": [
+          "a:a2",
+          "r:r5",
+          "r:r6",
+          "r:r11",
+          "r:r10",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "AS-10 Client cancel blocked inside cut-off",
+        "sources": [
+          "r:r10",
+          "a:a2",
+          "d:booking_cancellation_policy"
+        ]
+      },
+      {
+        "anchor": "AS-11 Cancel after start never overridable",
+        "sources": [
+          "r:r6",
+          "r:r13",
+          "a:a2",
+          "a:a6"
+        ]
+      },
+      {
+        "anchor": "AS-12 Cancellation blocked without reason",
+        "sources": [
+          "r:r11",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "AS-13 Client reschedules before cut-off",
+        "sources": [
+          "a:a3",
+          "r:r5",
+          "r:r10",
+          "n:n8"
+        ]
+      },
+      {
+        "anchor": "AS-14 Receptionist cancels booking",
+        "sources": [
+          "a:a6",
+          "r:r11",
+          "n:n7"
+        ]
+      },
+      {
+        "anchor": "AS-15 Client updates own record",
+        "sources": [
+          "a:a4",
+          "r:r5",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "AS-16 Client cannot view others (negative)",
+        "sources": [
+          "r:r5",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "AS-17 Stylist sets own Time Off",
+        "sources": [
+          "a:a7",
+          "n:n6",
+          "d:booking_staff_schedule_control",
+          "r:r2"
+        ]
+      },
+      {
+        "anchor": "AS-18 Stylist cannot set another schedule",
+        "sources": [
+          "r:r7",
+          "a:a7",
+          "a:a11",
+          "d:booking_staff_schedule_control"
+        ]
+      },
+      {
+        "anchor": "AS-19 Stylist views only own Appointments",
+        "sources": [
+          "a:a8",
+          "r:r5"
+        ]
+      },
+      {
+        "anchor": "AS-20 Manager sets Working Hours",
+        "sources": [
+          "a:a11",
+          "n:n4",
+          "d:x4"
+        ]
+      },
+      {
+        "anchor": "AS-21 Manager adds Service",
+        "sources": [
+          "a:a9",
+          "n:n2",
+          "d:booking_pricing_variation"
+        ]
+      },
+      {
+        "anchor": "AS-22 Manager edits offered Services",
+        "sources": [
+          "a:a10",
+          "n:n3",
+          "r:r3"
+        ]
+      },
+      {
+        "anchor": "AS-23 Client cannot edit catalog (negative)",
+        "sources": [
+          "r:r7",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "AS-24 Archiving Stylist reassigns/cancels",
+        "sources": [
+          "r:r9",
+          "d:x1",
+          "n:n3",
+          "a:a10"
+        ]
+      },
+      {
+        "anchor": "AS-25 Archiving Service reassigns/cancels",
+        "sources": [
+          "r:r9",
+          "n:n2",
+          "a:a9"
+        ]
+      },
+      {
+        "anchor": "AS-26 Send Reminder",
+        "sources": [
+          "a:a12",
+          "n:n8",
+          "d:booking_reminders"
+        ]
+      },
+      {
+        "anchor": "AS-27 Client confirms from Reminder",
+        "sources": [
+          "r:r12",
+          "d:booking_reminders",
+          "p:p1"
+        ]
+      },
+      {
+        "anchor": "AS-28 Reminder failure leaves booking intact",
+        "sources": [
+          "d:x7",
+          "n:n8"
+        ]
+      },
+      {
+        "anchor": "AS-29 Mark attended or no-show",
+        "sources": [
+          "r:r13",
+          "a:a8",
+          "d:booking_no_show"
+        ]
+      },
+      {
+        "anchor": "AS-30 Repeat no-shows restrict Client",
+        "sources": [
+          "d:booking_no_show",
+          "r:r13",
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "AS-31 Staff override with warning",
+        "sources": [
+          "d:x6",
+          "r:r1",
+          "r:r2",
+          "r:r4",
+          "r:r10",
+          "r:r3",
+          "r:r6"
+        ]
+      },
+      {
+        "anchor": "AS-32 Concurrent booking of same slot",
+        "sources": [
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "AS-33 Duplicate submission collapses",
+        "sources": [
+          "d:x3"
+        ]
+      },
+      {
+        "anchor": "AS-34 Restore cancelled only if slot free",
+        "sources": [
+          "d:x5",
+          "p:p4",
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "AS-35 Manager exports CSV",
+        "sources": [
+          "d:data_export",
+          "p:p3",
+          "p:p4",
+          "p:p2"
+        ]
+      },
+      {
+        "anchor": "AS-36 Manager imports spreadsheet",
+        "sources": [
+          "d:data_import",
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "AS-37 Manager views dashboard",
+        "sources": [
+          "d:reporting",
+          "p:p3"
+        ]
+      },
+      {
+        "anchor": "AS-38 Admin invites staff",
+        "sources": [
+          "d:invite_flow",
+          "p:p3"
+        ]
+      }
+    ],
+    "non_goals_defaults": [
+      {
+        "anchor": "No online payments or deposits",
+        "sources": [
+          "g:g1",
+          "d:booking_prepayment",
+          "n:n2",
+          "d:x2"
+        ]
+      },
+      {
+        "anchor": "No retail products or gift cards",
+        "sources": [
+          "g:g2",
+          "n:n2",
+          "d:booking_service_catalog"
+        ]
+      },
+      {
+        "anchor": "No payroll or commissions",
+        "sources": [
+          "g:g3",
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "No loyalty or points program",
+        "sources": [
+          "g:g4",
+          "n:n5",
+          "d:booking_customer_records"
+        ]
+      },
+      {
+        "anchor": "No group or party bookings",
+        "sources": [
+          "g:g5",
+          "d:booking_slot_capacity",
+          "n:n1",
+          "d:booking_resource_model"
+        ]
+      },
+      {
+        "anchor": "No recurring or repeating bookings",
+        "sources": [
+          "d:booking_recurring",
+          "a:a1",
+          "n:n1"
+        ]
+      },
+      {
+        "anchor": "No external calendar sync",
+        "sources": [
+          "d:booking_calendar_sync",
+          "a:a8",
+          "d:booking_availability_rules"
+        ]
+      },
+      {
+        "anchor": "No multi-location support",
+        "sources": [
+          "d:booking_locations",
+          "n:n4",
+          "n:n6",
+          "d:booking_availability_rules"
+        ]
+      },
+      {
+        "anchor": "No external integrations or public API",
+        "sources": [
+          "d:integrations",
+          "d:data_import",
+          "d:data_export"
+        ]
+      },
+      {
+        "anchor": "No automatic waitlist offers",
+        "sources": [
+          "d:booking_waitlist"
+        ]
+      },
+      {
+        "anchor": "No viewable change history",
+        "sources": [
+          "d:audit_trail"
+        ]
+      },
+      {
+        "anchor": "No custom reports",
+        "sources": [
+          "d:reporting"
+        ]
+      },
+      {
+        "anchor": "No file or photo attachments",
+        "sources": [
+          "d:attachments",
+          "n:n1",
+          "n:n5"
+        ]
+      },
+      {
+        "anchor": "No custom intake forms or custom fields",
+        "sources": [
+          "d:customization",
+          "d:booking_intake_form",
+          "d:booking_customer_records"
+        ]
+      },
+      {
+        "anchor": "No multi-language, multi-currency, or multi-time-zone handling",
+        "sources": [
+          "d:localization",
+          "d:booking_time_zones",
+          "d:booking_pricing_variation"
+        ]
+      },
+      {
+        "anchor": "No public pages or open sign-up",
+        "sources": [
+          "d:public_facing",
+          "d:invite_flow",
+          "d:external_access"
+        ]
+      }
+    ]
+  },
+  "critic_passed": false,
+  "stale": false,
+  "sheet_moved": false,
+  "latest_sheet_version": 6,
+  "open_decisions": 0,
+  "ledger_conflicts": [],
+  "generated_at": "2026-08-26T10:25:51.473Z"
+}

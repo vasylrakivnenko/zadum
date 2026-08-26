@@ -2,8 +2,9 @@
  * MockLLM handler for fn "evidence_label" — a deterministic stand-in for the Opus labeller so the whole
  * evidence pipeline (condense → prompt → schema → rules → report) runs end to end with no credentials.
  *
- * It reads the rendered prompt exactly as the model does (available loci, feature list with declared loci,
- * and the artifact) and applies lexical cues:
+ * It reads the rendered prompt exactly as the model does (available loci, then the artifact, then the feature
+ * list with declared loci — the artifact-first order the real labeller uses so the prefix can be cached) and
+ * applies lexical cues:
  *   - a feature is `present` when a single line of the artifact contains enough of its cue tokens; the
  *     evidence is that line, verbatim, so the substring check in `applyEvidenceRules` passes for real;
  *   - otherwise it is `absent`, and — deliberately — it reports **every locus the feature declares**, not
@@ -22,6 +23,8 @@ import { normToken, STOPWORDS } from "./ngrams.js";
 
 const ARTIFACT_MARKER = "===== ARTIFACT =====\n";
 const AVAILABLE_MARKER = "AVAILABLE LOCI";
+/** Mirrors `label.ts`'s `FEATURES_MARKER`, preceded by the `\n\n` that `renderLabelPrompt` joins with. */
+const QUESTION_SEAM = "\n\nFEATURES TO JUDGE (";
 
 export interface ParsedPrompt {
   docType: string;
@@ -30,17 +33,28 @@ export interface ParsedPrompt {
   artifact: string;
 }
 
-/** Inverse of `renderLabelPrompt` — the mock reads the prompt the same way the model does. */
+/**
+ * Inverse of `renderLabelPrompt` — the mock reads the prompt the same way the model does.
+ *
+ * Follows the 2026-08-26 reordering: `header · ARTIFACT · FEATURES TO JUDGE`, i.e. the cacheable prefix
+ * first and the per-batch question last. The seam is found with `lastIndexOf`, because an artifact is
+ * arbitrary source text and may itself contain the words "FEATURES TO JUDGE (" — the question block is
+ * always the final one. `label.test.ts` pins this against the real renderer.
+ */
 export function parseLabelPrompt(user: string): ParsedPrompt {
-  const at = user.indexOf(ARTIFACT_MARKER);
-  const head = at >= 0 ? user.slice(0, at) : user;
-  const artifact = at >= 0 ? user.slice(at + ARTIFACT_MARKER.length) : "";
+  const seam = user.lastIndexOf(QUESTION_SEAM);
+  // +2 skips the "\n\n" the renderer joined with, so `stable` is byte-exactly `renderLabelPrefix(digest)`.
+  const stable = seam >= 0 ? user.slice(0, seam) : user;
+  const question = seam >= 0 ? user.slice(seam + 2) : user;
+
+  const at = stable.indexOf(ARTIFACT_MARKER);
+  const head = at >= 0 ? stable.slice(0, at) : stable;
+  const artifact = at >= 0 ? stable.slice(at + ARTIFACT_MARKER.length) : "";
   const docType = /^DOCUMENT TYPE: (.+)$/m.exec(head)?.[1]?.trim() ?? "";
 
   const available: string[] = [];
-  const lines = head.split("\n");
   let inAvailable = false;
-  for (const line of lines) {
+  for (const line of head.split("\n")) {
     if (line.startsWith(AVAILABLE_MARKER)) {
       inAvailable = true;
       continue;
@@ -53,6 +67,7 @@ export function parseLabelPrompt(user: string): ParsedPrompt {
   }
 
   const features: ParsedPrompt["features"] = [];
+  const lines = question.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const m = /^- ([a-z0-9_]+) \[([a-z0-9_]+)\] (.+)$/.exec(lines[i]!);
     if (!m) continue;
@@ -130,6 +145,11 @@ export function mockLabelBatch(user: string): { labels: MockLabel[] } {
   return { labels: mockLabelFeatures(parseLabelPrompt(user)) };
 }
 
+/**
+ * The real labeller splits its user turn into a cacheable `userPrefix` (header + artifact) and a varying
+ * `user` (the feature list). Rejoining them exactly as `renderLabelPrompt` does keeps this mock reading the
+ * same bytes the model reads, and keeps it working for callers that pass the whole prompt as `user`.
+ */
 export const labelMockHandlers: Record<string, MockHandler> = {
-  evidence_label: (req: LLMRequest<unknown>) => mockLabelBatch(req.user),
+  evidence_label: (req: LLMRequest<unknown>) => mockLabelBatch(req.userPrefix ? `${req.userPrefix}\n\n${req.user}` : req.user),
 };
